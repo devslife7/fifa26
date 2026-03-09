@@ -3,6 +3,7 @@
 @theme {
   --color-primary: #f9d406;
   --color-background-light: #f8f8f5;
+  --color-background-dark: #0f172a;
   --font-display: var(--font-lexend), sans-serif;
 }
 

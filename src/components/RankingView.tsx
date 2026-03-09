@@ -115,9 +115,9 @@ export default function RankingView() {
 
             {/* Scoring System */}
             <section className="px-6 mt-8 mb-4">
-                <div className="overflow-hidden rounded-2xl shadow-xl border border-slate-100 dark:border-white/10">
-                    {/* Using exported base64 image */}
-                    <img alt="How to Score Points" className="w-full h-auto block" src="/images/scoring.png" />
+                <div className="overflow-hidden rounded-2xl shadow-xl border border-slate-100">
+                    {/* Using cleaned exported image without green background */}
+                    <img alt="How to Score Points" className="w-full h-auto block" src="/images/scoring_clean.png" />
                 </div>
             </section>
         </div>

@@ -15,28 +15,14 @@ interface Props {
 export default function GroupSection({ group, predictions, onPredict }: Props) {
   const matches = getGroupMatches(group);
   const standings = calculateGroupStandings(group, predictions);
-  const complete = isGroupComplete(group, predictions);
   const predictedCount = matches.filter(m => predictions[m.id] !== undefined).length;
 
   return (
-    <div className="bg-surface-light rounded-2xl border border-border overflow-hidden">
-      {/* Group header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-        <h3 className="text-lg font-bold">
-          <span className="text-gold">Group {group}</span>
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-white/40">{predictedCount}/6</span>
-          {complete && (
-            <span className="text-xs bg-gold/20 text-gold px-2 py-0.5 rounded-full font-medium">
-              Complete
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="">
+      <h3 className="text-xl font-black mb-4 border-l-4 border-primary pl-3">Group {group}</h3>
 
       {/* Matches */}
-      <div className="p-4 space-y-2">
+      <div className="mb-6">
         {matches.map(match => (
           <GroupMatchCard
             key={match.id}
@@ -51,13 +37,15 @@ export default function GroupSection({ group, predictions, onPredict }: Props) {
 
       {/* Standings */}
       {predictedCount > 0 && (
-        <div className="px-4 pb-4">
-          <div className="bg-surface rounded-xl p-3 border border-border/50">
-            <h4 className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">
-              Standings
-            </h4>
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <h3 className="text-lg font-bold">Group {group} Standings</h3>
+            <span className="text-xs text-primary font-bold bg-primary/10 px-2 py-1 rounded">Live Projection</span>
+          </div>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-1">
             <StandingsTable standings={standings} />
           </div>
+          <p className="mt-4 text-[10px] text-center text-slate-400 uppercase tracking-widest font-bold">Top 2 advance + 8 best 3rd places</p>
         </div>
       )}
     </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TabId, MatchResult, KnockoutResult, GroupLetter } from '@/types';
 import { groups } from '@/data/teams';
-import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
 import GroupSection from '@/components/GroupSection';
@@ -15,6 +14,7 @@ import BottomNav from '@/components/BottomNav';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>('groups');
+  const [activeGroup, setActiveGroup] = useState<GroupLetter>('A');
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [mounted, setMounted] = useState(false);
@@ -79,45 +79,33 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-lg border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🏆</span>
-            <div>
-              <h1 className="text-lg font-black tracking-tight">
-                <span className="text-gold">FIFA</span> World Cup 2026
-              </h1>
-              <p className="text-[10px] text-white/30 uppercase tracking-[0.15em]">
-                Prediction Challenge
-              </p>
-            </div>
-          </div>
-        </div>
-        <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
-      </header>
-
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-md mx-auto pb-8 px-4">
         {activeTab === 'groups' && (
           <div>
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">
-                <span className="text-gold">Group Stage</span>
-              </h2>
-              <p className="text-white/40 text-sm">
-                Predict all 48 matches across 12 groups
-              </p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {groups.map(group => (
-                <GroupSection
-                  key={group}
-                  group={group}
-                  predictions={groupPredictions}
-                  onPredict={handleGroupPredict}
-                />
+            <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
+
+            {/* Group Tabs */}
+            <div className="flex overflow-x-auto no-scrollbar gap-2 py-6 mt-2 border-b border-slate-200 dark:border-slate-800">
+              {groups.map(g => (
+                <button
+                  key={g}
+                  className={`px-5 py-2 rounded-full font-semibold text-sm whitespace-nowrap ${activeGroup === g
+                      ? 'bg-primary text-background-dark font-bold shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/20'
+                    }`}
+                  onClick={() => setActiveGroup(g)}
+                >
+                  Group {g}
+                </button>
               ))}
+            </div>
+
+            <div className="mt-6">
+              <GroupSection
+                group={activeGroup}
+                predictions={groupPredictions}
+                onPredict={handleGroupPredict}
+              />
             </div>
           </div>
         )}

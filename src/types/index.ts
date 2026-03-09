@@ -59,3 +59,18 @@ export interface Predictions {
 }
 
 export type TabId = 'groups' | 'third-place' | 'bracket' | 'champion' | 'ranking';
+
+export interface LeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  total_points: number;
+  champion_code: string | null;
+  calculated_at: string;
+}
+
+export interface UserScore {
+  total_points: number;
+  group_correct: number;
+  knockout_correct: number;
+  champion_correct: boolean;
+}

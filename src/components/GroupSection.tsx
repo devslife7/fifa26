@@ -42,7 +42,7 @@ export default function GroupSection({ group, predictions, onPredict }: Props) {
             <h3 className="text-lg font-bold">Group {group} Standings</h3>
             <span className="text-xs text-primary font-bold bg-primary/10 px-2 py-1 rounded">Live Projection</span>
           </div>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mb-1">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mb-1">
             <StandingsTable standings={standings} />
           </div>
           <p className="mt-4 text-[10px] text-center text-slate-400 uppercase tracking-widest font-bold">Top 2 advance + 8 best 3rd places</p>

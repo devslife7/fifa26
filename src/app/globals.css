@@ -3,16 +3,7 @@
 @theme {
   --color-primary: #f9d406;
   --color-background-light: #f8f8f5;
-  --color-background-dark: #23200f;
   --font-display: var(--font-lexend), sans-serif;
-  --color-gold: #c9a84c;
-  --color-gold-light: #e8d48b;
-  --color-gold-dark: #a07d2e;
-  --color-malachite: #0b6623;
-  --color-surface: #111111;
-  --color-surface-light: #1a1a1a;
-  --color-surface-lighter: #222222;
-  --color-border: #333333;
 }
 
 @keyframes pulse-gold {
@@ -48,8 +39,8 @@
 }
 
 body {
-  background: var(--color-background-dark);
-  color: #ffffff;
+  background: var(--color-background-light);
+  color: #1e293b;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
@@ -59,11 +50,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #111111;
+  background: #f1f1f1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: #cccccc;
   border-radius: 3px;
 }
 
@@ -73,4 +64,33 @@ body {
 
 .font-variation-fill {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.bracket-scroll::-webkit-scrollbar {
+  height: 10px;
+  -webkit-appearance: none;
+}
+
+.bracket-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.bracket-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 10px;
+}
+
+.path-highlight {
+  position: relative;
+}
+
+.path-highlight::after {
+  content: '';
+  position: absolute;
+  right: -24px;
+  top: 50%;
+  width: 24px;
+  height: 2px;
+  background: var(--color-primary);
+  z-index: 10;
 }

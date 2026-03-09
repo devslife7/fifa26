@@ -58,4 +58,4 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'third-place' | 'bracket' | 'champion';
+export type TabId = 'groups' | 'third-place' | 'bracket' | 'champion' | 'ranking';

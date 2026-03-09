@@ -13,11 +13,12 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'third-place', label: '3rd Place', icon: 'workspace_premium' },
   { id: 'bracket', label: 'Bracket', icon: 'account_tree' },
   { id: 'champion', label: 'Champion', icon: 'trophy' },
+  { id: 'ranking', label: 'Ranking', icon: 'leaderboard' },
 ];
 
 export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-light border-t border-slate-200 pb-safe">
       <div className="max-w-md mx-auto flex justify-between items-center px-4 pt-3 pb-4">
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
@@ -31,7 +32,7 @@ export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Pr
                   ? 'text-primary'
                   : isLocked
                     ? 'text-slate-400/30 cursor-not-allowed'
-                    : 'text-slate-400 dark:text-slate-500 hover:text-primary'
+                    : 'text-slate-400 hover:text-primary'
                 }`}
             >
               <span className={`material-symbols-outlined text-2xl ${isActive ? 'font-variation-fill' : ''}`}>

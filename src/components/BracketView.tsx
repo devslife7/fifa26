@@ -14,10 +14,10 @@ interface Props {
 const roundLabels: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
   R16: 'Round of 16',
-  QF: 'Quarterfinals',
-  SF: 'Semifinals',
+  QF: 'Quarter-finals',
+  SF: 'Semi-finals',
   '3RD': 'Third Place',
-  F: 'Final',
+  F: 'Finals',
 };
 
 export default function BracketView({ groupPredictions, knockoutPredictions, onPredict }: Props) {
@@ -29,60 +29,59 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
       <div className="max-w-lg mx-auto text-center py-16">
         <div className="text-6xl mb-6 animate-pulse-gold">🏟️</div>
         <h2 className="text-2xl font-bold mb-3">Knockout Stage Locked</h2>
-        <p className="text-white/40">
+        <p className="text-slate-500">
           Complete all 48 group stage predictions to unlock the knockout bracket
         </p>
       </div>
     );
   }
 
-  const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+  // Define rounds in order for brackets Left-to-Right
+  const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F', '3RD'];
 
   return (
-    <div className="space-y-10">
-      {rounds.map(round => {
-        const roundMatches = bracket.filter(m => m.round === round);
-        if (roundMatches.length === 0) return null;
+    <div className="relative w-full mt-2">
+      {/* Bracket Container */}
+      <div className="bracket-scroll overflow-x-auto overflow-y-hidden flex px-6 py-4 gap-12 min-h-[700px] items-start">
+        {rounds.map(round => {
+          const roundMatches = bracket.filter(m => m.round === round);
+          if (roundMatches.length === 0) return null;
 
-        return (
-          <div key={round}>
-            <h3 className="text-xl font-bold mb-4 text-center">
-              <span className="text-gold">{roundLabels[round]}</span>
-              {round !== '3RD' && round !== 'F' && (
-                <span className="text-white/30 text-sm ml-2">
-                  ({roundMatches.length} matches)
-                </span>
-              )}
-            </h3>
+          return (
+            <div key={round} className="flex flex-col min-w-[280px]">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-6 sticky left-0 z-10">
+                {roundLabels[round]}
+              </h3>
 
-            <div
-              className={`grid gap-3 ${
-                round === 'R32'
-                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+              <div
+                className={`flex flex-col w-full ${round === 'R32'
+                  ? 'gap-6'
                   : round === 'R16'
-                    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                    ? 'gap-12 mt-12'
                     : round === 'QF'
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                      ? 'gap-24 mt-32'
                       : round === 'SF'
-                        ? 'grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto'
-                        : 'grid-cols-1 max-w-sm mx-auto'
-              }`}
-            >
-              {roundMatches.map(match => (
-                <KnockoutMatchCard
-                  key={match.id}
-                  matchId={match.id}
-                  homeCode={match.home}
-                  awayCode={match.away}
-                  result={match.result}
-                  onPredict={onPredict}
-                  compact={round === 'R32'}
-                />
-              ))}
+                        ? 'gap-[300px] mt-[150px]'
+                        : typeof round === 'string' && round === 'F'
+                          ? 'gap-0 mt-[300px]'
+                          : 'gap-0 mt-32' // 3RD Place
+                  }`}
+              >
+                {roundMatches.map(match => (
+                  <KnockoutMatchCard
+                    key={match.id}
+                    matchId={match.id}
+                    homeCode={match.home}
+                    awayCode={match.away}
+                    result={match.result}
+                    onPredict={onPredict}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

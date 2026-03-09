@@ -17,47 +17,59 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
   if (!home || !away) return null;
 
+  const selected = (side: MatchResult) => result === side;
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="flex items-center">
         {/* Home */}
         <button
-          className={`flex items-center gap-3 px-4 py-3 transition-all ${
-            result === 'home'
-              ? 'bg-primary/5 ring-2 ring-primary ring-inset'
-              : 'hover:bg-slate-50'
+          className={`flex-1 flex items-center gap-2.5 pl-4 pr-2 py-4 transition-all ${
+            selected('home')
+              ? 'bg-background-dark'
+              : 'hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'home')}
         >
-          <span className="text-2xl">{home.flag}</span>
-          <span className="text-sm font-bold uppercase truncate">{home.name}</span>
+          <span className="text-xl leading-none">{home.flag}</span>
+          <span className={`text-xs font-bold uppercase tracking-wide truncate ${
+            selected('home') ? 'text-primary' : 'text-slate-700'
+          }`}>
+            {home.name}
+          </span>
         </button>
 
         {/* Draw / VS */}
         <button
-          className={`flex items-center justify-center px-4 transition-all border-x border-slate-100 ${
-            result === 'draw'
-              ? 'bg-primary/10 ring-2 ring-primary ring-inset'
-              : 'hover:bg-slate-50'
+          className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full mx-1 transition-all ${
+            selected('draw')
+              ? 'bg-background-dark'
+              : 'hover:bg-slate-100 active:bg-slate-200'
           }`}
           onClick={() => onPredict(matchId, 'draw')}
         >
-          <span className={`font-bold text-sm ${result === 'draw' ? 'text-primary' : 'text-slate-300'}`}>
+          <span className={`font-black text-[11px] tracking-wider ${
+            selected('draw') ? 'text-primary' : 'text-slate-300'
+          }`}>
             VS
           </span>
         </button>
 
         {/* Away */}
         <button
-          className={`flex items-center justify-end gap-3 px-4 py-3 transition-all ${
-            result === 'away'
-              ? 'bg-primary/5 ring-2 ring-primary ring-inset'
-              : 'hover:bg-slate-50'
+          className={`flex-1 flex items-center justify-end gap-2.5 pr-4 pl-2 py-4 transition-all ${
+            selected('away')
+              ? 'bg-background-dark'
+              : 'hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'away')}
         >
-          <span className="text-sm font-bold uppercase truncate">{away.name}</span>
-          <span className="text-2xl">{away.flag}</span>
+          <span className={`text-xs font-bold uppercase tracking-wide truncate ${
+            selected('away') ? 'text-primary' : 'text-slate-700'
+          }`}>
+            {away.name}
+          </span>
+          <span className="text-xl leading-none">{away.flag}</span>
         </button>
       </div>
     </div>

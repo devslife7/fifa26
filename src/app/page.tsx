@@ -5,6 +5,7 @@ import { TabId, MatchResult, KnockoutResult } from '@/types';
 import { groups } from '@/data/teams';
 import { areAllGroupsComplete } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
+import { useAuth } from '@/components/providers/AuthProvider';
 import GroupSection from '@/components/GroupSection';
 import ThirdPlaceTable from '@/components/ThirdPlaceTable';
 import BracketView from '@/components/BracketView';
@@ -14,18 +15,46 @@ import BottomNav from '@/components/BottomNav';
 import RankingView from '@/components/RankingView';
 
 export default function Home() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>('groups');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [mounted, setMounted] = useState(false);
 
+  // Load local predictions on mount
   useEffect(() => {
     const saved = loadPredictions();
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
     setMounted(true);
   }, []);
+
+  // Sync server predictions on auth (hydrate localStorage if local is empty)
+  useEffect(() => {
+    if (!user || !mounted) return;
+
+    const local = loadPredictions();
+    const hasLocal = Object.keys(local.groupMatches).length > 0;
+
+    if (!hasLocal) {
+      fetch('/api/predictions')
+        .then(res => res.json())
+        .then(data => {
+          if (data.predictions) {
+            const serverPreds = data.predictions;
+            const hydrated = {
+              groupMatches: serverPreds.group_matches ?? {},
+              knockoutMatches: serverPreds.knockout_matches ?? {},
+            };
+            savePredictions(hydrated);
+            setGroupPredictions(hydrated.groupMatches);
+            setKnockoutPredictions(hydrated.knockoutMatches);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user, mounted]);
 
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {

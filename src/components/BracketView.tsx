@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MatchResult, KnockoutResult, KnockoutRound } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket } from '@/lib/bracket';
 import { areAllGroupsComplete } from '@/lib/standings';
 import KnockoutMatchCard from './KnockoutMatchCard';
@@ -10,6 +10,7 @@ interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
   onPredict: (matchId: string, result: KnockoutResult) => void;
+  liveMatches?: Record<string, LiveMatch>;
 }
 
 const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F', '3RD'];
@@ -23,7 +24,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, onPredict }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, liveMatches }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions);
@@ -146,6 +147,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
                   awayCode={match.away}
                   result={match.result}
                   onPredict={onPredict}
+                  liveMatch={liveMatches?.[match.id]}
                 />
               ))}
             </div>

@@ -74,3 +74,17 @@ export interface UserScore {
   knockout_correct: number;
   champion_correct: boolean;
 }
+
+export interface LiveMatch {
+  apiMatchId: number;
+  localMatchId: string | null;
+  homeCode: string | null;
+  awayCode: string | null;
+  utcDate: string;
+  status: string; // SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED, etc.
+  venue: string | null;
+  score: { home: number; away: number } | null;
+  actualResult: 'home' | 'draw' | 'away' | null;
+  stage: string;
+  group: string | null;
+}

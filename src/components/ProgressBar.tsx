@@ -12,7 +12,7 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
   const pct = Math.round((total / GROUP_MATCHES) * 100);
 
   return (
-    <div className="pt-6 pb-4 border-b border-primary/20">
+    <div className="sticky top-0 z-30 bg-background-light/80 backdrop-blur-md pt-6 pb-4 border-b border-primary/20">
       <div className="flex justify-between items-end">
         <p className="text-lg font-black">Matches Predicted</p>
         <p className="text-lg font-black">

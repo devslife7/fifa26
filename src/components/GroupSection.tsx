@@ -1,6 +1,6 @@
 'use client';
 
-import { GroupLetter, MatchResult } from '@/types';
+import { GroupLetter, MatchResult, LiveMatch } from '@/types';
 import { getGroupMatches } from '@/data/matches';
 import GroupMatchCard from './GroupMatchCard';
 
@@ -9,9 +9,10 @@ interface Props {
   predictions: Record<string, MatchResult>;
   onPredict: (matchId: string, result: MatchResult) => void;
   onStandings?: (group: GroupLetter) => void;
+  liveMatches?: Record<string, LiveMatch>;
 }
 
-export default function GroupSection({ group, predictions, onPredict, onStandings }: Props) {
+export default function GroupSection({ group, predictions, onPredict, onStandings, liveMatches }: Props) {
   const matches = getGroupMatches(group);
 
   return (
@@ -37,6 +38,7 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
             awayCode={match.away}
             result={predictions[match.id]}
             onPredict={onPredict}
+            liveMatch={liveMatches?.[match.id]}
           />
         ))}
       </div>

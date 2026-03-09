@@ -6,6 +6,7 @@ import { groups } from '@/data/teams';
 import { areAllGroupsComplete } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { useLiveData } from '@/hooks/useLiveData';
 import GroupSection from '@/components/GroupSection';
 import ThirdPlaceTable from '@/components/ThirdPlaceTable';
 import BracketView from '@/components/BracketView';
@@ -16,6 +17,7 @@ import RankingView from '@/components/RankingView';
 
 export default function Home() {
   const { user } = useAuth();
+  const { matchesByLocalId: liveMatchesByLocalId, error: liveError } = useLiveData();
   const [activeTab, setActiveTab] = useState<TabId>('groups');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
@@ -109,18 +111,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-20">
-      <main className={`mx-auto pb-8 ${activeTab === 'bracket' ? 'max-w-full' : 'max-w-md px-4'}`}>
+      {liveError && (
+        <LiveBanner message={liveError} />
+      )}
+      <main className={`mx-auto pb-8 ${
+        activeTab === 'bracket' ? 'max-w-full' :
+        activeTab === 'groups' ? 'max-w-md md:max-w-5xl px-4' :
+        activeTab === 'ranking' ? 'max-w-2xl px-4' :
+        'max-w-md px-4'
+      }`}>
         {activeTab === 'groups' && (
           <div>
             <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
 
-            <div className="mt-6 space-y-10">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
               {groups.map(g => (
                 <GroupSection
                   key={g}
                   group={g}
                   predictions={groupPredictions}
                   onPredict={handleGroupPredict}
+                  liveMatches={liveMatchesByLocalId}
                 />
               ))}
             </div>
@@ -136,6 +147,7 @@ export default function Home() {
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
             onPredict={handleKnockoutPredict}
+            liveMatches={liveMatchesByLocalId}
           />
         )}
 
@@ -157,6 +169,22 @@ export default function Home() {
         onTabChange={setActiveTab}
         groupsComplete={groupsComplete}
       />
+    </div>
+  );
+}
+
+function LiveBanner({ message }: { message: string }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm">
+      <span className="text-amber-700 font-medium">{message}</span>
+      <button
+        onClick={() => setDismissed(true)}
+        className="text-amber-500 hover:text-amber-700 ml-2"
+      >
+        <span className="material-symbols-outlined text-[18px]">close</span>
+      </button>
     </div>
   );
 }

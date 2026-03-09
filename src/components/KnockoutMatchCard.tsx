@@ -1,6 +1,6 @@
 'use client';
 
-import { KnockoutResult } from '@/types';
+import { KnockoutResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {
@@ -10,6 +10,17 @@ interface Props {
   result?: KnockoutResult;
   onPredict: (matchId: string, result: KnockoutResult) => void;
   compact?: boolean;
+  liveMatch?: LiveMatch;
+}
+
+function formatMatchDate(utcDate: string): string {
+  const d = new Date(utcDate);
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatMatchTime(utcDate: string): string {
+  const d = new Date(utcDate);
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function KnockoutMatchCard({
@@ -19,10 +30,17 @@ export default function KnockoutMatchCard({
   result,
   onPredict,
   compact = false,
+  liveMatch,
 }: Props) {
   const home = homeCode ? teamsByCode[homeCode] : null;
   const away = awayCode ? teamsByCode[awayCode] : null;
   const canPredict = home && away;
+
+  const isLive = liveMatch?.status === 'IN_PLAY' || liveMatch?.status === 'PAUSED';
+  const isFinished = liveMatch?.status === 'FINISHED';
+  const predictionCorrect = isFinished && result && liveMatch?.actualResult
+    ? result === liveMatch.actualResult
+    : null;
 
   const TeamSlot = ({
     team,
@@ -83,11 +101,44 @@ export default function KnockoutMatchCard({
           <TeamSlot team={away} side="away" isSelected={result === 'away'} />
         </div>
         <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-t border-slate-200">
-          <span className="text-[10px] font-semibold text-slate-500 uppercase">{matchId}</span>
-          {!canPredict && (
-            <span className="text-[10px] font-semibold text-slate-400 italic">PENDING</span>
-          )}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase">{matchId}</span>
+            {liveMatch && (
+              <>
+                <span className="text-[10px] text-slate-300">·</span>
+                <span className="text-[10px] text-slate-400 truncate">
+                  {formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {isLive && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-red-500">LIVE</span>
+              </>
+            )}
+            {(isLive || isFinished) && liveMatch?.score && (
+              <span className={`text-[10px] font-bold tabular-nums ${isFinished ? 'text-slate-600' : 'text-red-500'}`}>
+                {liveMatch.score.home}–{liveMatch.score.away}
+              </span>
+            )}
+            {predictionCorrect !== null && (
+              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-green-500' : 'text-red-400'}`}>
+                {predictionCorrect ? 'check_circle' : 'cancel'}
+              </span>
+            )}
+            {!canPredict && !liveMatch && (
+              <span className="text-[10px] font-semibold text-slate-400 italic">PENDING</span>
+            )}
+          </div>
         </div>
+        {liveMatch?.venue && (
+          <div className="px-3 pb-1.5">
+            <span className="text-[9px] text-slate-400 truncate block">{liveMatch.venue}</span>
+          </div>
+        )}
       </div>
     </div>
   );

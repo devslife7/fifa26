@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -16,7 +16,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getSupabase(ref: React.RefObject<SupabaseClient | null>): SupabaseClient {
+function getSupabase(ref: React.RefObject<SupabaseClient | null>): SupabaseClient | null {
+  if (!isSupabaseConfigured()) return null;
   if (!ref.current) {
     ref.current = createClient();
   }
@@ -31,6 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = getSupabase(supabaseRef);
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -48,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, displayName: string) => {
     const supabase = getSupabase(supabaseRef);
+    if (!supabase) return { error: 'Supabase not configured' };
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -59,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyOtp = useCallback(async (email: string, token: string) => {
     const supabase = getSupabase(supabaseRef);
+    if (!supabase) return { error: 'Supabase not configured' };
     const { error } = await supabase.auth.verifyOtp({
       email,
       token,
@@ -69,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     const supabase = getSupabase(supabaseRef);
+    if (!supabase) return;
     await supabase.auth.signOut();
   }, []);
 

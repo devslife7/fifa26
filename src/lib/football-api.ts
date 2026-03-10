@@ -3,14 +3,13 @@ import type {
   FDStandingsResponse,
   FDTeamsResponse,
   FDApiMatch,
-  FDMatchStatus,
 } from '@/types/football-api';
 import type { LiveMatch } from '@/types';
 
 const BASE_URL = 'https://api.football-data.org/v4';
 const COMPETITION = 'WC';
 
-// --- In-memory cache ---
+// --- In-memory cache (infinite TTL, only invalidated by force-refresh) ---
 interface CacheEntry<T> {
   data: T;
   fetchedAt: number;
@@ -18,13 +17,9 @@ interface CacheEntry<T> {
 
 const cache = new Map<string, CacheEntry<unknown>>();
 
-function getCached<T>(key: string, ttlMs: number): T | null {
+function getCached<T>(key: string): T | null {
   const entry = cache.get(key) as CacheEntry<T> | undefined;
   if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > ttlMs) {
-    cache.delete(key);
-    return null;
-  }
   return entry.data;
 }
 
@@ -32,31 +27,53 @@ function setCache<T>(key: string, data: T): void {
   cache.set(key, { data, fetchedAt: Date.now() });
 }
 
+function clearCache(key: string): void {
+  cache.delete(key);
+}
+
 // --- API key ---
 function getApiKey(): string | undefined {
   return process.env.FOOTBALL_DATA_API_KEY;
 }
 
+// --- In-flight deduplication (prevents thundering herd) ---
+const inflight = new Map<string, Promise<unknown>>();
+
 // --- Generic fetcher ---
-async function apiFetch<T>(path: string, ttlMs: number): Promise<T | null> {
+async function apiFetch<T>(path: string, force = false): Promise<T | null> {
   const apiKey = getApiKey();
   if (!apiKey) return null;
 
-  const cached = getCached<T>(path, ttlMs);
-  if (cached) return cached;
-
-  try {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'X-Auth-Token': apiKey },
-      next: { revalidate: Math.floor(ttlMs / 1000) },
-    });
-    if (!res.ok) return null;
-    const data: T = await res.json();
-    setCache(path, data);
-    return data;
-  } catch {
-    return null;
+  if (!force) {
+    const cached = getCached<T>(path);
+    if (cached) return cached;
+  } else {
+    clearCache(path);
   }
+
+  // If a request for this path is already in-flight, reuse it
+  const existing = inflight.get(path) as Promise<T | null> | undefined;
+  if (existing) return existing;
+
+  const promise = (async (): Promise<T | null> => {
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        headers: { 'X-Auth-Token': apiKey },
+        cache: 'no-store',
+      });
+      if (!res.ok) return null;
+      const data: T = await res.json();
+      setCache(path, data);
+      return data;
+    } catch {
+      return null;
+    } finally {
+      inflight.delete(path);
+    }
+  })();
+
+  inflight.set(path, promise);
+  return promise;
 }
 
 // --- TLA → app code mapping ---
@@ -213,23 +230,15 @@ function mapApiMatch(
   };
 }
 
-// --- TTL logic ---
-function hasLiveMatch(matches: FDApiMatch[]): boolean {
-  const liveStatuses: FDMatchStatus[] = ['IN_PLAY', 'PAUSED'];
-  return matches.some(m => liveStatuses.includes(m.status));
-}
-
 // --- Exported fetchers ---
 
-export async function fetchLiveMatches(): Promise<{
+const MATCHES_PATH = `/competitions/${COMPETITION}/matches`;
+
+export async function fetchLiveMatches(force = false): Promise<{
   matches: LiveMatch[];
   source: 'api' | 'cache';
 } | null> {
-  const ttl = 60_000; // 60s default; cache layer handles staleness
-  const data = await apiFetch<FDMatchesResponse>(
-    `/competitions/${COMPETITION}/matches`,
-    ttl,
-  );
+  const data = await apiFetch<FDMatchesResponse>(MATCHES_PATH, force);
   if (!data) return null;
 
   // Track knockout match indices per stage
@@ -246,28 +255,13 @@ export async function fetchLiveMatches(): Promise<{
     if (mapped) matches.push(mapped);
   }
 
-  // Determine dynamic TTL for the cache header hint
-  const isLive = hasLiveMatch(data.matches);
-  const source = getCached<FDMatchesResponse>(
-    `/competitions/${COMPETITION}/matches`,
-    0,
-  )
-    ? 'cache'
-    : 'api';
-
-  return { matches, source: isLive ? 'api' : source };
+  return { matches, source: force ? 'api' : 'cache' };
 }
 
 export async function fetchLiveTeams(): Promise<FDTeamsResponse | null> {
-  return apiFetch<FDTeamsResponse>(
-    `/competitions/${COMPETITION}/teams`,
-    300_000, // 5 min
-  );
+  return apiFetch<FDTeamsResponse>(`/competitions/${COMPETITION}/teams`);
 }
 
 export async function fetchLiveStandings(): Promise<FDStandingsResponse | null> {
-  return apiFetch<FDStandingsResponse>(
-    `/competitions/${COMPETITION}/standings`,
-    300_000, // 5 min
-  );
+  return apiFetch<FDStandingsResponse>(`/competitions/${COMPETITION}/standings`);
 }

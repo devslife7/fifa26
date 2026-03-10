@@ -39,7 +39,6 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   if (!home || !away) return null;
 
   const selected = (side: MatchResult) => result === side;
-  const isLive = liveMatch?.status === 'IN_PLAY' || liveMatch?.status === 'PAUSED';
   const isFinished = liveMatch?.status === 'FINISHED';
 
   return (
@@ -109,14 +108,8 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {isLive && (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-red-500 uppercase">Live</span>
-              </>
-            )}
-            {(isLive || isFinished) && liveMatch.score && (
-              <span className={`text-[11px] font-bold tabular-nums ${isFinished ? 'text-slate-600' : 'text-red-500'}`}>
+            {isFinished && liveMatch.score && (
+              <span className="text-[11px] font-bold tabular-nums text-slate-600">
                 {liveMatch.score.home}–{liveMatch.score.away}
               </span>
             )}

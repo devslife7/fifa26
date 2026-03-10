@@ -17,7 +17,7 @@ import RankingView from '@/components/RankingView';
 
 export default function Home() {
   const { user } = useAuth();
-  const { matchesByLocalId: liveMatchesByLocalId, error: liveError } = useLiveData();
+  const { matchesByLocalId: liveMatchesByLocalId, error: liveError, loading: liveLoading, lastUpdated, refetch } = useLiveData();
   const [activeTab, setActiveTab] = useState<TabId>('groups');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
@@ -117,7 +117,7 @@ export default function Home() {
       <main className={`mx-auto pb-8 ${
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' ? 'max-w-md md:max-w-5xl px-4' :
-        activeTab === 'ranking' ? 'max-w-2xl px-4' :
+        activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-4' :
         'max-w-md px-4'
       }`}>
         {activeTab === 'groups' && (
@@ -159,7 +159,11 @@ export default function Home() {
         )}
 
         {activeTab === 'ranking' && (
-          <RankingView />
+          <RankingView
+            lastUpdated={lastUpdated}
+            liveLoading={liveLoading}
+            onRefreshScores={refetch}
+          />
         )}
       </main>
 

@@ -36,7 +36,6 @@ export default function KnockoutMatchCard({
   const away = awayCode ? teamsByCode[awayCode] : null;
   const canPredict = home && away;
 
-  const isLive = liveMatch?.status === 'IN_PLAY' || liveMatch?.status === 'PAUSED';
   const isFinished = liveMatch?.status === 'FINISHED';
   const predictionCorrect = isFinished && result && liveMatch?.actualResult
     ? result === liveMatch.actualResult
@@ -113,14 +112,8 @@ export default function KnockoutMatchCard({
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {isLive && (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-red-500">LIVE</span>
-              </>
-            )}
-            {(isLive || isFinished) && liveMatch?.score && (
-              <span className={`text-[10px] font-bold tabular-nums ${isFinished ? 'text-slate-600' : 'text-red-500'}`}>
+            {isFinished && liveMatch?.score && (
+              <span className="text-[10px] font-bold tabular-nums text-slate-600">
                 {liveMatch.score.home}–{liveMatch.score.away}
               </span>
             )}

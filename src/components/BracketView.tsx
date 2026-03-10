@@ -38,6 +38,33 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
     roundRefs.current[round] = el;
   }, []);
 
+  // Auto-scroll to next round when current round is fully predicted
+  const r32WasComplete = useRef(false);
+  useEffect(() => {
+    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2 };
+    const size = roundSizes[activeRound];
+    if (!size) return;
+
+    const prefix = activeRound + '-';
+    const count = Object.keys(knockoutPredictions).filter(k => k.startsWith(prefix)).length;
+    const isComplete = count === size;
+
+    if (isComplete && !r32WasComplete.current) {
+      r32WasComplete.current = true;
+      const roundOrder = rounds;
+      const nextRound = roundOrder[roundOrder.indexOf(activeRound) + 1];
+      if (nextRound) {
+        setTimeout(() => {
+          setActiveRound(nextRound);
+          const el = roundRefs.current[nextRound];
+          if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+        }, 350);
+      }
+    } else if (!isComplete) {
+      r32WasComplete.current = false;
+    }
+  }, [knockoutPredictions, activeRound]);
+
   // Scroll → update active tab
   useEffect(() => {
     const container = scrollContainerRef.current;

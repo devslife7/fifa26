@@ -1,26 +1,105 @@
 import { GroupMatch, GroupLetter } from '@/types';
-import { getGroupTeams } from './teams';
 
-// Generate all 6 matches per group (round-robin of 4 teams)
-function generateGroupMatches(group: GroupLetter): GroupMatch[] {
-  const groupTeams = getGroupTeams(group);
-  const [t1, t2, t3, t4] = groupTeams;
+// FIFA World Cup 2026 — group stage fixtures from football-data.org
+// Home/away and matchday order reflect the official schedule
 
-  // Standard FIFA match day schedule for groups of 4:
-  // MD1: 1v2, 3v4 | MD2: 1v3, 2v4 | MD3: 1v4, 2v3
-  return [
-    { id: `${group}-1`, group, matchNumber: 1, home: t1.code, away: t2.code },
-    { id: `${group}-2`, group, matchNumber: 2, home: t3.code, away: t4.code },
-    { id: `${group}-3`, group, matchNumber: 3, home: t1.code, away: t3.code },
-    { id: `${group}-4`, group, matchNumber: 4, home: t2.code, away: t4.code },
-    { id: `${group}-5`, group, matchNumber: 5, home: t1.code, away: t4.code },
-    { id: `${group}-6`, group, matchNumber: 6, home: t2.code, away: t3.code },
-  ];
-}
+export const allGroupMatches: GroupMatch[] = [
+  // --- Group A ---
+  { id: 'A-1', group: 'A', matchNumber: 1, home: 'MX',    away: 'ZA'    },
+  { id: 'A-2', group: 'A', matchNumber: 2, home: 'KR',    away: 'TBD-A' },
+  { id: 'A-3', group: 'A', matchNumber: 3, home: 'TBD-A', away: 'ZA'    },
+  { id: 'A-4', group: 'A', matchNumber: 4, home: 'MX',    away: 'KR'    },
+  { id: 'A-5', group: 'A', matchNumber: 5, home: 'TBD-A', away: 'MX'    },
+  { id: 'A-6', group: 'A', matchNumber: 6, home: 'ZA',    away: 'KR'    },
 
-export const allGroupMatches: GroupMatch[] = (
-  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as GroupLetter[]
-).flatMap(g => generateGroupMatches(g));
+  // --- Group B ---
+  { id: 'B-1', group: 'B', matchNumber: 1, home: 'CA',    away: 'TBD-B' },
+  { id: 'B-2', group: 'B', matchNumber: 2, home: 'QA',    away: 'CH'    },
+  { id: 'B-3', group: 'B', matchNumber: 3, home: 'CH',    away: 'TBD-B' },
+  { id: 'B-4', group: 'B', matchNumber: 4, home: 'CA',    away: 'QA'    },
+  { id: 'B-5', group: 'B', matchNumber: 5, home: 'CH',    away: 'CA'    },
+  { id: 'B-6', group: 'B', matchNumber: 6, home: 'TBD-B', away: 'QA'    },
+
+  // --- Group C ---
+  { id: 'C-1', group: 'C', matchNumber: 1, home: 'BR',     away: 'MA'     },
+  { id: 'C-2', group: 'C', matchNumber: 2, home: 'HT',     away: 'GB-SCT' },
+  { id: 'C-3', group: 'C', matchNumber: 3, home: 'GB-SCT', away: 'MA'     },
+  { id: 'C-4', group: 'C', matchNumber: 4, home: 'BR',     away: 'HT'     },
+  { id: 'C-5', group: 'C', matchNumber: 5, home: 'MA',     away: 'HT'     },
+  { id: 'C-6', group: 'C', matchNumber: 6, home: 'GB-SCT', away: 'BR'     },
+
+  // --- Group D ---
+  { id: 'D-1', group: 'D', matchNumber: 1, home: 'US',    away: 'PY'    },
+  { id: 'D-2', group: 'D', matchNumber: 2, home: 'AU',    away: 'TBD-D' },
+  { id: 'D-3', group: 'D', matchNumber: 3, home: 'TBD-D', away: 'PY'    },
+  { id: 'D-4', group: 'D', matchNumber: 4, home: 'US',    away: 'AU'    },
+  { id: 'D-5', group: 'D', matchNumber: 5, home: 'TBD-D', away: 'US'    },
+  { id: 'D-6', group: 'D', matchNumber: 6, home: 'PY',    away: 'AU'    },
+
+  // --- Group E ---
+  { id: 'E-1', group: 'E', matchNumber: 1, home: 'DE', away: 'CW' },
+  { id: 'E-2', group: 'E', matchNumber: 2, home: 'CI', away: 'EC' },
+  { id: 'E-3', group: 'E', matchNumber: 3, home: 'DE', away: 'CI' },
+  { id: 'E-4', group: 'E', matchNumber: 4, home: 'EC', away: 'CW' },
+  { id: 'E-5', group: 'E', matchNumber: 5, home: 'EC', away: 'DE' },
+  { id: 'E-6', group: 'E', matchNumber: 6, home: 'CW', away: 'CI' },
+
+  // --- Group F ---
+  { id: 'F-1', group: 'F', matchNumber: 1, home: 'NL',    away: 'JP'    },
+  { id: 'F-2', group: 'F', matchNumber: 2, home: 'TBD-F', away: 'TN'    },
+  { id: 'F-3', group: 'F', matchNumber: 3, home: 'TN',    away: 'JP'    },
+  { id: 'F-4', group: 'F', matchNumber: 4, home: 'NL',    away: 'TBD-F' },
+  { id: 'F-5', group: 'F', matchNumber: 5, home: 'TN',    away: 'NL'    },
+  { id: 'F-6', group: 'F', matchNumber: 6, home: 'JP',    away: 'TBD-F' },
+
+  // --- Group G ---
+  { id: 'G-1', group: 'G', matchNumber: 1, home: 'BE', away: 'EG' },
+  { id: 'G-2', group: 'G', matchNumber: 2, home: 'IR', away: 'NZ' },
+  { id: 'G-3', group: 'G', matchNumber: 3, home: 'BE', away: 'IR' },
+  { id: 'G-4', group: 'G', matchNumber: 4, home: 'NZ', away: 'EG' },
+  { id: 'G-5', group: 'G', matchNumber: 5, home: 'NZ', away: 'BE' },
+  { id: 'G-6', group: 'G', matchNumber: 6, home: 'EG', away: 'IR' },
+
+  // --- Group H ---
+  { id: 'H-1', group: 'H', matchNumber: 1, home: 'ES', away: 'CV' },
+  { id: 'H-2', group: 'H', matchNumber: 2, home: 'SA', away: 'UY' },
+  { id: 'H-3', group: 'H', matchNumber: 3, home: 'ES', away: 'SA' },
+  { id: 'H-4', group: 'H', matchNumber: 4, home: 'UY', away: 'CV' },
+  { id: 'H-5', group: 'H', matchNumber: 5, home: 'UY', away: 'ES' },
+  { id: 'H-6', group: 'H', matchNumber: 6, home: 'CV', away: 'SA' },
+
+  // --- Group I ---
+  { id: 'I-1', group: 'I', matchNumber: 1, home: 'FR',    away: 'SN'    },
+  { id: 'I-2', group: 'I', matchNumber: 2, home: 'TBD-I', away: 'NO'    },
+  { id: 'I-3', group: 'I', matchNumber: 3, home: 'FR',    away: 'TBD-I' },
+  { id: 'I-4', group: 'I', matchNumber: 4, home: 'NO',    away: 'SN'    },
+  { id: 'I-5', group: 'I', matchNumber: 5, home: 'NO',    away: 'FR'    },
+  { id: 'I-6', group: 'I', matchNumber: 6, home: 'SN',    away: 'TBD-I' },
+
+  // --- Group J ---
+  { id: 'J-1', group: 'J', matchNumber: 1, home: 'AR', away: 'DZ' },
+  { id: 'J-2', group: 'J', matchNumber: 2, home: 'AT', away: 'JO' },
+  { id: 'J-3', group: 'J', matchNumber: 3, home: 'AR', away: 'AT' },
+  { id: 'J-4', group: 'J', matchNumber: 4, home: 'JO', away: 'DZ' },
+  { id: 'J-5', group: 'J', matchNumber: 5, home: 'JO', away: 'AR' },
+  { id: 'J-6', group: 'J', matchNumber: 6, home: 'DZ', away: 'AT' },
+
+  // --- Group K ---
+  { id: 'K-1', group: 'K', matchNumber: 1, home: 'PT',    away: 'TBD-K' },
+  { id: 'K-2', group: 'K', matchNumber: 2, home: 'UZ',    away: 'CO'    },
+  { id: 'K-3', group: 'K', matchNumber: 3, home: 'PT',    away: 'UZ'    },
+  { id: 'K-4', group: 'K', matchNumber: 4, home: 'CO',    away: 'TBD-K' },
+  { id: 'K-5', group: 'K', matchNumber: 5, home: 'CO',    away: 'PT'    },
+  { id: 'K-6', group: 'K', matchNumber: 6, home: 'TBD-K', away: 'UZ'    },
+
+  // --- Group L ---
+  { id: 'L-1', group: 'L', matchNumber: 1, home: 'GB-ENG', away: 'HR' },
+  { id: 'L-2', group: 'L', matchNumber: 2, home: 'GH',     away: 'PA' },
+  { id: 'L-3', group: 'L', matchNumber: 3, home: 'GB-ENG', away: 'GH' },
+  { id: 'L-4', group: 'L', matchNumber: 4, home: 'PA',     away: 'HR' },
+  { id: 'L-5', group: 'L', matchNumber: 5, home: 'PA',     away: 'GB-ENG' },
+  { id: 'L-6', group: 'L', matchNumber: 6, home: 'HR',     away: 'GH' },
+];
 
 export function getGroupMatches(group: GroupLetter): GroupMatch[] {
   return allGroupMatches.filter(m => m.group === group);

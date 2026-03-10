@@ -16,6 +16,7 @@ import ProgressBar from '@/components/ProgressBar';
 import BottomNav from '@/components/BottomNav';
 import RankingView from '@/components/RankingView';
 import AuthModal from '@/components/AuthModal';
+import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Home() {
   const { user } = useAuth();
@@ -62,12 +63,14 @@ export default function Home() {
 
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {
-      const next = { ...prev, [matchId]: result };
-      // Save
+      const next = { ...prev };
+      if (next[matchId] === result) {
+        delete next[matchId]; // deselect
+      } else {
+        next[matchId] = result;
+      }
       const predictions = loadPredictions();
       predictions.groupMatches = next;
-      // When a group prediction changes, clear all knockout predictions
-      // as the bracket teams may have changed
       predictions.knockoutMatches = {};
       savePredictions(predictions);
       setKnockoutPredictions({});
@@ -119,6 +122,23 @@ export default function Home() {
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
     setKnockoutPredictions(prev => {
+      if (prev[matchId] === result) {
+        // Deselect: remove this match and all downstream
+        const next = { ...prev };
+        delete next[matchId];
+        const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+        const [round] = matchId.split('-');
+        const roundIdx = roundOrder.indexOf(round);
+        for (let i = roundIdx + 1; i < roundOrder.length; i++) {
+          Object.keys(next).forEach(key => {
+            if (key.startsWith(roundOrder[i])) delete next[key];
+          });
+        }
+        const predictions = loadPredictions();
+        predictions.knockoutMatches = next;
+        savePredictions(predictions);
+        return next;
+      }
       const next = { ...prev, [matchId]: result };
       // Clear downstream
       clearKnockoutDownstream(matchId);
@@ -154,6 +174,7 @@ export default function Home() {
   }
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen pb-page-safe">
       {liveError && (
         <LiveBanner message={liveError} />
@@ -169,26 +190,7 @@ export default function Home() {
           <div>
             <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
 
-            {/* Fetch live scores button */}
-            <div className="mt-4 flex items-center justify-between bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-2.5">
-              <div className="text-[11px] text-slate-400">
-                {lastUpdated
-                  ? `Updated ${Math.round((Date.now() - lastUpdated) / 60000)} min ago`
-                  : 'No live data'}
-              </div>
-              <button
-                onClick={refetch}
-                disabled={liveLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                <span className={`material-symbols-outlined text-[16px] ${liveLoading ? 'animate-spin' : ''}`}>
-                  {liveLoading ? 'progress_activity' : 'sync'}
-                </span>
-                {liveLoading ? 'Fetching...' : 'Fetch live scores'}
-              </button>
-            </div>
-
-            <div className="mt-3 flex gap-2">
+            <div className="mt-4 flex gap-2">
               <button
                 onClick={handleRandomizeGroups}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
@@ -278,6 +280,7 @@ export default function Home() {
         groupsComplete={groupsComplete}
       />
     </div>
+    </PullToRefresh>
   );
 }
 

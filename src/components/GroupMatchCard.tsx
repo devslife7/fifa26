@@ -24,15 +24,24 @@ function PredictionCheck({ prediction, actualResult }: { prediction?: MatchResul
   );
 }
 
-function FlagEmoji({ flagUrl, flagEmoji }: { flagUrl?: string | null; flagEmoji: string }) {
+function formatMatchDate(utcDate: string): string {
+  const d = new Date(utcDate);
   return (
-    <span className="flex-shrink-0 overflow-hidden">
-      {flagUrl
-        ? <img src={flagUrl} alt="" className="w-8 h-6 object-cover rounded-sm" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden'); }} />
-        : null}
-      <span className="text-2xl leading-none" hidden={!!flagUrl}>{flagEmoji}</span>
-    </span>
+    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+    ' · ' +
+    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   );
+}
+
+function FlagEmoji({ code, flagEmoji }: { code: string; flagUrl?: string | null; flagEmoji: string }) {
+  if (code.startsWith('TBD')) {
+    return (
+      <span className="flex-shrink-0 w-8 h-6 rounded-sm bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-400">
+        ?
+      </span>
+    );
+  }
+  return <span className="flex-shrink-0 text-3xl leading-none">{flagEmoji}</span>;
 }
 
 export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode }: Props) {
@@ -59,7 +68,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           }`}
           onClick={() => onPredict(matchId, 'home')}
         >
-          <FlagEmoji flagUrl={homeFlagUrl} flagEmoji={home.flag} />
+          <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} />
           <span className={`text-sm font-bold leading-tight ${
             selected('home') ? 'text-slate-800' : 'text-slate-500'
           }`}>
@@ -89,11 +98,11 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           }`}>
             {away.name}
           </span>
-          <FlagEmoji flagUrl={awayFlagUrl} flagEmoji={away.flag} />
+          <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} />
         </button>
       </div>
 
-      {/* Live data footer */}
+      {/* Footer: score for finished, date for upcoming */}
       {liveMatch && isFinished && (
         <div className="border-t border-slate-100 px-4 py-1.5 flex items-center justify-end gap-1.5">
           {liveMatch.score && (
@@ -102,6 +111,13 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
             </span>
           )}
           <PredictionCheck prediction={result} actualResult={liveMatch.actualResult} />
+        </div>
+      )}
+      {liveMatch && liveMatch.status === 'SCHEDULED' && liveMatch.utcDate && (
+        <div className="border-t border-slate-100 px-4 py-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+          <span className="material-symbols-outlined text-[13px]">calendar_month</span>
+          <span>{formatMatchDate(liveMatch.utcDate)}</span>
+          {liveMatch.venue && <><span>·</span><span className="truncate">{liveMatch.venue}</span></>}
         </div>
       )}
     </div>

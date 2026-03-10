@@ -1,91 +1,91 @@
-// Raw response types from api-football.com (api-sports.io) v3 API
+// Raw response types from football-data.org v4 API
 
-export interface AFFixtureStatus {
-  long: string;
-  short: string; // NS, 1H, HT, 2H, ET, BT, P, INT, FT, AET, PEN, SUSP, PST, CANC, ABD, AWD, WO
-  elapsed: number | null;
-}
-
-export interface AFVenue {
-  id: number | null;
-  name: string | null;
-  city: string | null;
-}
-
-export interface AFFixture {
-  id: number;
-  date: string; // ISO 8601
-  venue: AFVenue;
-  status: AFFixtureStatus;
-}
-
-export interface AFTeam {
+export interface FDApiArea {
   id: number;
   name: string;
-  logo: string;
-  winner: boolean | null;
+  code: string; // ISO 3166-1 alpha-3
+  flag: string | null;
 }
 
-export interface AFLeague {
+export interface FDApiTeam {
   id: number;
   name: string;
-  round: string; // "Group Stage - 1", "Round of 32", "Quarter-finals", etc.
+  shortName: string;
+  tla: string; // FIFA three-letter code
+  crest: string;
+  area?: FDApiArea; // present in /teams response, absent in /matches response
 }
 
-export interface AFGoals {
+export interface FDApiScore {
   home: number | null;
   away: number | null;
 }
 
-export interface AFScore {
-  halftime: AFGoals;
-  fulltime: AFGoals;
-  extratime: AFGoals;
-  penalty: AFGoals;
+export interface FDApiFullScore {
+  winner: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null;
+  duration: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT';
+  fullTime: FDApiScore;
+  halfTime: FDApiScore;
 }
 
-export interface AFFixtureItem {
-  fixture: AFFixture;
-  league: AFLeague;
-  teams: { home: AFTeam; away: AFTeam };
-  goals: AFGoals;
-  score: AFScore;
+export type FDMatchStatus =
+  | 'SCHEDULED'
+  | 'TIMED'
+  | 'IN_PLAY'
+  | 'PAUSED'
+  | 'FINISHED'
+  | 'SUSPENDED'
+  | 'POSTPONED'
+  | 'CANCELLED'
+  | 'AWARDED';
+
+export interface FDApiMatch {
+  id: number;
+  utcDate: string;
+  status: FDMatchStatus;
+  matchday: number | null;
+  stage: string; // GROUP_STAGE, LAST_32, LAST_16, QUARTER_FINALS, SEMI_FINALS, THIRD_PLACE, FINAL
+  group: string | null; // "Group A", "Group B", etc.
+  homeTeam: FDApiTeam;
+  awayTeam: FDApiTeam;
+  score: FDApiFullScore;
+  venue: string | null;
 }
 
-export interface AFFixturesResponse {
-  results: number;
-  response: AFFixtureItem[];
+export interface FDMatchesResponse {
+  count: number;
+  filters: Record<string, unknown>;
+  competition: { id: number; name: string; code: string };
+  matches: FDApiMatch[];
 }
 
-export interface AFTeamItem {
-  team: { id: number; name: string; code: string; logo: string };
-}
-
-export interface AFTeamsResponse {
-  results: number;
-  response: AFTeamItem[];
-}
-
-export interface AFStandingEntry {
-  rank: number;
-  team: { id: number; name: string; logo: string };
+export interface FDStandingTableEntry {
+  position: number;
+  team: FDApiTeam;
+  playedGames: number;
+  won: number;
+  draw: number;
+  lost: number;
   points: number;
-  goalsDiff: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+}
+
+export interface FDStandingGroup {
+  stage: string;
+  type: string;
   group: string;
-  all: {
-    played: number;
-    win: number;
-    draw: number;
-    lose: number;
-    goals: { for: number; against: number };
-  };
+  table: FDStandingTableEntry[];
 }
 
-export interface AFStandingsLeague {
-  standings: AFStandingEntry[][];
+export interface FDStandingsResponse {
+  competition: { id: number; name: string; code: string };
+  standings: FDStandingGroup[];
 }
 
-export interface AFStandingsResponse {
-  results: number;
-  response: Array<{ league: AFStandingsLeague }>;
+export interface FDTeamsResponse {
+  count: number;
+  competition: { id: number; name: string; code: string };
+  teams: FDApiTeam[];
 }

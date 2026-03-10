@@ -91,7 +91,7 @@ export default function KnockoutMatchCard({
     return (
       <button
         className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${isSelected
-            ? 'bg-primary/10 border border-primary/20'
+            ? 'bg-[#FEFAE9] ring-1 ring-inset ring-primary/70'
             : canPredict
               ? 'hover:bg-slate-50'
               : 'opacity-80 cursor-default'
@@ -108,16 +108,13 @@ export default function KnockoutMatchCard({
             {team.name}
           </span>
         </div>
-        {isSelected && (
-          <span className="material-symbols-outlined text-primary text-sm font-variation-fill">check_circle</span>
-        )}
       </button>
     );
   };
 
   return (
     <div className="relative group min-w-[260px]">
-      <div className={`bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
+      <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
         <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-b border-slate-200">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[10px] font-semibold text-slate-500 uppercase">{matchId}</span>

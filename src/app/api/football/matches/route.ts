@@ -15,16 +15,28 @@ export async function GET(request: NextRequest) {
   }
 
   // Fallback: in-memory API cache
-  const result = await fetchLiveMatches(force);
-  if (!result) {
+  try {
+    const result = await fetchLiveMatches(force);
+    if (!result) {
+      return NextResponse.json(
+        { matches: [], source: null, error: 'unavailable' },
+        { status: 200, headers: CACHE_HEADERS },
+      );
+    }
     return NextResponse.json(
-      { matches: [], source: null, error: 'unavailable' },
+      { matches: result.matches, source: result.source },
+      { headers: CACHE_HEADERS },
+    );
+  } catch (e) {
+    if (e instanceof Error && e.message === 'RATE_LIMITED') {
+      return NextResponse.json(
+        { matches: [], error: 'rate_limited' },
+        { status: 429 },
+      );
+    }
+    return NextResponse.json(
+      { matches: [], error: 'unavailable' },
       { status: 200, headers: CACHE_HEADERS },
     );
   }
-
-  return NextResponse.json(
-    { matches: result.matches, source: result.source },
-    { headers: CACHE_HEADERS },
-  );
 }

@@ -61,6 +61,7 @@ async function apiFetch<T>(path: string, force = false): Promise<T | null> {
         headers: { 'X-Auth-Token': apiKey },
         cache: 'no-store',
       });
+      if (res.status === 429) throw new Error('RATE_LIMITED');
       if (!res.ok) return null;
       const data: T = await res.json();
       setCache(path, data);
@@ -168,12 +169,24 @@ function mapGroupMatchToLocalId(
   awayCode: string | null,
   group: string | null,
 ): string | null {
-  if (!homeCode || !awayCode || !group) return null;
+  if (!group) return null;
+  if (homeCode && awayCode) {
+    const match = allGroupMatches.find(
+      m =>
+        m.group === group &&
+        ((m.home === homeCode && m.away === awayCode) ||
+          (m.home === awayCode && m.away === homeCode)),
+    );
+    return match?.id ?? null;
+  }
+  // One team is TBD (null code) — match by the known code against a TBD slot in this group
+  const known = homeCode ?? awayCode;
+  if (!known) return null;
   const match = allGroupMatches.find(
     m =>
       m.group === group &&
-      ((m.home === homeCode && m.away === awayCode) ||
-        (m.home === awayCode && m.away === homeCode)),
+      (m.home === known || m.away === known) &&
+      (m.home.startsWith('TBD') || m.away.startsWith('TBD')),
   );
   return match?.id ?? null;
 }

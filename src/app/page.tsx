@@ -20,7 +20,8 @@ import PullToRefresh from '@/components/PullToRefresh';
 
 export default function Home() {
   const { user } = useAuth();
-  const { matchesByLocalId: liveMatchesByLocalId, groupMatchesByGroup, teamFlagsByCode, error: liveError, loading: liveLoading, lastUpdated, refetch } = useLiveData();
+  const { matchesByLocalId: liveMatchesByLocalId, groupMatchesByGroup, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
+  const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('groups');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
@@ -161,6 +162,13 @@ export default function Home() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!rateLimited) return;
+    setShowRateLimitToast(true);
+    const t = setTimeout(() => setShowRateLimitToast(false), 4000);
+    return () => clearTimeout(t);
+  }, [rateLimited]);
+
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const groupsComplete = areAllGroupsComplete(groupPredictions);
@@ -279,6 +287,14 @@ export default function Home() {
         onTabChange={setActiveTab}
         groupsComplete={groupsComplete}
       />
+
+      {/* Rate limit toast */}
+      {showRateLimitToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-fade-in">
+          <span className="material-symbols-outlined text-[15px] text-amber-400">warning</span>
+          API rate limit reached (10 req/min) — try again shortly
+        </div>
+      )}
     </div>
     </PullToRefresh>
   );

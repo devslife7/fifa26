@@ -10,6 +10,7 @@ interface LiveDataResult {
   teamFlagsByCode: Record<string, string>;
   loading: boolean;
   error: string | null;
+  rateLimited: boolean;
   lastUpdated: number | null;
   refetch: () => void;
 }
@@ -65,6 +66,7 @@ export function useLiveData(): LiveDataResult {
   const [teamFlagsByCode, setTeamFlagsByCode] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -76,6 +78,12 @@ export function useLiveData(): LiveDataResult {
         fetch('/api/football/group-matches'),
       ]);
 
+      if (matchesRes.status === 429) {
+        setRateLimited(true);
+        setLoading(false);
+        return;
+      }
+      setRateLimited(false);
       if (!matchesRes.ok) throw new Error('Failed to fetch');
       const matchesData = await matchesRes.json();
       const liveMatches: LiveMatch[] = matchesData.matches ?? [];
@@ -119,6 +127,7 @@ export function useLiveData(): LiveDataResult {
     teamFlagsByCode,
     loading,
     error,
+    rateLimited,
     lastUpdated,
     refetch,
   };

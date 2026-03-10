@@ -33,11 +33,24 @@ function formatMatchDate(utcDate: string): string {
   );
 }
 
-function FlagEmoji({ code, flagEmoji }: { code: string; flagUrl?: string | null; flagEmoji: string }) {
+function FlagEmoji({ code, flagUrl, flagEmoji }: { code: string; flagUrl?: string | null; flagEmoji: string }) {
   if (code.startsWith('TBD')) {
+    return null;
+  }
+  if (flagUrl) {
     return (
-      <span className="flex-shrink-0 w-8 h-6 rounded-sm bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-400">
-        ?
+      <span className="flex-shrink-0 inline-flex">
+        <img
+          src={flagUrl}
+          alt=""
+          className="w-9 h-6 object-cover"
+          onError={e => {
+            const img = e.currentTarget;
+            img.style.display = 'none';
+            (img.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
+          }}
+        />
+        <span className="text-3xl leading-none" hidden>{flagEmoji}</span>
       </span>
     );
   }
@@ -61,7 +74,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
       <div className="flex items-stretch">
         {/* Home */}
         <button
-          className={`flex-1 flex items-center gap-2.5 px-4 py-5 md:py-4 transition-all ${
+          className={`flex-1 flex items-center gap-2.5 px-4 py-5 md:py-4 rounded-xl transition-all ${
             selected('home')
               ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
               : 'bg-white hover:bg-slate-50 active:bg-slate-100'
@@ -78,7 +91,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Draw / VS */}
         <button
-          className={`w-16 flex-shrink-0 flex items-center justify-center transition-all ${selected('draw') ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]' : 'bg-white hover:bg-black/5'}`}
+          className={`w-16 flex-shrink-0 flex items-center justify-center rounded-xl transition-all ${selected('draw') ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]' : 'bg-white hover:bg-black/5'}`}
           onClick={() => onPredict(matchId, 'draw')}
         >
           <span className="text-sm font-bold text-slate-500">TIE</span>
@@ -86,7 +99,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Away */}
         <button
-          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-5 md:py-4 transition-all ${
+          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-5 md:py-4 rounded-xl transition-all ${
             selected('away')
               ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
               : 'bg-white hover:bg-slate-50 active:bg-slate-100'

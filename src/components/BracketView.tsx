@@ -38,6 +38,14 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
     roundRefs.current[round] = el;
   }, []);
 
+  // Scroll to R32 on mount
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      scrollContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, []);
+
   // Auto-scroll to next round when current round is fully predicted
   const r32WasComplete = useRef(false);
   useEffect(() => {

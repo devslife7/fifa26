@@ -75,11 +75,23 @@ export interface UserScore {
   champion_correct: boolean;
 }
 
+export interface LeaderboardPrediction {
+  user_id: string;
+  display_name: string;
+  champion_code: string | null;
+  group_matches: Record<string, MatchResult>;
+  knockout_matches: Record<string, KnockoutResult>;
+}
+
 export interface LiveMatch {
   apiMatchId: number;
   localMatchId: string | null;
   homeCode: string | null;
   awayCode: string | null;
+  homeName: string | null;
+  awayName: string | null;
+  homeShortName: string | null;
+  awayShortName: string | null;
   homeFlag: string | null;
   awayFlag: string | null;
   utcDate: string;

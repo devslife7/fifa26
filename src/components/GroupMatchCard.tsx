@@ -13,15 +13,6 @@ interface Props {
   teamFlagsByCode?: Record<string, string>;
 }
 
-function formatMatchDate(utcDate: string): string {
-  const d = new Date(utcDate);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function formatMatchTime(utcDate: string): string {
-  const d = new Date(utcDate);
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
 
 function PredictionCheck({ prediction, actualResult }: { prediction?: MatchResult; actualResult: LiveMatch['actualResult'] }) {
   if (!prediction || !actualResult) return null;
@@ -53,17 +44,18 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   const selected = (side: MatchResult) => result === side;
   const isFinished = liveMatch?.status === 'FINISHED';
 
-  const anySelected = result !== undefined;
   const homeFlagUrl = liveMatch?.homeFlag ?? teamFlagsByCode?.[homeCode];
   const awayFlagUrl = liveMatch?.awayFlag ?? teamFlagsByCode?.[awayCode];
 
   return (
-    <div className={`rounded-2xl shadow-sm border overflow-hidden transition-all ${anySelected ? 'border-primary' : 'border-slate-100'}`}>
+    <div className="overflow-hidden">
       <div className="flex items-stretch">
         {/* Home */}
         <button
-          className={`flex-1 flex items-center gap-2.5 px-4 py-2 transition-all ${
-            selected('home') ? 'bg-primary/20' : 'bg-white hover:bg-slate-50 active:bg-slate-100'
+          className={`flex-1 flex items-center gap-2.5 px-4 py-5 md:py-4 transition-all ${
+            selected('home')
+              ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
+              : 'bg-white hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'home')}
         >
@@ -77,18 +69,18 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Draw / VS */}
         <button
-          className={`w-10 flex-shrink-0 flex items-center justify-center transition-all ${
-            selected('draw') ? 'bg-primary/20' : 'bg-white'
-          }`}
+          className={`w-16 flex-shrink-0 flex items-center justify-center transition-all ${selected('draw') ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]' : 'bg-white hover:bg-black/5'}`}
           onClick={() => onPredict(matchId, 'draw')}
         >
-          <span className="text-xs font-medium text-slate-400">vs</span>
+          <span className="text-sm font-bold text-slate-500">TIE</span>
         </button>
 
         {/* Away */}
         <button
-          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-2 transition-all ${
-            selected('away') ? 'bg-primary/20' : 'bg-white hover:bg-slate-50 active:bg-slate-100'
+          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-5 md:py-4 transition-all ${
+            selected('away')
+              ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
+              : 'bg-white hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'away')}
         >
@@ -102,27 +94,14 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
       </div>
 
       {/* Live data footer */}
-      {liveMatch && (
-        <div className="border-t border-slate-100 px-4 py-1.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 min-w-0">
-            <span>{formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}</span>
-            {liveMatch.venue && (
-              <>
-                <span>·</span>
-                <span className="truncate">{liveMatch.venue}</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {isFinished && liveMatch.score && (
-              <span className="text-[11px] font-bold tabular-nums text-slate-600">
-                {liveMatch.score.home}–{liveMatch.score.away}
-              </span>
-            )}
-            {isFinished && (
-              <PredictionCheck prediction={result} actualResult={liveMatch.actualResult} />
-            )}
-          </div>
+      {liveMatch && isFinished && (
+        <div className="border-t border-slate-100 px-4 py-1.5 flex items-center justify-end gap-1.5">
+          {liveMatch.score && (
+            <span className="text-[11px] font-bold tabular-nums text-slate-600">
+              {liveMatch.score.home}–{liveMatch.score.away}
+            </span>
+          )}
+          <PredictionCheck prediction={result} actualResult={liveMatch.actualResult} />
         </div>
       )}
     </div>

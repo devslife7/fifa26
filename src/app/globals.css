@@ -63,6 +63,18 @@ body {
   background: var(--color-primary);
 }
 
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pb-nav-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+@utility pb-page-safe {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
 .font-variation-fill {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }

@@ -12,6 +12,7 @@ interface AuthContextType {
   signIn: (email: string, displayName: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  updateDisplayName: (name: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,8 +81,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const updateDisplayName = useCallback(async (name: string) => {
+    const supabase = getSupabase(supabaseRef);
+    if (!supabase) return { error: 'Supabase not configured' };
+    const { data, error } = await supabase.auth.updateUser({
+      data: { display_name: name },
+    });
+    if (error) return { error: error.message };
+    // Also update profiles table
+    if (data.user) {
+      await supabase.from('profiles').update({ display_name: name }).eq('id', data.user.id);
+      setUser(data.user);
+    }
+    return { error: null };
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, verifyOtp, signOut, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   );

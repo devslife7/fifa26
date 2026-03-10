@@ -63,7 +63,7 @@ export function useLiveData(): LiveDataResult {
   const [matches, setMatches] = useState<LiveMatch[]>([]);
   const [groupMatchesByGroup, setGroupMatchesByGroup] = useState<Partial<Record<GroupLetter, LiveMatch[]>> | null>(null);
   const [teamFlagsByCode, setTeamFlagsByCode] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
@@ -96,17 +96,15 @@ export function useLiveData(): LiveDataResult {
     }
   }, []);
 
-  // Initial load: show cached data instantly, then fetch from server cache (no API call)
+  // Initial load: only read from localStorage cache, no server fetch
   useEffect(() => {
     const cached = readLocalCache();
     if (cached) {
       setMatches(cached.matches);
+      setTeamFlagsByCode(buildTeamFlagsByCode(cached.matches));
       setLastUpdated(cached.fetchedAt);
-      setLoading(false);
     }
-    // Always fetch from server on mount (server serves from its own cache → fast, no external API call)
-    fetchData(false);
-  }, [fetchData]);
+  }, []);
 
   const refetch = useCallback(() => {
     fetchData(true);

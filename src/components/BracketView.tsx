@@ -10,6 +10,7 @@ interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
   onPredict: (matchId: string, result: KnockoutResult) => void;
+  onRandomize?: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
 }
@@ -25,7 +26,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, liveMatches, teamFlagsByCode }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, onRandomize, liveMatches, teamFlagsByCode }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions);
@@ -105,23 +106,36 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
     <div className="mt-2">
       {/* Sticky Round Tabs */}
       <div className="sticky top-0 z-20 bg-white">
-        <div className="flex overflow-x-auto no-scrollbar gap-6 pt-4 px-4 border-b border-slate-200">
-          {rounds.map(round => (
-            <button
-              key={round}
-              className={`pb-3 whitespace-nowrap text-sm font-bold transition-colors relative ${
-                activeRound === round
-                  ? 'text-slate-800'
-                  : 'text-slate-400 hover:text-slate-600'
-              }`}
-              onClick={() => handleTabClick(round)}
-            >
-              {roundLabels[round]}
-              {activeRound === round && (
-                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-full" />
-              )}
-            </button>
-          ))}
+        <div className="flex items-center border-b border-slate-200">
+          <div className="flex overflow-x-auto no-scrollbar gap-6 pt-4 px-4 flex-1">
+            {rounds.map(round => (
+              <button
+                key={round}
+                className={`pb-3 whitespace-nowrap text-sm font-bold transition-colors relative ${
+                  activeRound === round
+                    ? 'text-slate-800'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+                onClick={() => handleTabClick(round)}
+              >
+                {roundLabels[round]}
+                {activeRound === round && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
+          {onRandomize && (
+            <div className="flex-shrink-0 px-3 pb-1 pt-4">
+              <button
+                onClick={onRandomize}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">casino</span>
+                Randomize
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

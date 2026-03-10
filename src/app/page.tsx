@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TabId, MatchResult, KnockoutResult } from '@/types';
 import { groups } from '@/data/teams';
+import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -74,6 +75,48 @@ export default function Home() {
     });
   }, []);
 
+  const handleRandomizeBracket = useCallback(() => {
+    const outcomes: KnockoutResult[] = ['home', 'away'];
+    const matchIds = [
+      ...Array.from({ length: 16 }, (_, i) => `R32-${i + 1}`),
+      ...Array.from({ length: 8 }, (_, i) => `R16-${i + 1}`),
+      ...Array.from({ length: 4 }, (_, i) => `QF-${i + 1}`),
+      `SF-1`, `SF-2`,
+      `3RD-1`, `F-1`,
+    ];
+    const randomized: Record<string, KnockoutResult> = {};
+    matchIds.forEach(id => {
+      randomized[id] = outcomes[Math.floor(Math.random() * 2)];
+    });
+    const predictions = loadPredictions();
+    predictions.knockoutMatches = randomized;
+    savePredictions(predictions);
+    setKnockoutPredictions(randomized);
+  }, []);
+
+  const handleRandomizeGroups = useCallback(() => {
+    const outcomes: MatchResult[] = ['home', 'draw', 'away'];
+    const randomized: Record<string, MatchResult> = {};
+    allGroupMatches.forEach(m => {
+      randomized[m.id] = outcomes[Math.floor(Math.random() * 3)];
+    });
+    const predictions = loadPredictions();
+    predictions.groupMatches = randomized;
+    predictions.knockoutMatches = {};
+    savePredictions(predictions);
+    setGroupPredictions(randomized);
+    setKnockoutPredictions({});
+  }, []);
+
+  const handleClearGroups = useCallback(() => {
+    const predictions = loadPredictions();
+    predictions.groupMatches = {};
+    predictions.knockoutMatches = {};
+    savePredictions(predictions);
+    setGroupPredictions({});
+    setKnockoutPredictions({});
+  }, []);
+
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
     setKnockoutPredictions(prev => {
       const next = { ...prev, [matchId]: result };
@@ -111,7 +154,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-page-safe">
       {liveError && (
         <LiveBanner message={liveError} />
       )}
@@ -125,6 +168,43 @@ export default function Home() {
         {activeTab === 'groups' && (
           <div>
             <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
+
+            {/* Fetch live scores button */}
+            <div className="mt-4 flex items-center justify-between bg-white rounded-xl border border-slate-100 shadow-sm px-4 py-2.5">
+              <div className="text-[11px] text-slate-400">
+                {lastUpdated
+                  ? `Updated ${Math.round((Date.now() - lastUpdated) / 60000)} min ago`
+                  : 'No live data'}
+              </div>
+              <button
+                onClick={refetch}
+                disabled={liveLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-[16px] ${liveLoading ? 'animate-spin' : ''}`}>
+                  {liveLoading ? 'progress_activity' : 'sync'}
+                </span>
+                {liveLoading ? 'Fetching...' : 'Fetch live scores'}
+              </button>
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={handleRandomizeGroups}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">casino</span>
+                Randomize
+              </button>
+              <button
+                onClick={handleClearGroups}
+                disabled={groupCount === 0}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-500 font-semibold text-xs hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[16px]">backspace</span>
+                Clear selected
+              </button>
+            </div>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
               {groups.map(g => (
@@ -163,6 +243,7 @@ export default function Home() {
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
             onPredict={handleKnockoutPredict}
+            onRandomize={handleRandomizeBracket}
             liveMatches={liveMatchesByLocalId}
             teamFlagsByCode={teamFlagsByCode}
           />
@@ -206,9 +287,12 @@ function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onRese
   onNavigate: (tab: TabId) => void;
   onResetPredictions: () => void;
 }) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateDisplayName } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
 
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
@@ -235,10 +319,57 @@ function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onRese
             <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
               <span className="material-symbols-outlined text-primary text-2xl font-variation-fill">person</span>
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-slate-900 truncate">
-                {user.user_metadata?.display_name || 'Player'}
-              </p>
+            <div className="min-w-0 flex-grow">
+              {editingName ? (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!nameInput.trim()) return;
+                    setNameSaving(true);
+                    await updateDisplayName(nameInput.trim());
+                    setNameSaving(false);
+                    setEditingName(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={e => setNameInput(e.target.value)}
+                    autoFocus
+                    className="flex-grow min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
+                  />
+                  <button
+                    type="submit"
+                    disabled={nameSaving || !nameInput.trim()}
+                    className="p-1.5 rounded-lg bg-primary text-black hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(false)}
+                    className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-slate-900 truncate">
+                    {user.user_metadata?.display_name || 'Player'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setNameInput(user.user_metadata?.display_name || '');
+                      setEditingName(true);
+                    }}
+                    className="p-1 rounded-md hover:bg-slate-100 transition-colors flex-shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-slate-400 text-[16px]">edit</span>
+                  </button>
+                </div>
+              )}
               <p className="text-sm text-slate-400 truncate">{user.email}</p>
             </div>
           </div>

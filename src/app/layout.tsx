@@ -1,9 +1,15 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Lexend } from 'next/font/google';
 import { AuthProvider } from '@/components/providers/AuthProvider';
 import './globals.css';
 
 const lexend = Lexend({ subsets: ['latin'], variable: '--font-lexend' });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'FIFA World Cup 2026 Predictor',

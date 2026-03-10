@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LeaderboardEntry } from '@/types';
+import { LeaderboardEntry, LeaderboardPrediction, MatchResult } from '@/types';
 import { teamsByCode } from '@/data/teams';
+import { allGroupMatches } from '@/data/matches';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
@@ -38,6 +39,28 @@ const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p30', display_name: 'Clara Fontaine', total_points: 11, champion_code: 'FR', calculated_at: '' },
 ];
 
+// Generate placeholder predictions from PLACEHOLDER_USERS
+function generatePlaceholderPredictions(): LeaderboardPrediction[] {
+  const results: MatchResult[] = ['home', 'draw', 'away'];
+  return PLACEHOLDER_USERS.map((u, ui) => {
+    const gm: Record<string, MatchResult> = {};
+    allGroupMatches.forEach((m, mi) => {
+      gm[m.id] = results[(ui + mi) % 3];
+    });
+    const km: Record<string, 'home' | 'away'> = {};
+    for (let i = 0; i < 16; i++) {
+      km[`R32-${i + 1}`] = (ui + i) % 2 === 0 ? 'home' : 'away';
+    }
+    return {
+      user_id: u.user_id,
+      display_name: u.display_name,
+      champion_code: u.champion_code,
+      group_matches: gm,
+      knockout_matches: km,
+    };
+  });
+}
+
 interface RankingViewProps {
   lastUpdated: number | null;
   liveLoading: boolean;
@@ -55,27 +78,38 @@ function formatRelativeTime(ts: number): string {
 export default function RankingView({ lastUpdated, liveLoading, onRefreshScores }: RankingViewProps) {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [usePlaceholder, setUsePlaceholder] = useState(false);
+  const [totalUsers, setTotalUsers] = useState(0);
 
   useEffect(() => {
-    fetch('/api/leaderboard')
+    const fetchLeaderboard = fetch('/api/leaderboard')
       .then(res => res.json())
-      .then(data => {
-        const entries = data.leaderboard ?? [];
-        if (entries.length === 0) {
-          setLeaderboard(PLACEHOLDER_USERS);
-          setUsePlaceholder(true);
-        } else {
-          setLeaderboard(entries);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
+      .then(data => data.leaderboard ?? [])
+      .catch(() => []);
+
+    const fetchPredictions = fetch('/api/leaderboard/predictions')
+      .then(res => res.json())
+      .then(data => ({ predictions: data.predictions ?? [], totalUsers: data.total_users ?? 0 }))
+      .catch(() => ({ predictions: [], totalUsers: 0 }));
+
+    Promise.all([fetchLeaderboard, fetchPredictions]).then(([entries, { predictions: preds, totalUsers: total }]) => {
+      if (entries.length === 0) {
         setLeaderboard(PLACEHOLDER_USERS);
         setUsePlaceholder(true);
-        setLoading(false);
-      });
+      } else {
+        setLeaderboard(entries);
+      }
+      if (preds.length === 0) {
+        setPredictions(generatePlaceholderPredictions());
+        setTotalUsers(PLACEHOLDER_USERS.length);
+      } else {
+        setPredictions(preds);
+        setTotalUsers(total || preds.length);
+      }
+      setLoading(false);
+    });
   }, []);
 
   const getMedalIcon = (rank: number) => {
@@ -114,7 +148,6 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
       </header>
 
       <div className="px-6 md:grid md:grid-cols-[1fr,300px] md:gap-8">
-        {/* Leaderboard List */}
         <div className="flex-grow">
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -122,6 +155,57 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Predictions Section */}
+              {predictions.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary text-xl font-variation-fill">assignment</span>
+                    <h2 className="font-bold text-lg">Predictions</h2>
+                    <span className="text-xs text-slate-400 ml-auto">{predictions.length}/{totalUsers} completed</span>
+                  </div>
+
+                  {usePlaceholder && (
+                    <div className="mb-3 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                      <p className="text-xs text-slate-400">Preview data — real predictions appear once users submit</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {predictions.map(pred => {
+                      const groupCount = Object.keys(pred.group_matches).length;
+                      const knockoutCount = Object.keys(pred.knockout_matches).length;
+
+                      return (
+                        <div key={pred.user_id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+                          <div className="flex-grow min-w-0">
+                            <div className="font-semibold text-sm truncate">{pred.display_name}</div>
+                            <div className="text-xs text-slate-400 truncate">
+                              {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <div className="text-[11px] font-bold text-slate-500 tabular-nums">{groupCount}/72</div>
+                              <div className="text-[9px] text-slate-400 uppercase">Groups</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-[11px] font-bold text-slate-500 tabular-nums">{knockoutCount}</div>
+                              <div className="text-[9px] text-slate-400 uppercase">KO</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Leaderboard List */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-primary text-xl font-variation-fill">emoji_events</span>
+                <h2 className="font-bold text-lg">Rankings</h2>
+              </div>
+
               {usePlaceholder && (
                 <div className="mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
                   <p className="text-xs text-slate-400">Preview data — real scores appear once the tournament begins</p>

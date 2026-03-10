@@ -13,7 +13,7 @@ export interface FDApiTeam {
   shortName: string;
   tla: string; // FIFA three-letter code
   crest: string;
-  area: FDApiArea;
+  area?: FDApiArea; // present in /teams response, absent in /matches response
 }
 
 export interface FDApiScore {

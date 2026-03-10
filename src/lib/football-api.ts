@@ -147,8 +147,8 @@ const STAGE_TO_ROUND: Record<string, string> = {
 // --- Group letter extraction ---
 function extractGroupLetter(apiGroup: string | null): string | null {
   if (!apiGroup) return null;
-  // "Group A" → "A"
-  const match = apiGroup.match(/Group\s+([A-L])/i);
+  // "GROUP_A" → "A"  or  "Group A" → "A"
+  const match = apiGroup.match(/(?:GROUP_|Group\s+)([A-L])/i);
   return match ? match[1].toUpperCase() : null;
 }
 
@@ -166,8 +166,8 @@ function mapGroupMatchToLocalId(
   const match = allGroupMatches.find(
     m =>
       m.group === group &&
-      m.home === homeCode &&
-      m.away === awayCode,
+      ((m.home === homeCode && m.away === awayCode) ||
+        (m.home === awayCode && m.away === homeCode)),
   );
   return match?.id ?? null;
 }
@@ -220,6 +220,8 @@ function mapApiMatch(
     localMatchId,
     homeCode,
     awayCode,
+    homeFlag: apiMatch.homeTeam.crest ?? null,
+    awayFlag: apiMatch.awayTeam.crest ?? null,
     utcDate: apiMatch.utcDate,
     status: apiMatch.status,
     venue: apiMatch.venue ?? null,

@@ -10,6 +10,7 @@ interface Props {
   result?: MatchResult;
   onPredict: (matchId: string, result: MatchResult) => void;
   liveMatch?: LiveMatch;
+  teamFlagsByCode?: Record<string, string>;
 }
 
 function formatMatchDate(utcDate: string): string {
@@ -32,7 +33,18 @@ function PredictionCheck({ prediction, actualResult }: { prediction?: MatchResul
   );
 }
 
-export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch }: Props) {
+function FlagEmoji({ flagUrl, flagEmoji }: { flagUrl?: string | null; flagEmoji: string }) {
+  return (
+    <span className="flex-shrink-0 overflow-hidden">
+      {flagUrl
+        ? <img src={flagUrl} alt="" className="w-8 h-6 object-cover rounded-sm" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden'); }} />
+        : null}
+      <span className="text-2xl leading-none" hidden={!!flagUrl}>{flagEmoji}</span>
+    </span>
+  );
+}
+
+export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode }: Props) {
   const home = teamsByCode[homeCode];
   const away = teamsByCode[awayCode];
 
@@ -41,21 +53,23 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   const selected = (side: MatchResult) => result === side;
   const isFinished = liveMatch?.status === 'FINISHED';
 
+  const anySelected = result !== undefined;
+  const homeFlagUrl = liveMatch?.homeFlag ?? teamFlagsByCode?.[homeCode];
+  const awayFlagUrl = liveMatch?.awayFlag ?? teamFlagsByCode?.[awayCode];
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div className="flex items-center">
+    <div className={`rounded-2xl shadow-sm border overflow-hidden transition-all ${anySelected ? 'border-primary' : 'border-slate-100'}`}>
+      <div className="flex items-stretch">
         {/* Home */}
         <button
-          className={`flex-1 flex items-center gap-2.5 pl-4 pr-2 py-4 transition-all ${
-            selected('home')
-              ? 'bg-background-dark'
-              : 'hover:bg-slate-50 active:bg-slate-100'
+          className={`flex-1 flex items-center gap-2.5 px-4 py-2 transition-all ${
+            selected('home') ? 'bg-primary/20' : 'bg-white hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'home')}
         >
-          <span className="text-xl leading-none">{home.flag}</span>
-          <span className={`text-xs font-bold uppercase tracking-wide truncate ${
-            selected('home') ? 'text-primary' : 'text-slate-700'
+          <FlagEmoji flagUrl={homeFlagUrl} flagEmoji={home.flag} />
+          <span className={`text-sm font-bold leading-tight ${
+            selected('home') ? 'text-slate-800' : 'text-slate-500'
           }`}>
             {home.name}
           </span>
@@ -63,35 +77,27 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Draw / VS */}
         <button
-          className={`w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full mx-1 transition-all ${
-            selected('draw')
-              ? 'bg-background-dark'
-              : 'hover:bg-slate-100 active:bg-slate-200'
+          className={`w-10 flex-shrink-0 flex items-center justify-center transition-all ${
+            selected('draw') ? 'bg-primary/20' : 'bg-white'
           }`}
           onClick={() => onPredict(matchId, 'draw')}
         >
-          <span className={`font-black text-[11px] tracking-wider ${
-            selected('draw') ? 'text-primary' : 'text-slate-300'
-          }`}>
-            VS
-          </span>
+          <span className="text-xs font-medium text-slate-400">vs</span>
         </button>
 
         {/* Away */}
         <button
-          className={`flex-1 flex items-center justify-end gap-2.5 pr-4 pl-2 py-4 transition-all ${
-            selected('away')
-              ? 'bg-background-dark'
-              : 'hover:bg-slate-50 active:bg-slate-100'
+          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-2 transition-all ${
+            selected('away') ? 'bg-primary/20' : 'bg-white hover:bg-slate-50 active:bg-slate-100'
           }`}
           onClick={() => onPredict(matchId, 'away')}
         >
-          <span className={`text-xs font-bold uppercase tracking-wide truncate ${
-            selected('away') ? 'text-primary' : 'text-slate-700'
+          <span className={`text-sm font-bold leading-tight ${
+            selected('away') ? 'text-slate-800' : 'text-slate-500'
           }`}>
             {away.name}
           </span>
-          <span className="text-xl leading-none">{away.flag}</span>
+          <FlagEmoji flagUrl={awayFlagUrl} flagEmoji={away.flag} />
         </button>
       </div>
 

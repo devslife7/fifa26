@@ -11,6 +11,7 @@ interface Props {
   knockoutPredictions: Record<string, KnockoutResult>;
   onPredict: (matchId: string, result: KnockoutResult) => void;
   liveMatches?: Record<string, LiveMatch>;
+  teamFlagsByCode?: Record<string, string>;
 }
 
 const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F', '3RD'];
@@ -24,7 +25,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, liveMatches }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, liveMatches, teamFlagsByCode }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions);
@@ -148,6 +149,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, onP
                   result={match.result}
                   onPredict={onPredict}
                   liveMatch={liveMatches?.[match.id]}
+                  teamFlagsByCode={teamFlagsByCode}
                 />
               ))}
             </div>

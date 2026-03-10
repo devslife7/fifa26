@@ -58,7 +58,7 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'third-place' | 'bracket' | 'champion' | 'ranking';
+export type TabId = 'groups' | 'bracket' | 'ranking' | 'profile';
 
 export interface LeaderboardEntry {
   user_id: string;
@@ -80,6 +80,8 @@ export interface LiveMatch {
   localMatchId: string | null;
   homeCode: string | null;
   awayCode: string | null;
+  homeFlag: string | null;
+  awayFlag: string | null;
   utcDate: string;
   status: string; // SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED, etc.
   venue: string | null;

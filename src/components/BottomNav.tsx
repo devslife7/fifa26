@@ -10,10 +10,9 @@ interface Props {
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'groups', label: 'Groups', icon: 'grid_view' },
-  { id: 'third-place', label: '3rd Place', icon: 'workspace_premium' },
   { id: 'bracket', label: 'Bracket', icon: 'account_tree' },
-  { id: 'champion', label: 'Champion', icon: 'trophy' },
   { id: 'ranking', label: 'Ranking', icon: 'leaderboard' },
+  { id: 'profile', label: 'Profile', icon: 'person' },
 ];
 
 export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Props) {

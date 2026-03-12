@@ -104,7 +104,7 @@ export default function KnockoutMatchCard({
             <TeamFlag flagUrl={flagUrl} flagEmoji={team.flag} />
             {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
           </span>
-          <span className={`font-semibold text-sm truncate ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
+          <span className={`font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
             {team.name}
           </span>
         </div>

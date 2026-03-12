@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { TabId, MatchResult, KnockoutResult } from '@/types';
 import { groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { areAllGroupsComplete } from '@/lib/standings';
+import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -26,6 +26,7 @@ export default function Home() {
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
+  const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
 
   // Load local predictions on mount
@@ -33,6 +34,7 @@ export default function Home() {
     const saved = loadPredictions();
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
+    setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
     setMounted(true);
   }, []);
 
@@ -64,19 +66,26 @@ export default function Home() {
 
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {
-      const next = { ...prev };
-      if (next[matchId] === result) {
-        delete next[matchId]; // deselect
-      } else {
-        next[matchId] = result;
-      }
+      if (prev[matchId] === result) return prev; // already selected, do nothing
+      const next = { ...prev, [matchId]: result };
       const predictions = loadPredictions();
       predictions.groupMatches = next;
       predictions.knockoutMatches = {};
+      predictions.thirdPlaceTiebreaker = [];
       savePredictions(predictions);
       setKnockoutPredictions({});
+      setThirdPlaceTiebreaker([]);
       return next;
     });
+  }, []);
+
+  const handleTiebreakerChange = useCallback((picks: string[]) => {
+    setThirdPlaceTiebreaker(picks);
+    setKnockoutPredictions({});
+    const predictions = loadPredictions();
+    predictions.thirdPlaceTiebreaker = picks;
+    predictions.knockoutMatches = {};
+    savePredictions(predictions);
   }, []);
 
   const handleRandomizeBracket = useCallback(() => {
@@ -107,18 +116,22 @@ export default function Home() {
     const predictions = loadPredictions();
     predictions.groupMatches = randomized;
     predictions.knockoutMatches = {};
+    predictions.thirdPlaceTiebreaker = [];
     savePredictions(predictions);
     setGroupPredictions(randomized);
     setKnockoutPredictions({});
+    setThirdPlaceTiebreaker([]);
   }, []);
 
   const handleClearGroups = useCallback(() => {
     const predictions = loadPredictions();
     predictions.groupMatches = {};
     predictions.knockoutMatches = {};
+    predictions.thirdPlaceTiebreaker = [];
     savePredictions(predictions);
     setGroupPredictions({});
     setKnockoutPredictions({});
+    setThirdPlaceTiebreaker([]);
   }, []);
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
@@ -172,6 +185,8 @@ export default function Home() {
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const groupsComplete = areAllGroupsComplete(groupPredictions);
+  const tiesResolved = areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
+  const canContinueToBracket = groupsComplete && tiesResolved;
 
   if (!mounted) {
     return (
@@ -189,7 +204,7 @@ export default function Home() {
       )}
       <main className={`mx-auto pb-8 ${
         activeTab === 'bracket' ? 'max-w-full' :
-        activeTab === 'groups' ? 'max-w-md md:max-w-5xl px-4' :
+        activeTab === 'groups' ? 'max-w-[1700px] px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-4' :
         activeTab === 'profile' ? 'max-w-md px-4' :
         'max-w-md px-4'
@@ -198,25 +213,28 @@ export default function Home() {
           <div>
             <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
 
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={handleRandomizeGroups}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">casino</span>
-                Randomize
-              </button>
-              <button
-                onClick={handleClearGroups}
-                disabled={groupCount === 0}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-slate-200 text-slate-500 font-semibold text-xs hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span className="material-symbols-outlined text-[16px]">backspace</span>
-                Clear selected
-              </button>
+            <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleRandomizeGroups}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">casino</span>
+                  Randomize
+                </button>
+                <button
+                  onClick={handleClearGroups}
+                  disabled={groupCount === 0}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 font-semibold text-xs hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-[16px]">backspace</span>
+                  Clear
+                </button>
+              </div>
+
             </div>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-10">
               {groups.map(g => (
                 <GroupSection
                   key={g}
@@ -230,19 +248,27 @@ export default function Home() {
               ))}
             </div>
 
-            <ThirdPlaceTable predictions={groupPredictions} />
+            <ThirdPlaceTable
+              predictions={groupPredictions}
+              tiebreakerPicks={thirdPlaceTiebreaker}
+              onTiebreakerChange={handleTiebreakerChange}
+            />
 
             <div className="mt-8 mb-4">
               <button
-                onClick={() => groupsComplete && setActiveTab('bracket')}
-                disabled={!groupsComplete}
+                onClick={() => canContinueToBracket && setActiveTab('bracket')}
+                disabled={!canContinueToBracket}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Continue to Bracket
                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
               </button>
-              {!groupsComplete && (
-                <p className="text-center text-[11px] text-slate-400 mt-2">Complete all group predictions to continue</p>
+              {!canContinueToBracket && (
+                <p className="text-center text-[11px] text-slate-400 mt-2">
+                  {!groupsComplete
+                    ? 'Complete all group predictions to continue'
+                    : 'Resolve the third-place tiebreaker above to continue'}
+                </p>
               )}
             </div>
           </div>
@@ -252,6 +278,7 @@ export default function Home() {
           <BracketView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
+            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onPredict={handleKnockoutPredict}
             onRandomize={handleRandomizeBracket}
             liveMatches={liveMatchesByLocalId}
@@ -275,7 +302,8 @@ export default function Home() {
             onResetPredictions={() => {
               setGroupPredictions({});
               setKnockoutPredictions({});
-              savePredictions({ groupMatches: {}, knockoutMatches: {} });
+              setThirdPlaceTiebreaker([]);
+              savePredictions({ groupMatches: {}, knockoutMatches: {}, thirdPlaceTiebreaker: [] });
             }}
           />
         )}
@@ -285,7 +313,7 @@ export default function Home() {
       <BottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        groupsComplete={groupsComplete}
+        groupsComplete={canContinueToBracket}
       />
 
       {/* Rate limit toast */}

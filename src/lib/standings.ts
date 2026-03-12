@@ -101,12 +101,83 @@ export function getThirdPlaceRanking(
   return thirdPlaced;
 }
 
+// Detect ties at the 8th/9th boundary among third-place teams
+export type ThirdPlaceEntry = { team: string; group: GroupLetter; standing: GroupStanding };
+
+export interface ThirdPlaceTieInfo {
+  lockedIn: ThirdPlaceEntry[];
+  eliminated: ThirdPlaceEntry[];
+  tied: ThirdPlaceEntry[];
+  slotsToFill: number;
+}
+
+export function detectThirdPlaceTie(
+  predictions: Record<string, MatchResult>
+): ThirdPlaceTieInfo {
+  const ranking = getThirdPlaceRanking(predictions);
+
+  if (ranking.length < 9) {
+    return { lockedIn: ranking.slice(0, 8), eliminated: [], tied: [], slotsToFill: 0 };
+  }
+
+  const boundaryPoints = ranking[7].standing.points;
+
+  const lockedIn: ThirdPlaceEntry[] = [];
+  const eliminated: ThirdPlaceEntry[] = [];
+  const tied: ThirdPlaceEntry[] = [];
+
+  for (const entry of ranking) {
+    if (entry.standing.points > boundaryPoints) {
+      lockedIn.push(entry);
+    } else if (entry.standing.points === boundaryPoints) {
+      tied.push(entry);
+    } else {
+      eliminated.push(entry);
+    }
+  }
+
+  const slotsToFill = 8 - lockedIn.length;
+
+  // If all tied teams fit, there's no real tie
+  if (slotsToFill >= tied.length) {
+    return {
+      lockedIn: [...lockedIn, ...tied],
+      eliminated,
+      tied: [],
+      slotsToFill: 0,
+    };
+  }
+
+  return { lockedIn, eliminated, tied, slotsToFill };
+}
+
+export function areThirdPlaceTiesResolved(
+  predictions: Record<string, MatchResult>,
+  tiebreakerPicks?: string[]
+): boolean {
+  const { slotsToFill } = detectThirdPlaceTie(predictions);
+  if (slotsToFill === 0) return true;
+  return !!tiebreakerPicks && tiebreakerPicks.length === slotsToFill;
+}
+
 // Get the best 8 third-place teams
 export function getBestThirdPlaceTeams(
-  predictions: Record<string, MatchResult>
+  predictions: Record<string, MatchResult>,
+  tiebreakerPicks?: string[]
 ): { team: string; group: GroupLetter }[] {
-  const ranking = getThirdPlaceRanking(predictions);
-  return ranking.slice(0, 8);
+  const { lockedIn, tied, slotsToFill } = detectThirdPlaceTie(predictions);
+
+  if (slotsToFill === 0) {
+    return lockedIn.slice(0, 8).map(e => ({ team: e.team, group: e.group }));
+  }
+
+  if (!tiebreakerPicks || tiebreakerPicks.length !== slotsToFill) {
+    return []; // tie unresolved
+  }
+
+  const pickedFromTie = tied.filter(e => tiebreakerPicks.includes(e.team));
+  const combined = [...lockedIn, ...pickedFromTie];
+  return combined.map(e => ({ team: e.team, group: e.group }));
 }
 
 // Get group winners and runners-up

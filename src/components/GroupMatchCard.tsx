@@ -33,28 +33,32 @@ function formatMatchDate(utcDate: string): string {
   );
 }
 
-function FlagEmoji({ code, flagUrl, flagEmoji }: { code: string; flagUrl?: string | null; flagEmoji: string }) {
+function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string; flagUrl?: string | null; flagEmoji: string; size?: 'small' | 'normal' }) {
   if (code.startsWith('TBD')) {
     return null;
   }
+
+  const imgClass = size === 'small' ? "w-5 h-3.5 sm:w-6 sm:h-4 object-cover" : "w-7 h-5 sm:w-9 sm:h-6 object-cover";
+  const emojiClass = size === 'small' ? "flex-shrink-0 text-lg sm:text-xl leading-none" : "flex-shrink-0 text-2xl sm:text-3xl leading-none";
+
   if (flagUrl) {
     return (
       <span className="flex-shrink-0 inline-flex">
         <img
           src={flagUrl}
           alt=""
-          className="w-9 h-6 object-cover"
+          className={imgClass}
           onError={e => {
             const img = e.currentTarget;
             img.style.display = 'none';
             (img.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
           }}
         />
-        <span className="text-3xl leading-none" hidden>{flagEmoji}</span>
+        <span className={emojiClass} hidden>{flagEmoji}</span>
       </span>
     );
   }
-  return <span className="flex-shrink-0 text-3xl leading-none">{flagEmoji}</span>;
+  return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
 export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode }: Props) {
@@ -69,68 +73,87 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   const homeFlagUrl = liveMatch?.homeFlag ?? teamFlagsByCode?.[homeCode];
   const awayFlagUrl = liveMatch?.awayFlag ?? teamFlagsByCode?.[awayCode];
 
+  // Calculate the position of the sliding background pill
+  const getPillStyle = () => {
+    if (result === 'home') return { left: '4px', width: 'calc(50% - 32px)' };
+    if (result === 'draw') return { left: 'calc(50% - 28px)', width: '56px' };
+    if (result === 'away') return { left: 'calc(50% + 28px)', width: 'calc(50% - 32px)' };
+    return { opacity: 0 }; // Hidden when nothing is selected
+  };
+
   return (
-    <div className="overflow-hidden">
-      <div className="flex items-stretch">
+    <div className="overflow-hidden py-1.5 relative">
+      {/* Match Date/Time at top left */}
+      {(liveMatch?.utcDate || true) && (
+        <div className="absolute top-0 left-4 text-[10px] sm:text-[11px] font-medium text-slate-500 z-10 bg-slate-100/80 px-2.5 py-0.5 rounded-b-md">
+          {liveMatch?.utcDate ? formatMatchDate(liveMatch.utcDate) : 'Match Date'}
+        </div>
+      )}
+
+      <div className="relative flex items-stretch bg-slate-100/60 rounded-full p-1 mt-3">
+
+        {/* Animated Background Pill */}
+        <div
+          className={`absolute top-1 bottom-1 bg-white shadow-sm rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-primary/30' : 'opacity-0'}`}
+          style={getPillStyle()}
+        />
+
         {/* Home */}
         <button
-          className={`flex-1 flex items-center gap-2.5 px-4 py-5 md:py-4 rounded-xl transition-all ${
-            selected('home')
-              ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
-              : 'bg-white hover:bg-slate-50 active:bg-slate-100'
+          className={`relative z-10 flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
+            selected('home') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-500'
           }`}
           onClick={() => onPredict(matchId, 'home')}
         >
-          <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} />
-          <span className={`text-sm font-bold leading-tight ${
-            selected('home') ? 'text-slate-800' : 'text-slate-500'
-          }`}>
+          <div className="sm:hidden flex items-center">
+            <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="normal" />
+          </div>
+          <div className="hidden sm:flex items-center">
+            <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="small" />
+          </div>
+          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-left">
             {home.name}
           </span>
         </button>
 
         {/* Draw / VS */}
         <button
-          className={`w-16 flex-shrink-0 flex items-center justify-center rounded-xl transition-all ${selected('draw') ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]' : 'bg-white hover:bg-black/5'}`}
+          className={`relative z-10 w-12 sm:w-14 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300 ${
+            selected('draw') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-400'
+          }`}
           onClick={() => onPredict(matchId, 'draw')}
         >
-          <span className="text-sm font-bold text-slate-500">TIE</span>
+          <span className="font-bold text-sm sm:text-xs md:text-sm">TIE</span>
         </button>
 
         {/* Away */}
         <button
-          className={`flex-1 flex items-center justify-end gap-2.5 px-4 py-5 md:py-4 rounded-xl transition-all ${
-            selected('away')
-              ? 'ring-1 ring-inset ring-primary/70 bg-[#FEFAE9]'
-              : 'bg-white hover:bg-slate-50 active:bg-slate-100'
+          className={`relative z-10 flex-1 min-w-0 flex items-center justify-end gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
+            selected('away') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-500'
           }`}
           onClick={() => onPredict(matchId, 'away')}
         >
-          <span className={`text-sm font-bold leading-tight ${
-            selected('away') ? 'text-slate-800' : 'text-slate-500'
-          }`}>
+          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-right">
             {away.name}
           </span>
-          <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} />
+          <div className="sm:hidden flex items-center">
+            <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} size="normal" />
+          </div>
+          <div className="hidden sm:flex items-center">
+            <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} size="small" />
+          </div>
         </button>
       </div>
 
-      {/* Footer: score for finished, date for upcoming */}
+      {/* Footer: score for finished */}
       {liveMatch && isFinished && (
-        <div className="border-t border-slate-100 px-4 py-1.5 flex items-center justify-end gap-1.5">
+        <div className="px-4 flex items-center justify-end gap-1.5 pt-2">
           {liveMatch.score && (
             <span className="text-[11px] font-bold tabular-nums text-slate-600">
               {liveMatch.score.home}–{liveMatch.score.away}
             </span>
           )}
           <PredictionCheck prediction={result} actualResult={liveMatch.actualResult} />
-        </div>
-      )}
-      {liveMatch && liveMatch.status === 'SCHEDULED' && liveMatch.utcDate && (
-        <div className="border-t border-slate-100 px-4 py-1.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-          <span className="material-symbols-outlined text-[13px]">calendar_month</span>
-          <span>{formatMatchDate(liveMatch.utcDate)}</span>
-          {liveMatch.venue && <><span>·</span><span className="truncate">{liveMatch.venue}</span></>}
         </div>
       )}
     </div>

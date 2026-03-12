@@ -53,6 +53,7 @@ export interface GroupStanding {
 export interface Predictions {
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
+  thirdPlaceTiebreaker?: string[];  // team codes chosen by user to advance from tie zone
   userName?: string;
   userEmail?: string;
   completedAt?: string;

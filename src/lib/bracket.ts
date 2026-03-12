@@ -31,7 +31,8 @@ function assignThirdPlaceToSlots(
 
 export function generateBracket(
   groupPredictions: Record<string, MatchResult>,
-  knockoutPredictions: Record<string, KnockoutResult>
+  knockoutPredictions: Record<string, KnockoutResult>,
+  thirdPlaceTiebreaker?: string[]
 ): KnockoutMatch[] {
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const matches: KnockoutMatch[] = [];
@@ -42,7 +43,10 @@ export function generateBracket(
   }
 
   const { winners, runnersUp } = getGroupQualifiers(groupPredictions);
-  const bestThirds = getBestThirdPlaceTeams(groupPredictions);
+  const bestThirds = getBestThirdPlaceTeams(groupPredictions, thirdPlaceTiebreaker);
+  if (bestThirds.length < 8) {
+    return generateEmptyBracket(); // tie not resolved yet
+  }
   const thirdSlots = assignThirdPlaceToSlots(bestThirds);
 
   // Round of 32 (16 matches)

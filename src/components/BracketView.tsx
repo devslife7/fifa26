@@ -9,6 +9,7 @@ import KnockoutMatchCard from './KnockoutMatchCard';
 interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  thirdPlaceTiebreaker?: string[];
   onPredict: (matchId: string, result: KnockoutResult) => void;
   onRandomize?: () => void;
   liveMatches?: Record<string, LiveMatch>;
@@ -26,10 +27,10 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, onPredict, onRandomize, liveMatches, teamFlagsByCode }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
-  const bracket = generateBracket(groupPredictions, knockoutPredictions);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});

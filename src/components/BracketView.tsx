@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket } from '@/lib/bracket';
 import { areAllGroupsComplete } from '@/lib/standings';
@@ -32,23 +32,46 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const setRoundRef = useCallback((round: KnockoutRound, el: HTMLDivElement | null) => {
     roundRefs.current[round] = el;
   }, []);
 
-  // Scroll to R32 on mount
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      scrollContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-    }, 100);
-    return () => clearTimeout(timeout);
+  const setTabRef = useCallback((round: KnockoutRound, el: HTMLButtonElement | null) => {
+    tabRefs.current[round] = el;
   }, []);
 
-  // Auto-scroll to next round when current round is fully predicted
+  // Pre-populate completedRounds so auto-advance doesn't re-trigger on mount
   const completedRounds = useRef<Set<KnockoutRound>>(new Set());
+  const hasMounted = useRef(false);
+
+  // On mount, scroll directly to the furthest round with predictions (before paint)
+  useLayoutEffect(() => {
+    let targetRound: KnockoutRound = 'R32';
+    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
+    for (const round of rounds) {
+      const prefix = round + '-';
+      const count = Object.keys(knockoutPredictions).filter(k => k.startsWith(prefix)).length;
+      if (count > 0) targetRound = round;
+      const size = roundSizes[round];
+      if (size && count === size) {
+        completedRounds.current.add(round);
+      }
+    }
+    const el = roundRefs.current[targetRound];
+    const container = scrollContainerRef.current;
+    if (el && container) {
+      container.scrollTo({ left: el.offsetLeft - 16, behavior: 'instant' });
+    }
+    setActiveRound(targetRound);
+    hasMounted.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
+    if (!hasMounted.current) return;
     const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
     const size = roundSizes[activeRound];
     if (!size) return;
@@ -95,23 +118,20 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       requestAnimationFrame(() => {
         const scrollLeft = container.scrollLeft;
         const containerWidth = container.clientWidth;
-        let closestRound: KnockoutRound = rounds[0];
-        let closestDistance = Infinity;
+        let leftmostRound: KnockoutRound = rounds[0];
 
         for (const round of rounds) {
           const el = roundRefs.current[round];
           if (!el) continue;
-          // Distance from the left edge of the column to the center of the viewport
-          const colCenter = el.offsetLeft + el.offsetWidth / 2;
-          const viewCenter = scrollLeft + containerWidth / 2;
-          const distance = Math.abs(colCenter - viewCenter);
-          if (distance < closestDistance) {
-            closestDistance = distance;
-            closestRound = round;
+          // A column is "visible" if its right edge is past the scroll position
+          const colRight = el.offsetLeft + el.offsetWidth;
+          if (colRight > scrollLeft + 40) {
+            leftmostRound = round;
+            break;
           }
         }
 
-        setActiveRound(prev => (prev !== closestRound ? closestRound : prev));
+        setActiveRound(prev => (prev !== leftmostRound ? leftmostRound : prev));
         ticking = false;
       });
     };
@@ -119,6 +139,26 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Auto-scroll the tabs container so the active tab is visible
+  useEffect(() => {
+    const container = tabsContainerRef.current;
+    const activeTabEl = tabRefs.current[activeRound];
+
+    if (container && activeTabEl) {
+      const containerWidth = container.clientWidth;
+      const tabLeft = activeTabEl.offsetLeft;
+      const tabWidth = activeTabEl.offsetWidth;
+
+      // Calculate the ideal scroll position to center the tab
+      const scrollPos = tabLeft - (containerWidth / 2) + (tabWidth / 2);
+
+      container.scrollTo({
+        left: scrollPos,
+        behavior: hasMounted.current ? 'smooth' : 'instant'
+      });
+    }
+  }, [activeRound]);
 
   // Tab click → scroll to round
   const handleTabClick = (round: KnockoutRound) => {
@@ -155,15 +195,19 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   }
 
   return (
-    <div className="mt-2">
+    <div>
       {/* Sticky Round Tabs */}
       <div className="sticky top-0 z-20 bg-white">
         <div className="flex items-center border-b border-slate-200">
-          <div className="flex overflow-x-auto no-scrollbar gap-6 pt-4 px-4 flex-1">
+          <div 
+            ref={tabsContainerRef}
+            className="flex overflow-x-auto no-scrollbar gap-6 px-4 flex-1"
+          >
             {rounds.map(round => (
               <button
                 key={round}
-                className={`pb-3 whitespace-nowrap text-sm font-bold transition-colors relative ${
+                ref={(el) => setTabRef(round, el)}
+                className={`pb-3 pt-4 whitespace-nowrap text-sm font-bold transition-colors relative ${
                   activeRound === round
                     ? 'text-slate-800'
                     : 'text-slate-400 hover:text-slate-600'
@@ -183,13 +227,13 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       {/* Horizontal Scrollable Bracket */}
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto gap-8 px-4 pt-6 pb-4 relative scroll-smooth"
+        className="flex overflow-x-auto gap-8 px-4 pt-6 pb-4 relative"
       >
         {rounds.map(round => (
           <div
             key={round}
             ref={(el) => setRoundRef(round, el)}
-            className="flex-shrink-0 w-72"
+            className="flex-shrink-0 w-48"
           >
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">
               {roundLabels[round]}

@@ -152,6 +152,15 @@ export default function Home() {
       const predictions = loadPredictions();
       predictions.knockoutMatches = cleaned;
       savePredictions(predictions);
+
+      // Navigate to profile after picking the final
+      if (matchId === 'F-1') {
+        setTimeout(() => {
+          setActiveTab('profile');
+          setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0);
+        }, 600);
+      }
+
       return cleaned;
     });
   }, []);
@@ -272,6 +281,22 @@ export default function Home() {
           />
         )}
 
+        {activeTab === 'tracking' && (
+          <div className="pt-6 pb-12">
+            <header className="mb-6">
+              <h1 className="text-3xl font-bold tracking-tight">Tracking</h1>
+              <p className="text-slate-500 text-sm mt-1">Follow live matches and results</p>
+            </header>
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+              <span className="material-symbols-outlined text-slate-300 text-5xl mb-4 block">query_stats</span>
+              <h2 className="text-lg font-bold text-slate-700 mb-2">Coming Soon</h2>
+              <p className="text-slate-400 text-sm">
+                Live match tracking and result updates will appear here once the tournament begins.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'ranking' && (
           <RankingView
             lastUpdated={lastUpdated}
@@ -284,6 +309,7 @@ export default function Home() {
           <ProfileView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
+            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onNavigate={setActiveTab}
             onResetPredictions={() => {
               setGroupPredictions({});
@@ -298,7 +324,7 @@ export default function Home() {
       {/* Bottom Nav */}
       <BottomNav
         activeTab={activeTab}
-        onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0); }}
+        onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
         groupsComplete={canContinueToBracket}
       />
 
@@ -314,9 +340,10 @@ export default function Home() {
   );
 }
 
-function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onResetPredictions }: {
+function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onNavigate, onResetPredictions }: {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  thirdPlaceTiebreaker?: string[];
   onNavigate: (tab: TabId) => void;
   onResetPredictions: () => void;
 }) {
@@ -340,95 +367,107 @@ function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onRese
   });
 
   return (
-    <div className="pt-6">
-      <header className="mb-6">
+    <div className="pt-6 pb-12">
+      <header className="mb-2">
         <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
       </header>
 
+      {/* Champion Section */}
+      <div className="mb-8">
+        <ChampionScreen
+          groupPredictions={groupPredictions}
+          knockoutPredictions={knockoutPredictions}
+          thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+        />
+      </div>
+
       {/* Auth section */}
-      {user ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-2xl font-variation-fill">person</span>
-            </div>
-            <div className="min-w-0 flex-grow">
-              {editingName ? (
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!nameInput.trim()) return;
-                    setNameSaving(true);
-                    await updateDisplayName(nameInput.trim());
-                    setNameSaving(false);
-                    setEditingName(false);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <input
-                    type="text"
-                    value={nameInput}
-                    onChange={e => setNameInput(e.target.value)}
-                    autoFocus
-                    className="flex-grow min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
-                  />
-                  <button
-                    type="submit"
-                    disabled={nameSaving || !nameInput.trim()}
-                    className="p-1.5 rounded-lg bg-primary text-black hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">check</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingName(false)}
-                    className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                  </button>
-                </form>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-slate-900 truncate">
-                    {user.user_metadata?.display_name || 'Player'}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setNameInput(user.user_metadata?.display_name || '');
-                      setEditingName(true);
-                    }}
-                    className="p-1 rounded-md hover:bg-slate-100 transition-colors flex-shrink-0"
-                  >
-                    <span className="material-symbols-outlined text-slate-400 text-[16px]">edit</span>
-                  </button>
-                </div>
-              )}
-              <p className="text-sm text-slate-400 truncate">{user.email}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-slate-400 text-xl">person_off</span>
+      <div className="mb-8">
+        <h2 className="text-lg font-bold mb-4">Account</h2>
+        {user ? (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary text-2xl font-variation-fill">person</span>
               </div>
-              <p className="text-sm text-slate-500">Not signed in</p>
+              <div className="min-w-0 flex-grow">
+                {editingName ? (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!nameInput.trim()) return;
+                      setNameSaving(true);
+                      await updateDisplayName(nameInput.trim());
+                      setNameSaving(false);
+                      setEditingName(false);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      autoFocus
+                      className="flex-grow min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
+                    />
+                    <button
+                      type="submit"
+                      disabled={nameSaving || !nameInput.trim()}
+                      className="p-1.5 rounded-lg bg-primary text-black hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">check</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(false)}
+                      className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 truncate">
+                      {user.user_metadata?.display_name || 'Player'}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setNameInput(user.user_metadata?.display_name || '');
+                        setEditingName(true);
+                      }}
+                      className="p-1 rounded-md hover:bg-slate-100 transition-colors flex-shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-slate-400 text-[16px]">edit</span>
+                    </button>
+                  </div>
+                )}
+                <p className="text-sm text-slate-400 truncate">{user.email}</p>
+              </div>
             </div>
-            <button
-              onClick={() => setShowAuth(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px]">login</span>
-              Sign in
-            </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-slate-400 text-xl">person_off</span>
+                </div>
+                <p className="text-sm text-slate-500">Not signed in</p>
+              </div>
+              <button
+                onClick={() => setShowAuth(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">login</span>
+                Sign in
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Predictions summary */}
-      <div className="space-y-4">
+      <div className="space-y-4 mb-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">Your Predictions</h2>
           {hasPredictions && (
@@ -481,11 +520,36 @@ function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onRese
               </button>
             )}
 
-            {/* Champion */}
-            <ChampionScreen
-              groupPredictions={groupPredictions}
-              knockoutPredictions={knockoutPredictions}
-            />
+            {/* New predictions / Reset */}
+            <div className="pt-2">
+              {confirmReset ? (
+                <div className="bg-red-50 rounded-xl border border-red-200 p-4">
+                  <p className="text-sm text-red-700 font-medium mb-3">Reset all predictions? This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { onResetPredictions(); setConfirmReset(false); }}
+                      className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => setConfirmReset(false)}
+                      className="flex-1 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmReset(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                  New Predictions
+                </button>
+              )}
+            </div>
           </>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
@@ -500,46 +564,13 @@ function ProfileView({ groupPredictions, knockoutPredictions, onNavigate, onRese
             </button>
           </div>
         )}
-
-        {/* New predictions / Reset */}
-        {hasPredictions && (
-          <div className="pt-2">
-            {confirmReset ? (
-              <div className="bg-red-50 rounded-xl border border-red-200 p-4">
-                <p className="text-sm text-red-700 font-medium mb-3">Reset all predictions? This cannot be undone.</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { onResetPredictions(); setConfirmReset(false); }}
-                    className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    onClick={() => setConfirmReset(false)}
-                    className="flex-1 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmReset(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                New Predictions
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Sign out */}
       {user && (
         <button
           onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 mt-8 rounded-xl bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-colors"
         >
           <span className="material-symbols-outlined text-[20px]">logout</span>
           Sign out

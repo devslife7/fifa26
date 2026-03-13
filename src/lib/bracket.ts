@@ -212,9 +212,10 @@ function generateEmptyBracket(): KnockoutMatch[] {
 
 export function getChampion(
   groupPredictions: Record<string, MatchResult>,
-  knockoutPredictions: Record<string, KnockoutResult>
+  knockoutPredictions: Record<string, KnockoutResult>,
+  thirdPlaceTiebreaker?: string[]
 ): string | undefined {
-  const bracket = generateBracket(groupPredictions, knockoutPredictions);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const final = bracket.find(m => m.id === 'F-1');
   if (!final || !final.result) return undefined;
   return final.result === 'home' ? final.home : final.away;

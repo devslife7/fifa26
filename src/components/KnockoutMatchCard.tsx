@@ -24,13 +24,17 @@ function formatMatchTime(utcDate: string): string {
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-function TeamFlag({ flagUrl, flagEmoji }: { flagUrl?: string; flagEmoji: string }) {
+function TeamFlag({ code, flagUrl, flagEmoji }: { code?: string; flagUrl?: string; flagEmoji: string }) {
+  if (code?.startsWith('TBD') || flagEmoji === '🏳️') {
+    return null;
+  }
+
   if (flagUrl) {
     return (
       <img
         src={flagUrl}
         alt=""
-        className="w-6 h-6 object-contain"
+        className="w-7 h-5 object-cover rounded-sm"
         onError={e => {
           const img = e.currentTarget;
           img.style.display = 'none';
@@ -90,7 +94,7 @@ export default function KnockoutMatchCard({
 
     return (
       <button
-        className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${isSelected
+        className={`w-full flex items-center justify-between p-2 rounded-full transition-colors ${isSelected
             ? 'bg-[#FEFAE9] ring-1 ring-inset ring-primary/70'
             : canPredict
               ? 'hover:bg-slate-50'
@@ -100,10 +104,12 @@ export default function KnockoutMatchCard({
         disabled={!canPredict}
       >
         <div className="flex items-center gap-3">
-          <span className="flex items-center justify-center min-w-[24px]">
-            <TeamFlag flagUrl={flagUrl} flagEmoji={team.flag} />
-            {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
-          </span>
+          {(!code?.startsWith('TBD') && team.flag !== '🏳️') && (
+            <span className="flex items-center justify-center min-w-[24px]">
+              <TeamFlag code={code} flagUrl={flagUrl} flagEmoji={team.flag} />
+              {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
+            </span>
+          )}
           <span className={`font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
             {team.name}
           </span>
@@ -113,7 +119,7 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className="relative group min-w-[260px]">
+    <div className="relative group min-w-[180px]">
       <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
         <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-b border-slate-200">
           <div className="flex items-center gap-1.5 min-w-0">

@@ -82,12 +82,12 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   };
 
   return (
-    <div className="overflow-hidden relative">
-      <div className="relative flex items-stretch bg-slate-100/60 rounded-full p-1">
+    <div className="overflow-hidden relative border-b border-slate-100 last:border-0">
+      <div className="relative flex items-stretch p-1">
 
         {/* Animated Background Pill */}
         <div
-          className={`absolute top-1 bottom-1 bg-white shadow-sm rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-primary/30' : 'opacity-0'}`}
+          className={`absolute top-1 bottom-1 bg-[#FEFAE9] rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-inset ring-primary/70' : 'opacity-0'}`}
           style={getPillStyle()}
         />
 

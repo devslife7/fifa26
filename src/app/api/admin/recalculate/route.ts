@@ -27,7 +27,8 @@ export async function POST(request: Request) {
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
     .select('user_id, group_matches, knockout_matches, champion_code, profiles(display_name)')
-    .eq('is_complete', true);
+    .eq('is_complete', true)
+    .eq('is_active', true);
 
   if (predError) {
     return NextResponse.json({ error: predError.message }, { status: 500 });

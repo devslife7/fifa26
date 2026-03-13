@@ -8,6 +8,7 @@ export async function GET() {
     .from('predictions')
     .select('user_id, group_matches, knockout_matches, champion_code, completed_at, profiles(display_name)')
     .eq('is_complete', true)
+    .eq('is_active', true)
     .order('completed_at', { ascending: true });
 
   if (error) {

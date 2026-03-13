@@ -12,6 +12,7 @@ interface Props {
   compact?: boolean;
   liveMatch?: LiveMatch;
   teamFlagsByCode?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 function formatMatchDate(utcDate: string): string {
@@ -56,6 +57,7 @@ export default function KnockoutMatchCard({
   compact = false,
   liveMatch,
   teamFlagsByCode,
+  readOnly = false,
 }: Props) {
   const home = homeCode ? teamsByCode[homeCode] : null;
   const away = awayCode ? teamsByCode[awayCode] : null;
@@ -92,16 +94,18 @@ export default function KnockoutMatchCard({
 
     const flagUrl = code && teamFlagsByCode ? teamFlagsByCode[code] : undefined;
 
+    const canPredictAction = canPredict && !readOnly;
+
     return (
       <button
         className={`w-full flex items-center justify-between p-2 rounded-full transition-colors ${isSelected
             ? 'bg-[#FEFAE9] ring-1 ring-inset ring-primary/70'
-            : canPredict
+            : canPredictAction
               ? 'hover:bg-slate-50'
-              : 'opacity-80 cursor-default'
+              : `opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
           } ${compact ? 'py-1.5' : ''}`}
-        onClick={() => canPredict && onPredict(matchId, side)}
-        disabled={!canPredict}
+        onClick={() => canPredictAction && onPredict(matchId, side)}
+        disabled={!canPredictAction}
       >
         <div className="flex items-center gap-3">
           {(!code?.startsWith('TBD') && team.flag !== '🏳️') && (

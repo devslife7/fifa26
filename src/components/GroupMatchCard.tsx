@@ -11,6 +11,7 @@ interface Props {
   onPredict: (matchId: string, result: MatchResult) => void;
   liveMatch?: LiveMatch;
   teamFlagsByCode?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 
@@ -61,7 +62,7 @@ function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string
   return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
-export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode }: Props) {
+export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode, readOnly = false }: Props) {
   const home = teamsByCode[homeCode];
   const away = teamsByCode[awayCode];
 
@@ -81,6 +82,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
     return { opacity: 0 }; // Hidden when nothing is selected
   };
 
+  const handlePredict = (side: MatchResult) => {
+    if (!readOnly) onPredict(matchId, side);
+  };
+
   return (
     <div className="overflow-hidden relative border-b border-slate-100 last:border-0">
       <div className="relative flex items-stretch p-1">
@@ -94,9 +99,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
         {/* Home */}
         <button
           className={`relative z-10 flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
-            selected('home') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-500'
-          }`}
-          onClick={() => onPredict(matchId, 'home')}
+            selected('home') ? 'text-slate-900' : `${readOnly ? '' : 'hover:text-slate-800'} text-slate-500`
+          } ${readOnly ? 'cursor-default' : ''}`}
+          onClick={() => handlePredict('home')}
+          disabled={readOnly}
         >
           <div className="sm:hidden flex items-center">
             <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="normal" />
@@ -112,9 +118,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
         {/* Draw / VS */}
         <button
           className={`relative z-10 w-12 sm:w-14 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300 ${
-            selected('draw') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-400'
-          }`}
-          onClick={() => onPredict(matchId, 'draw')}
+            selected('draw') ? 'text-slate-900' : `${readOnly ? '' : 'hover:text-slate-800'} text-slate-400`
+          } ${readOnly ? 'cursor-default' : ''}`}
+          onClick={() => handlePredict('draw')}
+          disabled={readOnly}
         >
           <span className="font-bold text-sm sm:text-xs md:text-sm">TIE</span>
         </button>
@@ -122,9 +129,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
         {/* Away */}
         <button
           className={`relative z-10 flex-1 min-w-0 flex items-center justify-end gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
-            selected('away') ? 'text-slate-900' : 'hover:text-slate-800 text-slate-500'
-          }`}
-          onClick={() => onPredict(matchId, 'away')}
+            selected('away') ? 'text-slate-900' : `${readOnly ? '' : 'hover:text-slate-800'} text-slate-500`
+          } ${readOnly ? 'cursor-default' : ''}`}
+          onClick={() => handlePredict('away')}
+          disabled={readOnly}
         >
           <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-right">
             {away.name}

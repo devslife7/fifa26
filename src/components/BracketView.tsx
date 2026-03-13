@@ -13,6 +13,7 @@ interface Props {
   onPredict: (matchId: string, result: KnockoutResult) => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
@@ -26,7 +27,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, liveMatches, teamFlagsByCode }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -227,7 +228,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       {/* Horizontal Scrollable Bracket */}
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto gap-8 px-4 pt-6 pb-4 relative"
+        className="flex overflow-x-auto no-scrollbar gap-8 px-4 pt-6 pb-4 relative"
       >
         {rounds.map(round => (
           <div
@@ -249,6 +250,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                   onPredict={onPredict}
                   liveMatch={liveMatches?.[match.id]}
                   teamFlagsByCode={teamFlagsByCode}
+                  readOnly={readOnly}
                 />
               ))}
             </div>

@@ -6,7 +6,7 @@ import { MatchResult, KnockoutResult, KnockoutRound } from '@/types';
 import { generateBracket, getChampion } from '@/lib/bracket';
 import { teamsByCode } from '@/data/teams';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { loadPredictions } from '@/lib/storage';
+import { loadPredictions, getEditingPredictionId, getEditingPredictionName, setEditingPrediction } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
 
 interface Props {
@@ -88,12 +88,18 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
 
     try {
       const local = loadPredictions();
+      const predictionId = getEditingPredictionId();
+      const predictionName = getEditingPredictionName();
+
       const res = await fetch('/api/predictions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          predictionId: predictionId || undefined,
+          name: predictionName || 'My Predictions',
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
+          thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
         }),
@@ -103,6 +109,20 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
       if (!res.ok) {
         setError(data.error ?? 'Failed to save');
         return;
+      }
+
+      // Track the saved prediction ID for future updates
+      if (data.predictions?.id) {
+        setEditingPrediction(data.predictions.id, data.predictions.name);
+      }
+
+      // Auto-activate if this is the first complete prediction
+      if (data.predictions?.id && !data.predictions?.is_active) {
+        fetch('/api/predictions/active', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ predictionId: data.predictions.id }),
+        }).catch(() => {});
       }
 
       if (data.predictions?.share_token) {

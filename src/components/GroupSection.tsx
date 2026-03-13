@@ -12,9 +12,10 @@ interface Props {
   liveMatches?: Record<string, LiveMatch>;
   apiGroupMatches?: LiveMatch[];
   teamFlagsByCode?: Record<string, string>;
+  readOnly?: boolean;
 }
 
-export default function GroupSection({ group, predictions, onPredict, onStandings, liveMatches, apiGroupMatches, teamFlagsByCode }: Props) {
+export default function GroupSection({ group, predictions, onPredict, onStandings, liveMatches, apiGroupMatches, teamFlagsByCode, readOnly = false }: Props) {
   const staticMatches = getGroupMatches(group);
 
   // When API data is available, derive ordered match list from it using localMatchId to look up static data
@@ -53,6 +54,7 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
             onPredict={onPredict}
             liveMatch={liveMatches?.[match.id]}
             teamFlagsByCode={teamFlagsByCode}
+            readOnly={readOnly}
           />
         ))}
       </div>

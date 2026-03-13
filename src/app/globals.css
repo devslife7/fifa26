@@ -85,22 +85,16 @@ body {
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .font-variation-fill {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
-
-.bracket-scroll::-webkit-scrollbar {
-  height: 10px;
-  -webkit-appearance: none;
-}
-
-.bracket-scroll::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.bracket-scroll::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
-  border-radius: 10px;
 }
 
 .path-highlight {

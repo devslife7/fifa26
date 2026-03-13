@@ -10,7 +10,7 @@ interface Props {
 
 export default function StandingsTable({ standings, showQualification = true }: Props) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto no-scrollbar">
       <table className="w-full text-left text-sm">
         <thead className="bg-slate-50 text-slate-500 font-bold">
           <tr>

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LeaderboardEntry, LeaderboardPrediction, MatchResult } from '@/types';
+import { LeaderboardEntry, LeaderboardPrediction, MatchResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { useAuth } from '@/components/providers/AuthProvider';
+import UserPredictionsModal from './UserPredictionsModal';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p1', display_name: 'Mateo Hernandez', total_points: 87, champion_code: 'BR', calculated_at: '', position_change: 0 },
@@ -65,6 +66,8 @@ interface RankingViewProps {
   lastUpdated: number | null;
   liveLoading: boolean;
   onRefreshScores: () => void;
+  liveMatches?: Record<string, LiveMatch>;
+  teamFlagsByCode?: Record<string, string>;
 }
 
 function formatRelativeTime(ts: number): string {
@@ -75,13 +78,14 @@ function formatRelativeTime(ts: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function RankingView({ lastUpdated, liveLoading, onRefreshScores }: RankingViewProps) {
+export default function RankingView({ lastUpdated, liveLoading, onRefreshScores, liveMatches, teamFlagsByCode }: RankingViewProps) {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [usePlaceholder, setUsePlaceholder] = useState(false);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
 
   useEffect(() => {
     const fetchLeaderboard = fetch('/api/leaderboard')
@@ -176,9 +180,13 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
                       const knockoutCount = Object.keys(pred.knockout_matches).length;
 
                       return (
-                        <div key={pred.user_id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white">
+                        <button
+                          key={pred.user_id}
+                          onClick={() => setSelectedPrediction(pred)}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/30 transition-colors text-left cursor-pointer group"
+                        >
                           <div className="flex-grow min-w-0">
-                            <div className="font-semibold text-sm truncate">{pred.display_name}</div>
+                            <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
                             <div className="text-xs text-slate-400 truncate">
                               {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
                             </div>
@@ -192,8 +200,9 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
                               <div className="text-[11px] font-bold text-slate-500 tabular-nums">{knockoutCount}</div>
                               <div className="text-[9px] text-slate-400 uppercase">KO</div>
                             </div>
+                            <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors ml-1">chevron_right</span>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -216,6 +225,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
                 const rank = idx + 1;
                 const isCurrentUser = !usePlaceholder && user?.id === entry.user_id;
                 const medal = getMedalIcon(rank);
+                const userPrediction = predictions.find(p => p.user_id === entry.user_id);
                 
                 const renderPositionChange = (change?: number) => {
                   if (!change) return (
@@ -239,7 +249,11 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
 
                 if (isCurrentUser) {
                   return (
-                    <div key={entry.user_id} className="flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2">
+                    <button 
+                      key={entry.user_id} 
+                      onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                      className={`w-full flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'cursor-pointer hover:bg-slate-800 transition-colors' : ''}`}
+                    >
                       <div className="w-10 text-center font-black text-primary text-lg">
                         {medal ?? rank}
                       </div>
@@ -259,18 +273,22 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
                         <div className="font-black text-lg text-primary">{entry.total_points}</div>
                         <div className="text-[10px] font-bold text-white/50 uppercase">Points</div>
                       </div>
-                    </div>
+                    </button>
                   );
                 }
 
                 if (rank <= 3) {
                   return (
-                    <div key={entry.user_id} className={`flex items-center bg-white p-4 rounded-xl shadow-sm border mb-2 ${rank === 1 ? 'border-primary/20' : 'border-slate-100'}`}>
+                    <button 
+                      key={entry.user_id} 
+                      onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                      className={`w-full flex items-center bg-white p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-slate-100'} ${userPrediction ? 'cursor-pointer hover:bg-slate-50 hover:border-primary/30 transition-colors group' : ''}`}
+                    >
                       <div className="w-10 flex justify-center">
                         {medal}
                       </div>
                       <div className="ml-4 flex-grow">
-                        <div className={`font-bold ${rank === 1 ? 'text-lg' : ''} flex items-center gap-2`}>
+                        <div className={`font-bold ${rank === 1 ? 'text-lg' : ''} flex items-center gap-2 ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
                           {entry.display_name}
                           {renderPositionChange(entry.position_change)}
                         </div>
@@ -280,27 +298,37 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
                           </div>
                         )}
                       </div>
-                      <div className="text-right">
-                        <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-slate-700'}`}>
-                          {rank === 1 ? '+' : ''}{entry.total_points}
+                      <div className="text-right flex items-center gap-3">
+                        <div>
+                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-slate-700'}`}>
+                            {rank === 1 ? '+' : ''}{entry.total_points}
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase">Points</div>
                         </div>
-                        <div className="text-[10px] font-bold text-slate-400 uppercase">Points</div>
+                        {userPrediction && <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
                       </div>
-                    </div>
+                    </button>
                   );
                 }
 
                 return (
-                  <div key={entry.user_id} className="flex items-center px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors mb-1">
+                  <button 
+                    key={entry.user_id} 
+                    onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 group' : 'hover:bg-slate-100'}`}
+                  >
                     <div className="w-10 text-center text-sm font-bold text-slate-400">
                       {rank}
                     </div>
                     <div className="ml-4 flex-grow flex items-center gap-2">
-                      <span className="font-medium">{entry.display_name}</span>
+                      <span className={`font-medium ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entry.display_name}</span>
                       {renderPositionChange(entry.position_change)}
                     </div>
-                    <div className="text-right font-bold">{entry.total_points}</div>
-                  </div>
+                    <div className="text-right flex items-center gap-3">
+                      <div className="font-bold">{entry.total_points}</div>
+                      {userPrediction && <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -356,6 +384,15 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores 
           </div>
         </section>
       </div>
+
+      {selectedPrediction && (
+        <UserPredictionsModal
+          prediction={selectedPrediction}
+          onClose={() => setSelectedPrediction(null)}
+          liveMatches={liveMatches}
+          teamFlagsByCode={teamFlagsByCode}
+        />
+      )}
     </div>
   );
 }

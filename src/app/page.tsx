@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { TabId, MatchResult, KnockoutResult } from '@/types';
-import { groups } from '@/data/teams';
+import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
+import { groups, teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
-import { loadPredictions, savePredictions, clearKnockoutDownstream } from '@/lib/storage';
+import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionId, getEditingPredictionName, setEditingPrediction, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupSection from '@/components/GroupSection';
@@ -49,15 +49,15 @@ export default function Home() {
       fetch('/api/predictions')
         .then(res => res.json())
         .then(data => {
-          if (data.predictions) {
-            const serverPreds = data.predictions;
-            const hydrated = {
-              groupMatches: serverPreds.group_matches ?? {},
-              knockoutMatches: serverPreds.knockout_matches ?? {},
-            };
-            savePredictions(hydrated);
-            setGroupPredictions(hydrated.groupMatches);
-            setKnockoutPredictions(hydrated.knockoutMatches);
+          // API now returns an array of predictions
+          const predictions: SavedPrediction[] = data.predictions ?? [];
+          // Pick the active prediction, or fall back to the most recent
+          const toLoad = predictions.find(p => p.is_active) ?? predictions[0];
+          if (toLoad) {
+            loadFromServer(toLoad);
+            setGroupPredictions(toLoad.group_matches ?? {});
+            setKnockoutPredictions(toLoad.knockout_matches ?? {});
+            setThirdPlaceTiebreaker(toLoad.third_place_tiebreaker ?? []);
           }
         })
         .catch(() => {});
@@ -199,6 +199,22 @@ export default function Home() {
         activeTab === 'profile' ? 'max-w-md px-4' :
         'max-w-md px-4'
       }`}>
+        {(activeTab === 'groups' || activeTab === 'bracket') && (() => {
+          const editName = getEditingPredictionName();
+          const editId = getEditingPredictionId();
+          return editName ? (
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
+              <span className="material-symbols-outlined text-primary text-[16px]">edit_note</span>
+              <span className="text-xs font-semibold text-primary truncate">Editing: {editName}</span>
+            </div>
+          ) : editId ? null : (groupCount > 0 || knockoutCount > 0) ? (
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200">
+              <span className="material-symbols-outlined text-slate-400 text-[16px]">edit_note</span>
+              <span className="text-xs font-medium text-slate-500">New Prediction (unsaved)</span>
+            </div>
+          ) : null;
+        })()}
+
         {activeTab === 'groups' && (
           <div>
             <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} />
@@ -302,6 +318,8 @@ export default function Home() {
             lastUpdated={lastUpdated}
             liveLoading={liveLoading}
             onRefreshScores={refetch}
+            liveMatches={liveMatchesByLocalId}
+            teamFlagsByCode={teamFlagsByCode}
           />
         )}
 
@@ -311,11 +329,18 @@ export default function Home() {
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onNavigate={setActiveTab}
-            onResetPredictions={() => {
+            onLoadPrediction={(prediction: SavedPrediction) => {
+              loadFromServer(prediction);
+              setGroupPredictions(prediction.group_matches ?? {});
+              setKnockoutPredictions(prediction.knockout_matches ?? {});
+              setThirdPlaceTiebreaker(prediction.third_place_tiebreaker ?? []);
+            }}
+            onNewPrediction={() => {
+              resetAllPredictions();
               setGroupPredictions({});
               setKnockoutPredictions({});
               setThirdPlaceTiebreaker([]);
-              savePredictions({ groupMatches: {}, knockoutMatches: {}, thirdPlaceTiebreaker: [] });
+              setActiveTab('groups');
             }}
           />
         )}
@@ -340,40 +365,134 @@ export default function Home() {
   );
 }
 
-function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onNavigate, onResetPredictions }: {
+function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onNavigate, onLoadPrediction, onNewPrediction }: {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onNavigate: (tab: TabId) => void;
-  onResetPredictions: () => void;
+  onLoadPrediction: (prediction: SavedPrediction) => void;
+  onNewPrediction: () => void;
 }) {
   const { user, signOut, updateDisplayName } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
 
+  // Saved predictions state
+  const [savedPredictions, setSavedPredictions] = useState<SavedPrediction[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savingCurrent, setSavingCurrent] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [newPredName, setNewPredName] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+  const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+
+  const currentEditingId = getEditingPredictionId();
+  const currentEditingName = getEditingPredictionName();
+
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
-  const totalGroups = 72; // 12 groups × 6 matches
-  const hasPredictions = groupCount > 0 || knockoutCount > 0;
-
-  // Per-group completion
-  const groupLetters = ['A','B','C','D','E','F','G','H','I','J','K','L'] as const;
-  const groupCompletion = groupLetters.map(g => {
-    const count = Object.keys(groupPredictions).filter(k => k.startsWith(`${g}-`)).length;
-    return { group: g, count, total: 6, complete: count === 6 };
-  });
-
+  const totalGroups = 72;
   const totalKnockout = 48;
-  const totalPredictions = totalGroups + totalKnockout;
-  const completedPredictions = groupCount + knockoutCount;
-  const completionPercent = totalPredictions > 0 ? Math.round((completedPredictions / totalPredictions) * 100) : 0;
-  const groupsComplete = groupCompletion.filter(g => g.complete).length;
+  const hasPredictions = groupCount > 0 || knockoutCount > 0;
 
   const displayName = user?.user_metadata?.display_name || 'Player';
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+
+  // Fetch saved predictions
+  const fetchSaved = useCallback(async () => {
+    if (!user) return;
+    setLoadingSaved(true);
+    try {
+      const res = await fetch('/api/predictions');
+      const data = await res.json();
+      setSavedPredictions(data.predictions ?? []);
+    } catch { /* ignore */ }
+    setLoadingSaved(false);
+  }, [user]);
+
+  useEffect(() => { fetchSaved(); }, [fetchSaved]);
+
+  // Save current working draft
+  const handleSaveCurrent = async (name?: string) => {
+    if (!user) { setShowAuth(true); return; }
+    setSavingCurrent(true);
+    try {
+      const local = loadPredictions();
+      const predictionId = currentEditingId;
+      const res = await fetch('/api/predictions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          predictionId: predictionId || undefined,
+          name: name || currentEditingName || 'My Predictions',
+          groupMatches: local.groupMatches,
+          knockoutMatches: local.knockoutMatches,
+          thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
+          championCode: null,
+          isComplete: false,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.predictions?.id) {
+        setEditingPrediction(data.predictions.id, data.predictions.name);
+        await fetchSaved();
+      }
+    } catch { /* ignore */ }
+    setSavingCurrent(false);
+    setShowNameModal(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/predictions/manage/${id}`, { method: 'DELETE' });
+      if (currentEditingId === id) {
+        setEditingPrediction(null);
+      }
+      await fetchSaved();
+    } catch { /* ignore */ }
+    setDeletingId(null);
+  };
+
+  const handleSetActive = async (id: string) => {
+    try {
+      await fetch('/api/predictions/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ predictionId: id }),
+      });
+      await fetchSaved();
+    } catch { /* ignore */ }
+    setActionMenuId(null);
+  };
+
+  const handleRename = async (id: string) => {
+    if (!renameInput.trim()) return;
+    try {
+      await fetch(`/api/predictions/manage/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: renameInput.trim() }),
+      });
+      if (currentEditingId === id) {
+        setEditingPrediction(id, renameInput.trim());
+      }
+      await fetchSaved();
+    } catch { /* ignore */ }
+    setRenamingId(null);
+  };
+
+  // Helper: compute stats for a saved prediction
+  function predictionStats(p: SavedPrediction) {
+    const gCount = Object.keys(p.group_matches ?? {}).length;
+    const kCount = Object.keys(p.knockout_matches ?? {}).length;
+    const pct = Math.round(((gCount + kCount) / (totalGroups + totalKnockout)) * 100);
+    const champion = p.champion_code ? teamsByCode[p.champion_code] : null;
+    return { gCount, kCount, pct, champion };
+  }
 
   return (
     <div className="pt-4 pb-12 space-y-6">
@@ -458,27 +577,54 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
             </button>
           </div>
         )}
+      </div>
 
-        {/* Completion bar inside hero */}
-        {hasPredictions && (
-          <div className="relative mt-5 pt-4 border-t border-white/10">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Progress</span>
-              <span className="text-xs font-bold text-primary">{completionPercent}%</span>
+      {/* Currently editing indicator + Save button */}
+      {hasPredictions && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-primary text-lg">edit_note</span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900 truncate">
+                  {currentEditingName || 'New Prediction'}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {groupCount}/{totalGroups} groups · {knockoutCount}/{totalKnockout} knockout
+                  {!currentEditingId && ' · unsaved'}
+                </p>
+              </div>
             </div>
-            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-500"
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-[11px] text-white/30">{groupCount}/{totalGroups} groups</span>
-              <span className="text-[11px] text-white/30">{knockoutCount}/{totalKnockout} knockout</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => onNavigate('groups')}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <span className="material-symbols-outlined text-slate-400 text-[20px]">arrow_forward</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (currentEditingId) {
+                    handleSaveCurrent();
+                  } else {
+                    setNewPredName(`Prediction ${savedPredictions.length + 1}`);
+                    setShowNameModal(true);
+                  }
+                }}
+                disabled={savingCurrent || !user}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {savingCurrent ? 'hourglass_empty' : 'save'}
+                </span>
+                {savingCurrent ? 'Saving...' : currentEditingId ? 'Save' : 'Save As...'}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Champion Section */}
       <ChampionScreen
@@ -487,106 +633,224 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
         thirdPlaceTiebreaker={thirdPlaceTiebreaker}
       />
 
-      {/* Predictions Breakdown */}
-      {hasPredictions ? (
+      {/* My Predictions Section */}
+      {user && (
         <div className="space-y-3">
-          {/* Group Stage Card */}
-          <button
-            onClick={() => onNavigate('groups')}
-            className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-5 text-left hover:border-primary/30 transition-colors group"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-xl">trophy</span>
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-slate-900">Group Stage</span>
-                  <p className="text-[11px] text-slate-400">{groupsComplete}/12 groups complete</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">arrow_forward</span>
-            </div>
-            <div className="grid grid-cols-6 gap-x-2 gap-y-3">
-              {groupCompletion.map(g => (
-                <div key={g.group} className="flex flex-col items-center gap-1.5">
-                  <div className="relative w-10 h-10 rounded-xl flex items-center justify-center">
-                    {/* Background ring */}
-                    <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-                      <circle cx="20" cy="20" r="16" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-                      <circle
-                        cx="20" cy="20" r="16" fill="none"
-                        stroke={g.complete ? '#f9d406' : g.count > 0 ? '#f59e0b' : 'transparent'}
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray={`${(g.count / g.total) * 100.5} 100.5`}
-                      />
-                    </svg>
-                    <span className={`relative text-xs font-bold ${
-                      g.complete ? 'text-primary' : g.count > 0 ? 'text-amber-500' : 'text-slate-400'
-                    }`}>{g.group}</span>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold">
+              My Predictions
+              {savedPredictions.length > 0 && (
+                <span className="text-slate-400 font-normal text-sm ml-2">({savedPredictions.length}/10)</span>
+              )}
+            </h2>
+            <button
+              onClick={onNewPrediction}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-semibold text-xs hover:bg-slate-200 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              New
+            </button>
+          </div>
+
+          {loadingSaved ? (
+            <div className="space-y-3">
+              {[1, 2].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-slate-100 rounded w-1/3" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </button>
+          ) : savedPredictions.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
+              <span className="material-symbols-outlined text-slate-300 text-3xl mb-2 block">folder_open</span>
+              <p className="text-sm text-slate-400">No saved predictions yet</p>
+              {hasPredictions && (
+                <p className="text-xs text-slate-400 mt-1">Use the save button above to save your current predictions</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {savedPredictions.map(p => {
+                const stats = predictionStats(p);
+                const isCurrentlyEditing = currentEditingId === p.id;
 
-          {/* Knockout Card */}
-          {knockoutCount > 0 && (
-            <button
-              onClick={() => onNavigate('bracket')}
-              className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-5 text-left hover:border-primary/30 transition-colors group"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-emerald-500 text-xl">account_tree</span>
+                return (
+                  <div
+                    key={p.id}
+                    className={`bg-white rounded-2xl shadow-sm border p-4 transition-colors ${
+                      isCurrentlyEditing ? 'border-primary/40 ring-1 ring-primary/20' : 'border-slate-100'
+                    }`}
+                  >
+                    {/* Delete confirmation */}
+                    {deletingId === p.id ? (
+                      <div>
+                        <p className="text-sm text-red-700 font-medium mb-3">Delete &ldquo;{p.name}&rdquo;?</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDelete(p.id)}
+                            className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : renamingId === p.id ? (
+                      <form
+                        onSubmit={(e) => { e.preventDefault(); handleRename(p.id); }}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          type="text"
+                          value={renameInput}
+                          onChange={e => setRenameInput(e.target.value)}
+                          autoFocus
+                          className="flex-grow min-w-0 px-3 py-2 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
+                        />
+                        <button type="submit" className="p-2 rounded-lg bg-primary text-black hover:bg-primary/90 transition-colors">
+                          <span className="material-symbols-outlined text-[18px]">check</span>
+                        </button>
+                        <button type="button" onClick={() => setRenamingId(null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
+                          <span className="material-symbols-outlined text-slate-500 text-[18px]">close</span>
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        {/* Champion flag or progress ring */}
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 relative">
+                          {stats.champion ? (
+                            <span className="text-2xl">{stats.champion.flag}</span>
+                          ) : (
+                            <>
+                              <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 40 40">
+                                <circle cx="20" cy="20" r="16" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                                <circle
+                                  cx="20" cy="20" r="16" fill="none"
+                                  stroke={stats.pct > 0 ? '#f9d406' : 'transparent'}
+                                  strokeWidth="3" strokeLinecap="round"
+                                  strokeDasharray={`${(stats.pct / 100) * 100.5} 100.5`}
+                                />
+                              </svg>
+                              <span className="relative text-[10px] font-bold text-slate-400">{stats.pct}%</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-900 truncate">{p.name}</p>
+                            {p.is_active && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold flex-shrink-0">
+                                <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
+                                Active
+                              </span>
+                            )}
+                            {isCurrentlyEditing && (
+                              <span className="inline-flex px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-500 text-[10px] font-bold flex-shrink-0">
+                                Editing
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {p.is_complete ? (
+                              <span className="text-emerald-500 font-medium">Complete</span>
+                            ) : (
+                              <span className="text-amber-500 font-medium">In Progress</span>
+                            )}
+                            {' · '}{stats.gCount}/{totalGroups} groups · {stats.kCount}/{totalKnockout} knockout
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {!isCurrentlyEditing && (
+                            <button
+                              onClick={() => { onLoadPrediction(p); onNavigate('groups'); }}
+                              className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                              title="Edit this prediction"
+                            >
+                              <span className="material-symbols-outlined text-slate-400 text-[20px]">edit</span>
+                            </button>
+                          )}
+                          <div className="relative">
+                            <button
+                              onClick={() => setActionMenuId(actionMenuId === p.id ? null : p.id)}
+                              className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-slate-400 text-[20px]">more_vert</span>
+                            </button>
+                            {actionMenuId === p.id && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActionMenuId(null)} />
+                                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-slate-200 py-1 w-44">
+                                  {p.is_complete && !p.is_active && (
+                                    <button
+                                      onClick={() => handleSetActive(p.id)}
+                                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px] text-primary">star</span>
+                                      Set Active
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setRenameInput(p.name);
+                                      setRenamingId(p.id);
+                                      setActionMenuId(null);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">drive_file_rename_outline</span>
+                                    Rename
+                                  </button>
+                                  {p.share_token && (
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(`${window.location.origin}/shared/${p.share_token}`);
+                                        setActionMenuId(null);
+                                      }}
+                                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">link</span>
+                                      Copy Link
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => { setDeletingId(p.id); setActionMenuId(null); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                    Delete
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-sm font-bold text-slate-900">Knockout Bracket</span>
-                    <p className="text-[11px] text-slate-400">{knockoutCount}/{totalKnockout} matches predicted</p>
-                  </div>
-                </div>
-                <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-emerald-500 transition-colors">arrow_forward</span>
-              </div>
-            </button>
+                );
+              })}
+            </div>
           )}
-
-          {/* Reset */}
-          <div className="pt-1">
-            {confirmReset ? (
-              <div className="bg-red-50 rounded-2xl border border-red-200 p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-red-500 text-xl">warning</span>
-                  <p className="text-sm text-red-700 font-semibold">Reset all predictions? This cannot be undone.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { onResetPredictions(); setConfirmReset(false); }}
-                    className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
-                  >
-                    Reset Everything
-                  </button>
-                  <button
-                    onClick={() => setConfirmReset(false)}
-                    className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
-                  >
-                    Keep
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmReset(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-slate-400 font-medium text-sm hover:bg-slate-100 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                Start Over
-              </button>
-            )}
-          </div>
         </div>
-      ) : (
+      )}
+
+      {/* No predictions at all - CTA */}
+      {!hasPredictions && (!user || savedPredictions.length === 0) && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
@@ -614,10 +878,45 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
         </button>
       )}
 
+      {/* Name modal for new prediction */}
+      {showNameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowNameModal(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Name your prediction</h3>
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveCurrent(newPredName.trim() || undefined); }}>
+              <input
+                type="text"
+                value={newPredName}
+                onChange={e => setNewPredName(e.target.value)}
+                autoFocus
+                placeholder="e.g. Realistic, Bold Picks..."
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold mb-4"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={savingCurrent}
+                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {savingCurrent ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNameModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showAuth && (
         <AuthModal
           onClose={() => setShowAuth(false)}
-          onAuthenticated={() => setShowAuth(false)}
+          onAuthenticated={() => { setShowAuth(false); fetchSaved(); }}
         />
       )}
     </div>

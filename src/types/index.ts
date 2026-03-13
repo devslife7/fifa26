@@ -77,6 +77,20 @@ export interface UserScore {
   champion_correct: boolean;
 }
 
+export interface SavedPrediction {
+  id: string;
+  name: string;
+  is_active: boolean;
+  is_complete: boolean;
+  champion_code: string | null;
+  share_token: string | null;
+  group_matches: Record<string, MatchResult>;
+  knockout_matches: Record<string, KnockoutResult>;
+  third_place_tiebreaker: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LeaderboardPrediction {
   user_id: string;
   display_name: string;

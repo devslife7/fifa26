@@ -38,7 +38,7 @@ function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string
     return null;
   }
 
-  const imgClass = size === 'small' ? "w-5 h-3.5 sm:w-6 sm:h-4 object-cover" : "w-7 h-5 sm:w-9 sm:h-6 object-cover";
+  const imgClass = size === 'small' ? "w-5 h-3.5 sm:w-6 sm:h-4 object-cover rounded-sm" : "w-7 h-5 sm:w-9 sm:h-6 object-cover rounded-sm";
   const emojiClass = size === 'small' ? "flex-shrink-0 text-lg sm:text-xl leading-none" : "flex-shrink-0 text-2xl sm:text-3xl leading-none";
 
   if (flagUrl) {
@@ -82,15 +82,8 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   };
 
   return (
-    <div className="overflow-hidden py-1.5 relative">
-      {/* Match Date/Time at top left */}
-      {(liveMatch?.utcDate || true) && (
-        <div className="absolute top-0 left-4 text-[10px] sm:text-[11px] font-medium text-slate-500 z-10 bg-slate-100/80 px-2.5 py-0.5 rounded-b-md">
-          {liveMatch?.utcDate ? formatMatchDate(liveMatch.utcDate) : 'Match Date'}
-        </div>
-      )}
-
-      <div className="relative flex items-stretch bg-slate-100/60 rounded-full p-1 mt-3">
+    <div className="overflow-hidden py-0.5 relative">
+      <div className="relative flex items-stretch bg-slate-100/60 rounded-full p-1">
 
         {/* Animated Background Pill */}
         <div

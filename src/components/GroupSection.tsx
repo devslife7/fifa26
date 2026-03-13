@@ -42,7 +42,7 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
         )}
       </div>
 
-      <div className="flex flex-col bg-transparent">
+      <div className="flex flex-col gap-2">
         {displayMatches.map(match => (
           <GroupMatchCard
             key={match.id}

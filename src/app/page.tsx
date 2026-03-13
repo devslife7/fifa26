@@ -202,7 +202,7 @@ export default function Home() {
       {liveError && (
         <LiveBanner message={liveError} />
       )}
-      <main className={`mx-auto pb-8 ${
+      <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' ? 'max-w-[1700px] px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-4' :
@@ -252,13 +252,14 @@ export default function Home() {
               predictions={groupPredictions}
               tiebreakerPicks={thirdPlaceTiebreaker}
               onTiebreakerChange={handleTiebreakerChange}
+              teamFlagsByCode={teamFlagsByCode}
             />
 
-            <div className="mt-8 mb-4">
+            <div className="mt-8">
               <button
                 onClick={() => canContinueToBracket && setActiveTab('bracket')}
                 disabled={!canContinueToBracket}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-black text-white font-bold text-sm hover:bg-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Continue to Bracket
                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>

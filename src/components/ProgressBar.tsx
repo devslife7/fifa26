@@ -15,7 +15,7 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
 
   return (
     <div className="sticky top-0 z-30">
-      <div className="backdrop-blur-xl bg-background-light/80 pt-5 pb-4">
+      <div className="bg-background-light pt-5 pb-4">
         {/* Hero row */}
         <div className="flex items-end justify-between mb-3">
           <div className="flex items-baseline gap-1">

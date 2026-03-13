@@ -8,9 +8,10 @@ interface Props {
   predictions: Record<string, MatchResult>;
   tiebreakerPicks: string[];
   onTiebreakerChange: (picks: string[]) => void;
+  teamFlagsByCode?: Record<string, string>;
 }
 
-export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange }: Props) {
+export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
   const ranking = getThirdPlaceRanking(predictions);
   const tieInfo = detectThirdPlaceTie(predictions);
   const hasTie = tieInfo.slotsToFill > 0;
@@ -44,43 +45,45 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
     : ranking;
 
   return (
-    <div className="mt-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-black border-l-4 border-primary pl-3">Best Third-Place Teams</h2>
-        <p className="text-slate-400 text-xs mt-2 pl-4">
-          Top 8 of 12 third-place teams advance to the Round of 32
-        </p>
+    <div className="mt-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Third-Place Teams</h2>
+          <p className="text-slate-500 text-sm mt-1">
+            Top 8 of 12 third-place teams advance to the Round of 32
+          </p>
+        </div>
       </div>
 
       {ranking.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-sm">
-          <div className="text-4xl mb-4">📋</div>
-          <p className="text-slate-400 text-sm">
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+          <div className="text-4xl mb-4 opacity-50">📋</div>
+          <p className="text-slate-500 font-medium">
             Complete group stage predictions to see the third-place ranking
           </p>
         </div>
       ) : (
         <>
           {hasTie && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-center">
-              <p className="text-sm font-bold text-amber-700">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-4 text-center shadow-sm">
+              <p className="text-sm font-bold text-white">
                 Tiebreaker: Select {tieInfo.slotsToFill} of {tieInfo.tied.length} teams
               </p>
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 These teams are tied on {tieInfo.tied[0]?.standing.points} points. Pick which ones advance.
               </p>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 font-bold">
+              <thead className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-100">
                 <tr>
-                  <th className="text-center py-3 px-3 w-10">#</th>
-                  <th className="text-left py-3 px-2">Team</th>
-                  <th className="text-center py-3 px-3">Group</th>
-                  <th className="text-center py-3 px-3 w-14">Pts</th>
-                  <th className="text-center py-3 px-3">Status</th>
+                  <th className="text-center py-4 px-3 w-12">#</th>
+                  <th className="text-left py-4 px-2">Team</th>
+                  <th className="text-center py-4 px-3 w-20">Group</th>
+                  <th className="text-center py-4 px-3 w-16">Pts</th>
+                  <th className="text-center py-4 px-4 w-32">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -89,51 +92,73 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                   if (!team) return null;
                   const status = getStatus(entry);
                   const isSelected = tiebreakerPicks.includes(entry.team);
+                  const isTied = status === 'tied';
+                  const isAdvances = status === 'advances';
+                  const isEliminated = status === 'eliminated';
 
                   return (
                     <tr
                       key={entry.team}
-                      className={
-                        status === 'advances' ? 'bg-primary/5' :
-                        status === 'tied' && isSelected ? 'bg-primary/5' :
-                        status === 'tied' ? 'bg-amber-50/50' :
-                        ''
-                      }
-                      onClick={status === 'tied' ? () => handleToggle(entry.team) : undefined}
-                      style={status === 'tied' ? { cursor: 'pointer' } : undefined}
+                      className={`
+                        transition-all duration-200 relative
+                        ${isAdvances ? 'bg-emerald-50/30' : ''}
+                        ${isTied && isSelected ? 'bg-slate-100/80 shadow-[inset_4px_0_0_0_#0f172a]' : ''}
+                        ${isTied && !isSelected ? 'hover:bg-slate-50 cursor-pointer' : ''}
+                        ${isEliminated ? 'opacity-75' : ''}
+                      `}
+                      onClick={isTied ? () => handleToggle(entry.team) : undefined}
                     >
-                      <td className="py-3 px-3 text-center font-bold text-slate-400">{i + 1}</td>
-                      <td className="py-3 px-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{team.flag}</span>
-                          <span className="font-semibold">{team.name}</span>
+                      <td className={`py-4 px-3 text-center font-bold ${isTied && isSelected ? 'text-slate-900' : 'text-slate-400'}`}>{i + 1}</td>
+                      <td className="py-4 px-2">
+                        <div className="flex items-center gap-3">
+                          {teamFlagsByCode?.[entry.team] ? (
+                            <span className="flex-shrink-0 inline-flex">
+                              <img
+                                src={teamFlagsByCode[entry.team]}
+                                alt=""
+                                className="w-7 h-5 object-cover rounded-sm"
+                                onError={e => {
+                                  e.currentTarget.style.display = 'none';
+                                  (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
+                                }}
+                              />
+                              <span className="text-xl leading-none" hidden>{team.flag}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xl leading-none">{team.flag}</span>
+                          )}
+                          <span className={`font-bold ${isEliminated ? 'text-slate-500' : 'text-slate-900'}`}>
+                            {team.name}
+                          </span>
                         </div>
                       </td>
-                      <td className="text-center py-3 px-3">
-                        <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-bold text-primary">
+                      <td className="text-center py-4 px-3">
+                        <span className="bg-slate-100 px-2.5 py-1 rounded-md text-xs font-bold text-slate-600">
                           {entry.group}
                         </span>
                       </td>
-                      <td className="text-center py-3 px-3 font-black">
+                      <td className="text-center py-4 px-3 font-black text-slate-900 text-base">
                         {entry.standing.points}
                       </td>
-                      <td className="text-center py-3 px-3">
-                        {status === 'advances' && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                      <td className="text-center py-4 px-4">
+                        {isAdvances && (
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 w-full">
                             Advances
                           </span>
                         )}
-                        {status === 'tied' && (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-bold transition-colors ${
-                            isSelected
-                              ? 'bg-primary/20 text-primary'
-                              : 'bg-slate-100 text-slate-500'
-                          }`}>
-                            {isSelected ? 'Selected' : 'Tap to pick'}
-                          </span>
+                        {isTied && (
+                          <button 
+                            className={`w-full text-xs px-3 py-1.5 rounded-full font-bold transition-all duration-200 border ${
+                              isSelected
+                                ? 'bg-black text-white border-black shadow-md scale-105'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-black hover:text-black'
+                            }`}
+                          >
+                            {isSelected ? '✓ Selected' : 'Tap to pick'}
+                          </button>
                         )}
-                        {status === 'eliminated' && (
-                          <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                        {isEliminated && (
+                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-500 w-full">
                             Eliminated
                           </span>
                         )}
@@ -148,9 +173,13 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
       )}
 
       {ranking.length > 0 && ranking.length < 12 && (
-        <p className="text-center text-slate-400 text-[10px] mt-4 uppercase tracking-widest font-bold">
-          {ranking.length}/12 groups completed — finish all groups to see the full ranking
-        </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-slate-400">
+          <div className="h-px bg-slate-200 flex-1 max-w-[100px]"></div>
+          <p className="text-[10px] uppercase tracking-widest font-bold">
+            {ranking.length}/12 groups completed
+          </p>
+          <div className="h-px bg-slate-200 flex-1 max-w-[100px]"></div>
+        </div>
       )}
     </div>
   );

@@ -366,213 +366,250 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
     return { group: g, count, total: 6, complete: count === 6 };
   });
 
+  const totalKnockout = 48;
+  const totalPredictions = totalGroups + totalKnockout;
+  const completedPredictions = groupCount + knockoutCount;
+  const completionPercent = totalPredictions > 0 ? Math.round((completedPredictions / totalPredictions) * 100) : 0;
+  const groupsComplete = groupCompletion.filter(g => g.complete).length;
+
+  const displayName = user?.user_metadata?.display_name || 'Player';
+  const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+
   return (
-    <div className="pt-6 pb-12">
-      <header className="mb-2">
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-      </header>
+    <div className="pt-4 pb-12 space-y-6">
+      {/* User Hero Card */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-10 translate-x-10" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl translate-y-8 -translate-x-8" />
+
+        {user ? (
+          <div className="relative flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-primary font-black text-xl">{initials}</span>
+            </div>
+            <div className="min-w-0 flex-grow">
+              {editingName ? (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!nameInput.trim()) return;
+                    setNameSaving(true);
+                    await updateDisplayName(nameInput.trim());
+                    setNameSaving(false);
+                    setEditingName(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={e => setNameInput(e.target.value)}
+                    autoFocus
+                    className="flex-grow min-w-0 px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 focus:border-primary focus:ring-2 focus:ring-primary/30 outline-none text-sm font-bold text-white placeholder-white/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={nameSaving || !nameInput.trim()}
+                    className="p-1.5 rounded-lg bg-primary text-black hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">check</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingName(false)}
+                    className="p-1.5 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black truncate">{displayName}</h1>
+                  <button
+                    onClick={() => {
+                      setNameInput(user.user_metadata?.display_name || '');
+                      setEditingName(true);
+                    }}
+                    className="p-1 rounded-md hover:bg-white/10 transition-colors flex-shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-white/40 text-[16px]">edit</span>
+                  </button>
+                </div>
+              )}
+              <p className="text-sm text-white/40 truncate mt-0.5">{user.email}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-white/30 text-3xl">person</span>
+              </div>
+              <div>
+                <h1 className="text-xl font-black">Guest</h1>
+                <p className="text-sm text-white/40">Sign in to save predictions</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAuth(true)}
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
+            >
+              Sign in
+            </button>
+          </div>
+        )}
+
+        {/* Completion bar inside hero */}
+        {hasPredictions && (
+          <div className="relative mt-5 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Progress</span>
+              <span className="text-xs font-bold text-primary">{completionPercent}%</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary/80 to-primary rounded-full transition-all duration-500"
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-[11px] text-white/30">{groupCount}/{totalGroups} groups</span>
+              <span className="text-[11px] text-white/30">{knockoutCount}/{totalKnockout} knockout</span>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Champion Section */}
-      <div className="mb-8">
-        <ChampionScreen
-          groupPredictions={groupPredictions}
-          knockoutPredictions={knockoutPredictions}
-          thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-        />
-      </div>
+      <ChampionScreen
+        groupPredictions={groupPredictions}
+        knockoutPredictions={knockoutPredictions}
+        thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+      />
 
-      {/* Auth section */}
-      <div className="mb-8">
-        <h2 className="text-lg font-bold mb-4">Account</h2>
-        {user ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-2xl font-variation-fill">person</span>
-              </div>
-              <div className="min-w-0 flex-grow">
-                {editingName ? (
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      if (!nameInput.trim()) return;
-                      setNameSaving(true);
-                      await updateDisplayName(nameInput.trim());
-                      setNameSaving(false);
-                      setEditingName(false);
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={e => setNameInput(e.target.value)}
-                      autoFocus
-                      className="flex-grow min-w-0 px-3 py-1.5 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
-                    />
-                    <button
-                      type="submit"
-                      disabled={nameSaving || !nameInput.trim()}
-                      className="p-1.5 rounded-lg bg-primary text-black hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">check</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingName(false)}
-                      className="p-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                  </form>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-slate-900 truncate">
-                      {user.user_metadata?.display_name || 'Player'}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setNameInput(user.user_metadata?.display_name || '');
-                        setEditingName(true);
-                      }}
-                      className="p-1 rounded-md hover:bg-slate-100 transition-colors flex-shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-slate-400 text-[16px]">edit</span>
-                    </button>
-                  </div>
-                )}
-                <p className="text-sm text-slate-400 truncate">{user.email}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
-            <div className="flex items-center justify-between">
+      {/* Predictions Breakdown */}
+      {hasPredictions ? (
+        <div className="space-y-3">
+          {/* Group Stage Card */}
+          <button
+            onClick={() => onNavigate('groups')}
+            className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-5 text-left hover:border-primary/30 transition-colors group"
+          >
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-slate-400 text-xl">person_off</span>
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-xl">trophy</span>
                 </div>
-                <p className="text-sm text-slate-500">Not signed in</p>
+                <div>
+                  <span className="text-sm font-bold text-slate-900">Group Stage</span>
+                  <p className="text-[11px] text-slate-400">{groupsComplete}/12 groups complete</p>
+                </div>
               </div>
-              <button
-                onClick={() => setShowAuth(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary/90 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">login</span>
-                Sign in
-              </button>
+              <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">arrow_forward</span>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Predictions summary */}
-      <div className="space-y-4 mb-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Your Predictions</h2>
-          {hasPredictions && (
-            <span className="text-[11px] text-slate-400">{groupCount}/{totalGroups} groups · {knockoutCount} knockout</span>
-          )}
-        </div>
-
-        {hasPredictions ? (
-          <>
-            {/* Group predictions grid */}
-            <button
-              onClick={() => onNavigate('groups')}
-              className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-left hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-slate-700">Group Stage</span>
-                <span className="material-symbols-outlined text-slate-400 text-[18px]">arrow_forward</span>
-              </div>
-              <div className="grid grid-cols-6 gap-2">
-                {groupCompletion.map(g => (
-                  <div key={g.group} className="flex flex-col items-center gap-1">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold ${
-                      g.complete
-                        ? 'bg-primary/15 text-primary'
-                        : g.count > 0
-                          ? 'bg-amber-50 text-amber-500'
-                          : 'bg-slate-100 text-slate-400'
-                    }`}>
-                      {g.group}
-                    </div>
-                    <span className="text-[9px] text-slate-400">{g.count}/{g.total}</span>
+            <div className="grid grid-cols-6 gap-x-2 gap-y-3">
+              {groupCompletion.map(g => (
+                <div key={g.group} className="flex flex-col items-center gap-1.5">
+                  <div className="relative w-10 h-10 rounded-xl flex items-center justify-center">
+                    {/* Background ring */}
+                    <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 40 40">
+                      <circle cx="20" cy="20" r="16" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                      <circle
+                        cx="20" cy="20" r="16" fill="none"
+                        stroke={g.complete ? '#f9d406' : g.count > 0 ? '#f59e0b' : 'transparent'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={`${(g.count / g.total) * 100.5} 100.5`}
+                      />
+                    </svg>
+                    <span className={`relative text-xs font-bold ${
+                      g.complete ? 'text-primary' : g.count > 0 ? 'text-amber-500' : 'text-slate-400'
+                    }`}>{g.group}</span>
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+          </button>
+
+          {/* Knockout Card */}
+          {knockoutCount > 0 && (
+            <button
+              onClick={() => onNavigate('bracket')}
+              className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-5 text-left hover:border-primary/30 transition-colors group"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-emerald-500 text-xl">account_tree</span>
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-slate-900">Knockout Bracket</span>
+                    <p className="text-[11px] text-slate-400">{knockoutCount}/{totalKnockout} matches predicted</p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-emerald-500 transition-colors">arrow_forward</span>
               </div>
             </button>
+          )}
 
-            {/* Knockout predictions */}
-            {knockoutCount > 0 && (
-              <button
-                onClick={() => onNavigate('bracket')}
-                className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-4 text-left hover:border-primary/30 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-semibold text-slate-700">Knockout Bracket</span>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{knockoutCount} matches predicted</p>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-400 text-[18px]">arrow_forward</span>
+          {/* Reset */}
+          <div className="pt-1">
+            {confirmReset ? (
+              <div className="bg-red-50 rounded-2xl border border-red-200 p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="material-symbols-outlined text-red-500 text-xl">warning</span>
+                  <p className="text-sm text-red-700 font-semibold">Reset all predictions? This cannot be undone.</p>
                 </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { onResetPredictions(); setConfirmReset(false); }}
+                    className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
+                  >
+                    Reset Everything
+                  </button>
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                  >
+                    Keep
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-slate-400 font-medium text-sm hover:bg-slate-100 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                Start Over
               </button>
             )}
-
-            {/* New predictions / Reset */}
-            <div className="pt-2">
-              {confirmReset ? (
-                <div className="bg-red-50 rounded-xl border border-red-200 p-4">
-                  <p className="text-sm text-red-700 font-medium mb-3">Reset all predictions? This cannot be undone.</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { onResetPredictions(); setConfirmReset(false); }}
-                      className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      onClick={() => setConfirmReset(false)}
-                      className="flex-1 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmReset(true)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-slate-200 text-slate-500 font-semibold text-sm hover:bg-slate-50 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[18px]">restart_alt</span>
-                  New Predictions
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
-            <span className="material-symbols-outlined text-slate-300 text-4xl mb-3 block">sports_soccer</span>
-            <p className="text-sm text-slate-500 mb-4">No predictions yet. Start by picking group match winners.</p>
-            <button
-              onClick={() => onNavigate('groups')}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px]">play_arrow</span>
-              Start Predicting
-            </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 mb-1">No predictions yet</h3>
+          <p className="text-sm text-slate-400 mb-5">Start by picking group match winners</p>
+          <button
+            onClick={() => onNavigate('groups')}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
+          >
+            <span className="material-symbols-outlined text-[20px]">play_arrow</span>
+            Start Predicting
+          </button>
+        </div>
+      )}
 
       {/* Sign out */}
       {user && (
         <button
           onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-red-400 font-medium text-sm hover:bg-red-50 transition-colors"
         >
-          <span className="material-symbols-outlined text-[20px]">logout</span>
+          <span className="material-symbols-outlined text-[18px]">logout</span>
           Sign out
         </button>
       )}

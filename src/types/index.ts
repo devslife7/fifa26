@@ -67,6 +67,7 @@ export interface LeaderboardEntry {
   total_points: number;
   champion_code: string | null;
   calculated_at: string;
+  position_change?: number;
 }
 
 export interface UserScore {

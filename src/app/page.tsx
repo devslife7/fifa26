@@ -88,25 +88,6 @@ export default function Home() {
     savePredictions(predictions);
   }, []);
 
-  const handleRandomizeBracket = useCallback(() => {
-    const outcomes: KnockoutResult[] = ['home', 'away'];
-    const matchIds = [
-      ...Array.from({ length: 16 }, (_, i) => `R32-${i + 1}`),
-      ...Array.from({ length: 8 }, (_, i) => `R16-${i + 1}`),
-      ...Array.from({ length: 4 }, (_, i) => `QF-${i + 1}`),
-      `SF-1`, `SF-2`,
-      `3RD-1`, `F-1`,
-    ];
-    const randomized: Record<string, KnockoutResult> = {};
-    matchIds.forEach(id => {
-      randomized[id] = outcomes[Math.floor(Math.random() * 2)];
-    });
-    const predictions = loadPredictions();
-    predictions.knockoutMatches = randomized;
-    savePredictions(predictions);
-    setKnockoutPredictions(randomized);
-  }, []);
-
   const handleRandomizeGroups = useCallback(() => {
     const outcomes: MatchResult[] = ['home', 'draw', 'away'];
     const randomized: Record<string, MatchResult> = {};
@@ -257,7 +238,12 @@ export default function Home() {
 
             <div className="mt-8">
               <button
-                onClick={() => canContinueToBracket && setActiveTab('bracket')}
+                onClick={() => {
+                  if (canContinueToBracket) {
+                    setActiveTab('bracket');
+                    setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0);
+                  }
+                }}
                 disabled={!canContinueToBracket}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-black text-white font-bold text-sm hover:bg-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -281,7 +267,6 @@ export default function Home() {
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onPredict={handleKnockoutPredict}
-            onRandomize={handleRandomizeBracket}
             liveMatches={liveMatchesByLocalId}
             teamFlagsByCode={teamFlagsByCode}
           />
@@ -313,7 +298,7 @@ export default function Home() {
       {/* Bottom Nav */}
       <BottomNav
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0); }}
         groupsComplete={canContinueToBracket}
       />
 

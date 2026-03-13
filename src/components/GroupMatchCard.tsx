@@ -82,7 +82,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   };
 
   return (
-    <div className="overflow-hidden py-0.5 relative">
+    <div className="overflow-hidden relative">
       <div className="relative flex items-stretch bg-slate-100/60 rounded-full p-1">
 
         {/* Animated Background Pill */}

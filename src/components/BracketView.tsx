@@ -11,12 +11,11 @@ interface Props {
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onPredict: (matchId: string, result: KnockoutResult) => void;
-  onRandomize?: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
 }
 
-const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F', '3RD'];
+const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
 
 const roundLabels: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -27,7 +26,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   F: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, liveMatches, teamFlagsByCode }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -48,9 +47,9 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   }, []);
 
   // Auto-scroll to next round when current round is fully predicted
-  const r32WasComplete = useRef(false);
+  const completedRounds = useRef<Set<KnockoutRound>>(new Set());
   useEffect(() => {
-    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2 };
+    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
     const size = roundSizes[activeRound];
     if (!size) return;
 
@@ -58,19 +57,29 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     const count = Object.keys(knockoutPredictions).filter(k => k.startsWith(prefix)).length;
     const isComplete = count === size;
 
-    if (isComplete && !r32WasComplete.current) {
-      r32WasComplete.current = true;
+    if (isComplete && !completedRounds.current.has(activeRound)) {
+      completedRounds.current.add(activeRound);
       const roundOrder = rounds;
       const nextRound = roundOrder[roundOrder.indexOf(activeRound) + 1];
       if (nextRound) {
         setTimeout(() => {
           setActiveRound(nextRound);
           const el = roundRefs.current[nextRound];
-          if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+          const container = scrollContainerRef.current;
+          if (el && container) {
+            container.scrollTo({
+              left: el.offsetLeft - 16, // 16px to match the px-4 padding
+              behavior: 'smooth'
+            });
+            // Delay vertical scroll slightly so mobile browsers don't cancel the horizontal one
+            setTimeout(() => {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 50);
+          }
         }, 350);
       }
     } else if (!isComplete) {
-      r32WasComplete.current = false;
+      completedRounds.current.delete(activeRound);
     }
   }, [knockoutPredictions, activeRound]);
 
@@ -115,8 +124,15 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const handleTabClick = (round: KnockoutRound) => {
     setActiveRound(round);
     const el = roundRefs.current[round];
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    const container = scrollContainerRef.current;
+    if (el && container) {
+      container.scrollTo({
+        left: el.offsetLeft - 16, // 16px to match the px-4 padding
+        behavior: 'smooth'
+      });
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
     }
   };
 
@@ -161,24 +177,13 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
               </button>
             ))}
           </div>
-          {onRandomize && (
-            <div className="flex-shrink-0 px-3 pb-1 pt-4">
-              <button
-                onClick={onRandomize}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[15px]">casino</span>
-                Randomize
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
       {/* Horizontal Scrollable Bracket */}
       <div
         ref={scrollContainerRef}
-        className="flex overflow-x-auto gap-8 px-4 pt-6 pb-4"
+        className="flex overflow-x-auto gap-8 px-4 pt-6 pb-4 relative scroll-smooth"
       >
         {rounds.map(round => (
           <div

@@ -79,11 +79,11 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 font-bold border-b border-slate-100">
                 <tr>
-                  <th className="text-center py-4 px-3 w-12">#</th>
-                  <th className="text-left py-4 px-2">Team</th>
-                  <th className="text-center py-4 px-3 w-20">Group</th>
-                  <th className="text-center py-4 px-3 w-16">Pts</th>
-                  <th className="text-center py-4 px-4 w-32">Status</th>
+                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-8 sm:w-12 text-xs sm:text-sm">#</th>
+                  <th className="text-left py-3 px-2 sm:py-4 sm:px-2 text-xs sm:text-sm">Team</th>
+                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-12 sm:w-20 text-xs sm:text-sm">Group</th>
+                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-10 sm:w-16 text-xs sm:text-sm">Pts</th>
+                  <th className="text-center py-3 px-2 sm:py-4 sm:px-4 w-24 sm:w-32 text-xs sm:text-sm">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -108,57 +108,57 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                       `}
                       onClick={isTied ? () => handleToggle(entry.team) : undefined}
                     >
-                      <td className={`py-4 px-3 text-center font-bold ${isTied && isSelected ? 'text-slate-900' : 'text-slate-400'}`}>{i + 1}</td>
-                      <td className="py-4 px-2">
-                        <div className="flex items-center gap-3">
+                      <td className={`py-3 px-1 sm:py-4 sm:px-3 text-center font-bold text-xs sm:text-sm ${isTied && isSelected ? 'text-slate-900' : 'text-slate-400'}`}>{i + 1}</td>
+                      <td className="py-3 px-2 sm:py-4 sm:px-2">
+                        <div className="flex items-center gap-2 sm:gap-3">
                           {teamFlagsByCode?.[entry.team] ? (
                             <span className="flex-shrink-0 inline-flex">
                               <img
                                 src={teamFlagsByCode[entry.team]}
                                 alt=""
-                                className="w-7 h-5 object-cover rounded-sm"
+                                className="w-5 h-3.5 sm:w-7 sm:h-5 object-cover rounded-sm"
                                 onError={e => {
                                   e.currentTarget.style.display = 'none';
                                   (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
                                 }}
                               />
-                              <span className="text-xl leading-none" hidden>{team.flag}</span>
+                              <span className="text-lg sm:text-xl leading-none" hidden>{team.flag}</span>
                             </span>
                           ) : (
-                            <span className="text-xl leading-none">{team.flag}</span>
+                            <span className="text-lg sm:text-xl leading-none">{team.flag}</span>
                           )}
-                          <span className={`font-bold ${isEliminated ? 'text-slate-500' : 'text-slate-900'}`}>
+                          <span className={`font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-slate-500' : 'text-slate-900'}`}>
                             {team.name}
                           </span>
                         </div>
                       </td>
-                      <td className="text-center py-4 px-3">
-                        <span className="bg-slate-100 px-2.5 py-1 rounded-md text-xs font-bold text-slate-600">
+                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3">
+                        <span className="bg-slate-100 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-slate-600">
                           {entry.group}
                         </span>
                       </td>
-                      <td className="text-center py-4 px-3 font-black text-slate-900 text-base">
+                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3 font-black text-slate-900 text-sm sm:text-base">
                         {entry.standing.points}
                       </td>
-                      <td className="text-center py-4 px-4">
+                      <td className="text-center py-3 px-2 sm:py-4 sm:px-4">
                         {isAdvances && (
-                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 w-full">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-100 text-emerald-700 w-full">
                             Advances
                           </span>
                         )}
                         {isTied && (
                           <button 
-                            className={`w-full text-xs px-3 py-1.5 rounded-full font-bold transition-all duration-200 border ${
+                            className={`w-full text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold transition-all duration-200 border ${
                               isSelected
                                 ? 'bg-black text-white border-black shadow-md scale-105'
                                 : 'bg-white text-slate-600 border-slate-200 hover:border-black hover:text-black'
                             }`}
                           >
-                            {isSelected ? '✓ Selected' : 'Tap to pick'}
+                            {isSelected ? '✓ Picked' : 'Tap to pick'}
                           </button>
                         )}
                         {isEliminated && (
-                          <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-500 w-full">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-red-50 text-red-500 w-full">
                             Eliminated
                           </span>
                         )}

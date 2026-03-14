@@ -46,7 +46,7 @@ export default async function SharedBracketPage({ params }: Props) {
           <div className="bg-white rounded-2xl border border-primary/20 p-6 text-center mb-6 shadow-sm">
             <p className="text-neutral-400 text-xs uppercase tracking-widest mb-2">Predicted Champion</p>
             <div className="text-5xl mb-2">{champion.flag}</div>
-            <p className="text-2xl font-black text-primary">{champion.name}</p>
+            <p className="text-2xl font-black text-primary font-body">{champion.name}</p>
           </div>
         )}
 

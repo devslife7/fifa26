@@ -40,7 +40,7 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
                   ) : (
                     <span>{championTeam.flag}</span>
                   )}
-                  {championTeam.name}
+                  <span className="font-body">{championTeam.name}</span>
                 </div>
               </div>
             )}

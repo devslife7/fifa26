@@ -127,7 +127,7 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                           ) : (
                             <span className="text-lg sm:text-xl leading-none">{team.flag}</span>
                           )}
-                          <span className={`font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-neutral-500' : 'text-neutral-800'}`}>
+                          <span className={`font-body font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-neutral-500' : 'text-neutral-800'}`}>
                             {team.name}
                           </span>
                         </div>
@@ -142,13 +142,13 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                       </td>
                       <td className="text-center py-3 px-2 sm:py-4 sm:px-4">
                         {isAdvances && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-green-light text-wc-green w-full">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-green-light text-wc-green w-full font-body">
                             Advances
                           </span>
                         )}
                         {isTied && (
-                          <button 
-                            className={`w-full text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold transition-all duration-200 border ${
+                          <button
+                            className={`w-full text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold transition-all duration-200 border font-body ${
                               isSelected
                                 ? 'bg-black text-white border-black shadow-md scale-105'
                                 : 'bg-white text-neutral-600 border-neutral-200 hover:border-black hover:text-black'
@@ -158,7 +158,7 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                           </button>
                         )}
                         {isEliminated && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-red-light text-wc-red w-full">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-red-light text-wc-red w-full font-body">
                             Eliminated
                           </span>
                         )}

@@ -517,13 +517,14 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
       </div>
 
       {/* User Hero Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-6 text-white">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-10 translate-x-10" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl translate-y-8 -translate-x-8" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-wc-blue via-neutral-900 to-background-dark p-6 text-white">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-primary/15 rounded-full blur-3xl -translate-y-10 translate-x-10" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-wc-green/10 rounded-full blur-2xl translate-y-8 -translate-x-8" />
+        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-wc-red/8 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2" />
 
         {user ? (
           <div className="relative flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/25 to-wc-blue/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
               <span className="text-primary font-black text-xl">{initials}</span>
             </div>
             <div className="min-w-0 flex-grow">
@@ -581,8 +582,8 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
         ) : (
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-white/30 text-3xl">person</span>
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/10 to-wc-blue/15 border border-white/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-white/40 text-3xl">person</span>
               </div>
               <div>
                 <h1 className="text-xl font-black">Guest</h1>
@@ -611,9 +612,11 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                 <p className={`text-sm font-bold truncate ${d ? 'text-white' : 'text-neutral-800'}`}>
                   {currentEditingName || 'New Prediction'}
                 </p>
-                <p className={`text-[11px] ${d ? 'text-white/40' : 'text-neutral-400'}`}>
-                  {groupCount}/{totalGroups} groups · {knockoutCount}/{totalKnockout} knockout
-                  {!currentEditingId && ' · unsaved'}
+                <p className={`text-[11px] flex items-center gap-1.5 ${d ? 'text-white/40' : 'text-neutral-400'}`}>
+                  <span className="inline-flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-wc-green inline-block" />{groupCount}/{totalGroups} groups</span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-wc-blue inline-block" />{knockoutCount}/{totalKnockout} knockout</span>
+                  {!currentEditingId && <><span>·</span><span className="text-wc-amber font-medium">unsaved</span></>}
                 </p>
               </div>
             </div>
@@ -666,7 +669,7 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
             <button
               onClick={onNewPrediction}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors ${
-                d ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                d ? 'bg-wc-green/15 text-wc-green hover:bg-wc-green/25' : 'bg-wc-green-light text-wc-green border border-wc-green-border hover:bg-wc-green/10'
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
@@ -791,14 +794,22 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                               </span>
                             )}
                           </div>
-                          <p className={`text-[11px] mt-0.5 ${d ? 'text-white/30' : 'text-neutral-400'}`}>
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {p.is_complete ? (
-                              <span className="text-wc-green font-medium">Complete</span>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-wc-green-light text-wc-green text-[10px] font-bold border border-wc-green-border">
+                                <span className="material-symbols-outlined text-[11px] font-variation-fill">check_circle</span>
+                                Complete
+                              </span>
                             ) : (
-                              <span className="text-wc-amber font-medium">In Progress</span>
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-wc-amber-light text-wc-amber text-[10px] font-bold border border-wc-amber-border">
+                                <span className="material-symbols-outlined text-[11px]">pending</span>
+                                In Progress
+                              </span>
                             )}
-                            {' · '}{stats.gCount}/{totalGroups} groups · {stats.kCount}/{totalKnockout} knockout
-                          </p>
+                            <span className={`text-[10px] ${d ? 'text-white/30' : 'text-neutral-400'}`}>
+                              {stats.gCount}/{totalGroups} groups · {stats.kCount}/{totalKnockout} knockout
+                            </span>
+                          </div>
                         </div>
 
                         {/* Actions */}
@@ -889,19 +900,23 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
 
       {/* No predictions at all - CTA */}
       {!hasPredictions && (!user || savedPredictions.length === 0) && (
-        <div className={`rounded-2xl shadow-sm border p-8 text-center ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
+        <div className={`rounded-2xl shadow-sm border p-8 text-center relative overflow-hidden ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
+          <div className="absolute top-0 left-0 w-24 h-24 bg-wc-blue/5 rounded-full blur-2xl -translate-x-6 -translate-y-6" />
+          <div className="absolute bottom-0 right-0 w-20 h-20 bg-wc-green/5 rounded-full blur-2xl translate-x-4 translate-y-4" />
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-wc-green/15 to-wc-blue/15 border border-wc-green/20 flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-wc-green text-3xl">sports_soccer</span>
+            </div>
+            <h3 className={`text-lg font-bold mb-1 ${d ? 'text-white' : 'text-neutral-800'}`}>No predictions yet</h3>
+            <p className={`text-sm mb-5 ${d ? 'text-white/40' : 'text-neutral-400'}`}>Start by picking group match winners</p>
+            <button
+              onClick={() => onNavigate('groups')}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">play_arrow</span>
+              Start Predicting
+            </button>
           </div>
-          <h3 className={`text-lg font-bold mb-1 ${d ? 'text-white' : 'text-neutral-800'}`}>No predictions yet</h3>
-          <p className={`text-sm mb-5 ${d ? 'text-white/40' : 'text-neutral-400'}`}>Start by picking group match winners</p>
-          <button
-            onClick={() => onNavigate('groups')}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[20px]">play_arrow</span>
-            Start Predicting
-          </button>
         </div>
       )}
 
@@ -909,7 +924,11 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
       {user && (
         <button
           onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-wc-red font-medium text-sm hover:bg-wc-red-light transition-colors"
+          className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-colors border ${
+            d
+              ? 'text-wc-red border-wc-red/20 hover:bg-wc-red/10'
+              : 'text-wc-red border-wc-red-border hover:bg-wc-red-light'
+          }`}
         >
           <span className="material-symbols-outlined text-[18px]">logout</span>
           Sign out

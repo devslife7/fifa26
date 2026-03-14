@@ -198,7 +198,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
-                            <div className="text-xs text-neutral-400 truncate">
+                            <div className="text-xs text-neutral-400 truncate font-body">
                               {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
                             </div>
                           </div>
@@ -275,7 +275,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                           <span className="bg-primary text-black text-[9px] px-1.5 py-0.5 rounded font-black">YOU</span>
                         </div>
                         {entry.champion_code && (
-                          <div className="text-xs text-neutral-400 flex items-center gap-1">
+                          <div className="text-xs text-neutral-400 flex items-center gap-1 font-body">
                             Champion Pick: {getChampionLabel(entry.champion_code)}
                           </div>
                         )}
@@ -304,7 +304,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                           {renderPositionChange(entry.position_change)}
                         </div>
                         {entry.champion_code && (
-                          <div className="text-xs text-neutral-400">
+                          <div className="text-xs text-neutral-400 font-body">
                             Predicted {getChampionLabel(entry.champion_code)} as Champion
                           </div>
                         )}

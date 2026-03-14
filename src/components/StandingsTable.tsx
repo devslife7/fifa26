@@ -35,7 +35,7 @@ export default function StandingsTable({ standings, showQualification = true }: 
                 <td className="py-4 px-2">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">{team.flag}</span>
-                    <span className={i < 2 ? "font-bold" : "font-semibold"}>{team.name}</span>
+                    <span className={`font-body ${i < 2 ? "font-bold" : "font-semibold"}`}>{team.name}</span>
                   </div>
                 </td>
                 <td className={`py-4 px-4 text-center font-black ${i < 2 ? '' : 'text-neutral-500'}`}>{s.points}</td>

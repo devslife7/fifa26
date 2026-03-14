@@ -114,7 +114,7 @@ export default function KnockoutMatchCard({
               {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
             </span>
           )}
-          <span className={`font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-neutral-800' : 'text-neutral-600'}`}>
+          <span className={`font-body font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-neutral-800' : 'text-neutral-600'}`}>
             {team.name}
           </span>
         </div>

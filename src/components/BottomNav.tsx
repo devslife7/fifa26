@@ -38,7 +38,7 @@ export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Pr
               <span className={`material-symbols-outlined text-2xl ${isActive ? 'font-variation-fill' : ''}`}>
                 {isLocked ? 'lock' : tab.icon}
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
+              <span className="text-[10px] font-bold uppercase tracking-tighter font-body">{tab.label}</span>
             </button>
           );
         })}

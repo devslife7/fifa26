@@ -110,7 +110,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           <div className="hidden sm:flex items-center">
             <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="small" />
           </div>
-          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-left">
+          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-left font-body">
             {home.name}
           </span>
         </button>
@@ -134,7 +134,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           onClick={() => handlePredict('away')}
           disabled={readOnly}
         >
-          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-right">
+          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-right font-body">
             {away.name}
           </span>
           <div className="sm:hidden flex items-center">

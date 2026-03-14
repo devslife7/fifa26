@@ -45,11 +45,11 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
                   <div key={match.id} className="flex flex-col bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden text-sm">
                     <div className={`flex items-center gap-3 px-4 py-3 border-b border-neutral-100 ${isHomeWinner ? 'bg-neutral-50 font-bold text-neutral-800' : 'text-neutral-500'}`}>
                       {home ? <FlagEmoji code={match.home!} flagEmoji={home.flag} size="normal" /> : <div className="w-7" />}
-                      <span className="truncate">{home?.name || 'TBD'}</span>
+                      <span className="truncate font-body">{home?.name || 'TBD'}</span>
                     </div>
                     <div className={`flex items-center gap-3 px-4 py-3 ${isAwayWinner ? 'bg-neutral-50 font-bold text-neutral-800' : 'text-neutral-500'}`}>
                       {away ? <FlagEmoji code={match.away!} flagEmoji={away.flag} size="normal" /> : <div className="w-7" />}
-                      <span className="truncate">{away?.name || 'TBD'}</span>
+                      <span className="truncate font-body">{away?.name || 'TBD'}</span>
                     </div>
                   </div>
                 );
@@ -240,7 +240,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
             <div className="text-7xl">🏆</div>
             <div>
               <h2 className="text-4xl font-black text-neutral-800">My FIFA 26 Predictions</h2>
-              <p className="text-neutral-500 font-medium text-xl mt-1">Champion: <span className="text-primary font-bold">{champion.name}</span></p>
+              <p className="text-neutral-500 font-medium text-xl mt-1">Champion: <span className="text-primary font-bold font-body">{champion.name}</span></p>
             </div>
           </div>
           
@@ -268,7 +268,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           <span className="text-7xl">{champion.flag}</span>
         </div>
 
-        <h2 className="text-4xl font-black mb-2 text-primary">
+        <h2 className="text-4xl font-black mb-2 text-primary font-body">
           {champion.name}
         </h2>
 
@@ -280,7 +280,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           <p className="text-neutral-500 text-sm">
             FIFA World Cup 2026
           </p>
-          <p className="text-primary font-bold text-lg mt-1">
+          <p className="text-primary font-bold text-lg mt-1 font-body">
             {champion.flag} {champion.name}
           </p>
         </div>

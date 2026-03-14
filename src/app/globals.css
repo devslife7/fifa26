@@ -1,10 +1,50 @@
 @import "tailwindcss";
 
 @theme {
+  /* Primary & Brand */
   --color-primary: #f9d406;
+  --color-primary-dark: #d4b305;
+  --color-primary-light: #FEFAE9;
+
+  /* Backgrounds */
   --color-background-light: #f8f8f5;
-  --color-background-dark: #0f172a;
-  --font-display: var(--font-lexend), sans-serif;
+  --color-background-dark: #0a0f1a;
+
+  /* Functional — WC2026 official bid colors */
+  --color-wc-green: #3CAC3B;
+  --color-wc-green-light: #f0fdf4;
+  --color-wc-green-border: #bbf7d0;
+  --color-wc-red: #E61D25;
+  --color-wc-red-light: #fef2f2;
+  --color-wc-red-border: #fecaca;
+  --color-wc-blue: #2A398D;
+  --color-wc-blue-light: #eff6ff;
+  --color-wc-amber: #f59e0b;
+  --color-wc-amber-light: #fffbeb;
+  --color-wc-amber-border: #fde68a;
+
+  /* Neutrals (replaces slate scale) */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* Special purpose */
+  --color-medal-gold: #FFD700;
+  --color-medal-silver: #C0C0C0;
+  --color-medal-bronze: #CD7F32;
+  --color-scrollbar-track: #f1f1f1;
+  --color-scrollbar-thumb: #cccccc;
+
+  /* Fonts */
+  --font-display: var(--font-fwc2026), sans-serif;
+  --font-body: var(--font-noto-sans), system-ui, -apple-system, sans-serif;
 }
 
 @keyframes pulse-gold {
@@ -20,8 +60,8 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; transform: translate(-50%, 8px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
@@ -50,8 +90,8 @@
 
 body {
   background: var(--color-background-light);
-  color: #1e293b;
-  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--color-neutral-800);
+  font-family: var(--font-display);
   overflow-x: hidden;
 }
 
@@ -61,11 +101,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cccccc;
+  background: var(--color-scrollbar-thumb);
   border-radius: 3px;
 }
 

@@ -52,6 +52,17 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
     for (let i = 0; i < 16; i++) {
       km[`R32-${i + 1}`] = (ui + i) % 2 === 0 ? 'home' : 'away';
     }
+    for (let i = 0; i < 8; i++) {
+      km[`R16-${i + 1}`] = (ui + i + 1) % 2 === 0 ? 'home' : 'away';
+    }
+    for (let i = 0; i < 4; i++) {
+      km[`QF-${i + 1}`] = (ui + i + 2) % 2 === 0 ? 'home' : 'away';
+    }
+    for (let i = 0; i < 2; i++) {
+      km[`SF-${i + 1}`] = (ui + i + 3) % 2 === 0 ? 'home' : 'away';
+    }
+    km['3RD-1'] = ui % 2 === 0 ? 'home' : 'away';
+    km['F-1'] = (ui + 1) % 2 === 0 ? 'home' : 'away';
     return {
       user_id: u.user_id,
       display_name: u.display_name,
@@ -117,9 +128,9 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
   }, []);
 
   const getMedalIcon = (rank: number) => {
-    if (rank === 1) return <span className="material-symbols-outlined text-[#FFD700] text-3xl font-variation-fill">emoji_events</span>;
-    if (rank === 2) return <span className="material-symbols-outlined text-[#C0C0C0] text-2xl font-variation-fill">emoji_events</span>;
-    if (rank === 3) return <span className="material-symbols-outlined text-[#CD7F32] text-2xl font-variation-fill">emoji_events</span>;
+    if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
+    if (rank === 2) return <span className="material-symbols-outlined text-medal-silver text-2xl font-variation-fill">emoji_events</span>;
+    if (rank === 3) return <span className="material-symbols-outlined text-medal-bronze text-2xl font-variation-fill">emoji_events</span>;
     return null;
   };
 
@@ -136,13 +147,13 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-neutral-400">
               {lastUpdated ? `Updated ${formatRelativeTime(lastUpdated)}` : ''}
             </span>
             <button
               onClick={onRefreshScores}
               disabled={liveLoading}
-              className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-700 disabled:opacity-50 transition-colors"
             >
               <span className={`material-symbols-outlined text-[16px] ${liveLoading ? 'animate-spin' : ''}`}>refresh</span>
               <span>{liveLoading ? 'Refreshing…' : 'Refresh scores'}</span>
@@ -165,12 +176,12 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl font-variation-fill">assignment</span>
                     <h2 className="font-bold text-lg">Predictions</h2>
-                    <span className="text-xs text-slate-400 ml-auto">{predictions.length}/{totalUsers} completed</span>
+                    <span className="text-xs text-neutral-400 ml-auto">{predictions.length}/{totalUsers} completed</span>
                   </div>
 
                   {usePlaceholder && (
-                    <div className="mb-3 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                      <p className="text-xs text-slate-400">Preview data — real predictions appear once users submit</p>
+                    <div className="mb-3 px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-center">
+                      <p className="text-xs text-neutral-400">Preview data — real predictions appear once users submit</p>
                     </div>
                   )}
 
@@ -183,24 +194,24 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                         <button
                           key={pred.user_id}
                           onClick={() => setSelectedPrediction(pred)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/30 transition-colors text-left cursor-pointer group"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-primary/30 transition-colors text-left cursor-pointer group"
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
-                            <div className="text-xs text-slate-400 truncate">
+                            <div className="text-xs text-neutral-400 truncate">
                               {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <div className="text-[11px] font-bold text-slate-500 tabular-nums">{groupCount}/72</div>
-                              <div className="text-[9px] text-slate-400 uppercase">Groups</div>
+                              <div className="text-[11px] font-bold text-neutral-500 tabular-nums">{groupCount}/72</div>
+                              <div className="text-[9px] text-neutral-400 uppercase">Groups</div>
                             </div>
                             <div className="text-right">
-                              <div className="text-[11px] font-bold text-slate-500 tabular-nums">{knockoutCount}</div>
-                              <div className="text-[9px] text-slate-400 uppercase">KO</div>
+                              <div className="text-[11px] font-bold text-neutral-500 tabular-nums">{knockoutCount}</div>
+                              <div className="text-[9px] text-neutral-400 uppercase">KO</div>
                             </div>
-                            <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors ml-1">chevron_right</span>
+                            <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors ml-1">chevron_right</span>
                           </div>
                         </button>
                       );
@@ -216,8 +227,8 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
               </div>
 
               {usePlaceholder && (
-                <div className="mb-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                  <p className="text-xs text-slate-400">Preview data — real scores appear once the tournament begins</p>
+                <div className="mb-4 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-center">
+                  <p className="text-xs text-neutral-400">Preview data — real scores appear once the tournament begins</p>
                 </div>
               )}
 
@@ -229,18 +240,18 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                 
                 const renderPositionChange = (change?: number) => {
                   if (!change) return (
-                    <div className="flex items-center justify-center text-slate-300 ml-2" title="No change">
+                    <div className="flex items-center justify-center text-neutral-300 ml-2" title="No change">
                       <span className="material-symbols-outlined text-[14px]">remove</span>
                     </div>
                   );
                   if (change > 0) return (
-                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-emerald-500 ml-2" title={`Up ${change} positions`}>
+                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-wc-green ml-2" title={`Up ${change} positions`}>
                       <span className="material-symbols-outlined text-[16px] leading-none">trending_up</span>
                       {change}
                     </div>
                   );
                   return (
-                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-rose-500 ml-2" title={`Down ${Math.abs(change)} positions`}>
+                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-wc-red ml-2" title={`Down ${Math.abs(change)} positions`}>
                       <span className="material-symbols-outlined text-[16px] leading-none">trending_down</span>
                       {Math.abs(change)}
                     </div>
@@ -252,7 +263,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                     <button 
                       key={entry.user_id} 
                       onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
-                      className={`w-full flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'cursor-pointer hover:bg-slate-800 transition-colors' : ''}`}
+                      className={`w-full flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'cursor-pointer hover:bg-neutral-800 transition-colors' : ''}`}
                     >
                       <div className="w-10 text-center font-black text-primary text-lg">
                         {medal ?? rank}
@@ -264,7 +275,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                           <span className="bg-primary text-black text-[9px] px-1.5 py-0.5 rounded font-black">YOU</span>
                         </div>
                         {entry.champion_code && (
-                          <div className="text-xs text-slate-400 flex items-center gap-1">
+                          <div className="text-xs text-neutral-400 flex items-center gap-1">
                             Champion Pick: {getChampionLabel(entry.champion_code)}
                           </div>
                         )}
@@ -282,7 +293,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                     <button 
                       key={entry.user_id} 
                       onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
-                      className={`w-full flex items-center bg-white p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-slate-100'} ${userPrediction ? 'cursor-pointer hover:bg-slate-50 hover:border-primary/30 transition-colors group' : ''}`}
+                      className={`w-full flex items-center bg-white p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-neutral-100'} ${userPrediction ? 'cursor-pointer hover:bg-neutral-50 hover:border-primary/30 transition-colors group' : ''}`}
                     >
                       <div className="w-10 flex justify-center">
                         {medal}
@@ -293,19 +304,19 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                           {renderPositionChange(entry.position_change)}
                         </div>
                         {entry.champion_code && (
-                          <div className="text-xs text-slate-400">
+                          <div className="text-xs text-neutral-400">
                             Predicted {getChampionLabel(entry.champion_code)} as Champion
                           </div>
                         )}
                       </div>
                       <div className="text-right flex items-center gap-3">
                         <div>
-                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-slate-700'}`}>
+                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-neutral-700'}`}>
                             {rank === 1 ? '+' : ''}{entry.total_points}
                           </div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase">Points</div>
+                          <div className="text-[10px] font-bold text-neutral-400 uppercase">Points</div>
                         </div>
-                        {userPrediction && <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
+                        {userPrediction && <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
                       </div>
                     </button>
                   );
@@ -315,9 +326,9 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                   <button 
                     key={entry.user_id} 
                     onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 group' : 'hover:bg-slate-100'}`}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-neutral-200 group' : 'hover:bg-neutral-100'}`}
                   >
-                    <div className="w-10 text-center text-sm font-bold text-slate-400">
+                    <div className="w-10 text-center text-sm font-bold text-neutral-400">
                       {rank}
                     </div>
                     <div className="ml-4 flex-grow flex items-center gap-2">
@@ -326,7 +337,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                     </div>
                     <div className="text-right flex items-center gap-3">
                       <div className="font-bold">{entry.total_points}</div>
-                      {userPrediction && <span className="material-symbols-outlined text-slate-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
+                      {userPrediction && <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
                     </div>
                   </button>
                 );
@@ -344,7 +355,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
               </div>
               <div>
                 <h2 className="text-white font-bold text-lg leading-tight">How to Score Points</h2>
-                <p className="text-slate-500 text-xs">Predict correctly, climb the ranks</p>
+                <p className="text-neutral-500 text-xs">Predict correctly, climb the ranks</p>
               </div>
             </div>
 
@@ -372,7 +383,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                       <div className={`font-semibold text-sm ${isChampion ? 'text-primary' : 'text-white'}`}>
                         {row.round}
                       </div>
-                      <div className="text-[11px] text-slate-500">{row.desc}</div>
+                      <div className="text-[11px] text-neutral-500">{row.desc}</div>
                     </div>
                     <div className={`font-black text-lg tabular-nums ${isChampion ? 'text-primary' : 'text-white'}`}>
                       +{row.pts}

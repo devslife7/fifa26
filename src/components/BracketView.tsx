@@ -182,7 +182,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       <div className="max-w-lg mx-auto text-center py-16">
         <div className="text-6xl mb-6 animate-pulse-gold">🏟️</div>
         <h2 className="text-2xl font-bold mb-3">Knockout Stage Locked</h2>
-        <p className="text-slate-500">
+        <p className="text-neutral-500">
           Complete all 48 group stage predictions to unlock the knockout bracket
         </p>
       </div>
@@ -199,7 +199,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     <div>
       {/* Sticky Round Tabs */}
       <div className="sticky top-0 z-20 bg-white">
-        <div className="flex items-center border-b border-slate-200">
+        <div className="flex items-center border-b border-neutral-200">
           <div 
             ref={tabsContainerRef}
             className="flex overflow-x-auto no-scrollbar gap-6 px-4 flex-1"
@@ -210,8 +210,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                 ref={(el) => setTabRef(round, el)}
                 className={`pb-3 pt-4 whitespace-nowrap text-sm font-bold transition-colors relative ${
                   activeRound === round
-                    ? 'text-slate-800'
-                    : 'text-slate-400 hover:text-slate-600'
+                    ? 'text-neutral-800'
+                    : 'text-neutral-400 hover:text-neutral-600'
                 }`}
                 onClick={() => handleTabClick(round)}
               >
@@ -236,7 +236,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
             ref={(el) => setRoundRef(round, el)}
             className="flex-shrink-0 w-48"
           >
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-4">
+            <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest text-center mb-4">
               {roundLabels[round]}
             </h3>
             <div className="flex flex-col gap-4">

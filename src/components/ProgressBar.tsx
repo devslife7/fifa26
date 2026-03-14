@@ -22,24 +22,24 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
             <span className="text-[46px] font-black leading-none tracking-tighter tabular-nums">
               {groupCount}
             </span>
-            <span className="text-base font-bold text-slate-300 tracking-tight">
+            <span className="text-base font-bold text-neutral-300 tracking-tight">
               /{GROUP_MATCHES}
             </span>
           </div>
 
           <div className="flex flex-col items-end gap-1 pb-1.5">
             {isComplete ? (
-              <span className="flex items-center gap-1 text-xs font-extrabold text-emerald-500 uppercase tracking-widest">
+              <span className="flex items-center gap-1 text-xs font-extrabold text-wc-green uppercase tracking-widest">
                 <span className="material-symbols-outlined text-[14px] font-variation-fill">check_circle</span>
                 Groups Done
               </span>
             ) : (
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em]">
+              <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-[0.08em]">
                 {Math.round(groupPct)}% complete
               </span>
             )}
             {knockoutCount > 0 && (
-              <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+              <span className="text-[10px] font-bold text-neutral-400 tabular-nums">
                 +{knockoutCount} bracket pick{knockoutCount !== 1 ? 's' : ''}
               </span>
             )}
@@ -57,13 +57,13 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
             return (
               <div
                 key={i}
-                className="flex-1 h-[10px] rounded-[3px] bg-slate-200/70 overflow-hidden"
+                className="flex-1 h-[10px] rounded-[3px] bg-neutral-200/70 overflow-hidden"
               >
                 {fill > 0 && (
                   <div
                     className={`h-full rounded-[3px] transition-all duration-500 ease-out ${
                       isComplete
-                        ? 'bg-gradient-to-r from-yellow-400 to-primary'
+                        ? 'bg-gradient-to-r from-primary to-primary'
                         : 'bg-primary'
                     }`}
                     style={{
@@ -83,7 +83,7 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
 
         {/* Unlock hint */}
         {!isComplete && (
-          <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.12em] mt-2.5">
+          <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-[0.12em] mt-2.5">
             {isStarted
               ? `${GROUP_MATCHES - groupCount} remaining to unlock bracket`
               : 'Complete all group matches to unlock bracket'}
@@ -92,7 +92,7 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
       </div>
 
       {/* Bottom edge accent — thin gold progress line */}
-      <div className="h-px bg-slate-200/60 relative overflow-hidden">
+      <div className="h-px bg-neutral-200/60 relative overflow-hidden">
         <div
           className="absolute inset-y-0 left-0 bg-primary/60 transition-all duration-500"
           style={{ width: `${Math.min(groupPct, 100)}%` }}

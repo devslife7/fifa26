@@ -18,7 +18,7 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
 
 export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-light border-t border-slate-200">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-light border-t border-neutral-200">
       <div className="max-w-2xl mx-auto flex justify-between items-center px-4 pt-3 pb-nav-safe">
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
@@ -31,8 +31,8 @@ export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Pr
               className={`flex flex-col items-center gap-1 transition-colors ${isActive
                   ? 'text-primary'
                   : isLocked
-                    ? 'text-slate-400/30 cursor-not-allowed'
-                    : 'text-slate-400 hover:text-primary'
+                    ? 'text-neutral-400/30 cursor-not-allowed'
+                    : 'text-neutral-400 hover:text-primary'
                 }`}
             >
               <span className={`material-symbols-outlined text-2xl ${isActive ? 'font-variation-fill' : ''}`}>

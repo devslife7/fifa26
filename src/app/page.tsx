@@ -208,9 +208,9 @@ export default function Home() {
               <span className="text-xs font-semibold text-primary truncate">Editing: {editName}</span>
             </div>
           ) : editId ? null : (groupCount > 0 || knockoutCount > 0) ? (
-            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200">
-              <span className="material-symbols-outlined text-slate-400 text-[16px]">edit_note</span>
-              <span className="text-xs font-medium text-slate-500">New Prediction (unsaved)</span>
+            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-neutral-100 border border-neutral-200">
+              <span className="material-symbols-outlined text-neutral-400 text-[16px]">edit_note</span>
+              <span className="text-xs font-medium text-neutral-500">New Prediction (unsaved)</span>
             </div>
           ) : null;
         })()}
@@ -223,7 +223,7 @@ export default function Home() {
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleRandomizeGroups}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-neutral-200 text-neutral-600 font-semibold text-xs hover:bg-neutral-50 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">casino</span>
                   Randomize
@@ -231,7 +231,7 @@ export default function Home() {
                 <button
                   onClick={handleClearGroups}
                   disabled={groupCount === 0}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-500 font-semibold text-xs hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-neutral-200 text-neutral-500 font-semibold text-xs hover:bg-neutral-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[16px]">backspace</span>
                   Clear
@@ -270,13 +270,13 @@ export default function Home() {
                   }
                 }}
                 disabled={!canContinueToBracket}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-black text-white font-bold text-sm hover:bg-slate-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-black text-white font-bold text-sm hover:bg-neutral-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Continue to Bracket
                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
               </button>
               {!canContinueToBracket && (
-                <p className="text-center text-[11px] text-slate-400 mt-2">
+                <p className="text-center text-[11px] text-neutral-400 mt-2">
                   {!groupsComplete
                     ? 'Complete all group predictions to continue'
                     : 'Resolve the third-place tiebreaker above to continue'}
@@ -301,12 +301,12 @@ export default function Home() {
           <div className="pt-6 pb-12">
             <header className="mb-6">
               <h1 className="text-3xl font-bold tracking-tight">Tracking</h1>
-              <p className="text-slate-500 text-sm mt-1">Follow live matches and results</p>
+              <p className="text-neutral-500 text-sm mt-1">Follow live matches and results</p>
             </header>
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-              <span className="material-symbols-outlined text-slate-300 text-5xl mb-4 block">query_stats</span>
-              <h2 className="text-lg font-bold text-slate-700 mb-2">Coming Soon</h2>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center shadow-sm">
+              <span className="material-symbols-outlined text-neutral-300 text-5xl mb-4 block">query_stats</span>
+              <h2 className="text-lg font-bold text-neutral-700 mb-2">Coming Soon</h2>
+              <p className="text-neutral-400 text-sm">
                 Live match tracking and result updates will appear here once the tournament begins.
               </p>
             </div>
@@ -355,8 +355,8 @@ export default function Home() {
 
       {/* Rate limit toast */}
       {showRateLimitToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-fade-in">
-          <span className="material-symbols-outlined text-[15px] text-amber-400">warning</span>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-neutral-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-fade-in">
+          <span className="material-symbols-outlined text-[15px] text-wc-amber">warning</span>
           API rate limit reached (10 req/min) — try again shortly
         </div>
       )}
@@ -378,6 +378,7 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [nameSaving, setNameSaving] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   // Saved predictions state
   const [savedPredictions, setSavedPredictions] = useState<SavedPrediction[]>([]);
@@ -494,10 +495,29 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
     return { gCount, kCount, pct, champion };
   }
 
+  const d = darkMode;
+
   return (
-    <div className="pt-4 pb-12 space-y-6">
+    <div className={`pt-4 pb-12 space-y-6 transition-colors duration-300 ${d ? '-mx-4 px-4 rounded-t-3xl bg-background-dark min-h-screen' : ''}`}>
+      {/* Dark mode toggle */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => setDarkMode(!d)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+            d
+              ? 'bg-white/10 text-white/70 hover:bg-white/15'
+              : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px] font-variation-fill">
+            {d ? 'light_mode' : 'dark_mode'}
+          </span>
+          {d ? 'Light' : 'Dark'}
+        </button>
+      </div>
+
       {/* User Hero Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 p-6 text-white">
         <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-10 translate-x-10" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl translate-y-8 -translate-x-8" />
 
@@ -581,17 +601,17 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
 
       {/* Currently editing indicator + Save button */}
       {hasPredictions && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+        <div className={`rounded-2xl shadow-sm border p-4 ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-primary text-lg">edit_note</span>
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900 truncate">
+                <p className={`text-sm font-bold truncate ${d ? 'text-white' : 'text-neutral-800'}`}>
                   {currentEditingName || 'New Prediction'}
                 </p>
-                <p className="text-[11px] text-slate-400">
+                <p className={`text-[11px] ${d ? 'text-white/40' : 'text-neutral-400'}`}>
                   {groupCount}/{totalGroups} groups · {knockoutCount}/{totalKnockout} knockout
                   {!currentEditingId && ' · unsaved'}
                 </p>
@@ -600,9 +620,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => onNavigate('groups')}
-                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className={`p-2 rounded-lg transition-colors ${d ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}
               >
-                <span className="material-symbols-outlined text-slate-400 text-[20px]">arrow_forward</span>
+                <span className={`material-symbols-outlined text-[20px] ${d ? 'text-white/40' : 'text-neutral-400'}`}>arrow_forward</span>
               </button>
               <button
                 onClick={() => {
@@ -637,15 +657,17 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
       {user && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold">
+            <h2 className={`text-lg font-bold ${d ? 'text-white' : ''}`}>
               My Predictions
               {savedPredictions.length > 0 && (
-                <span className="text-slate-400 font-normal text-sm ml-2">({savedPredictions.length}/10)</span>
+                <span className={`font-normal text-sm ml-2 ${d ? 'text-white/30' : 'text-neutral-400'}`}>({savedPredictions.length}/10)</span>
               )}
             </h2>
             <button
               onClick={onNewPrediction}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 font-semibold text-xs hover:bg-slate-200 transition-colors"
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-xs transition-colors ${
+                d ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
               New
@@ -655,23 +677,23 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
           {loadingSaved ? (
             <div className="space-y-3">
               {[1, 2].map(i => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 animate-pulse">
+                <div key={i} className={`rounded-2xl border p-4 animate-pulse ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100" />
+                    <div className={`w-10 h-10 rounded-xl ${d ? 'bg-white/10' : 'bg-neutral-100'}`} />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-slate-100 rounded w-1/3" />
-                      <div className="h-3 bg-slate-100 rounded w-1/2" />
+                      <div className={`h-4 rounded w-1/3 ${d ? 'bg-white/10' : 'bg-neutral-100'}`} />
+                      <div className={`h-3 rounded w-1/2 ${d ? 'bg-white/10' : 'bg-neutral-100'}`} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : savedPredictions.length === 0 ? (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-center">
-              <span className="material-symbols-outlined text-slate-300 text-3xl mb-2 block">folder_open</span>
-              <p className="text-sm text-slate-400">No saved predictions yet</p>
+            <div className={`rounded-2xl shadow-sm border p-6 text-center ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
+              <span className={`material-symbols-outlined text-3xl mb-2 block ${d ? 'text-white/20' : 'text-neutral-300'}`}>folder_open</span>
+              <p className={`text-sm ${d ? 'text-white/40' : 'text-neutral-400'}`}>No saved predictions yet</p>
               {hasPredictions && (
-                <p className="text-xs text-slate-400 mt-1">Use the save button above to save your current predictions</p>
+                <p className={`text-xs mt-1 ${d ? 'text-white/30' : 'text-neutral-400'}`}>Use the save button above to save your current predictions</p>
               )}
             </div>
           ) : (
@@ -683,24 +705,28 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                 return (
                   <div
                     key={p.id}
-                    className={`bg-white rounded-2xl shadow-sm border p-4 transition-colors ${
-                      isCurrentlyEditing ? 'border-primary/40 ring-1 ring-primary/20' : 'border-slate-100'
+                    className={`rounded-2xl shadow-sm border p-4 transition-colors ${
+                      d
+                        ? isCurrentlyEditing ? 'bg-white/10 border-primary/40 ring-1 ring-primary/20' : 'bg-white/5 border-white/10'
+                        : isCurrentlyEditing ? 'bg-white border-primary/40 ring-1 ring-primary/20' : 'bg-white border-neutral-100'
                     }`}
                   >
                     {/* Delete confirmation */}
                     {deletingId === p.id ? (
                       <div>
-                        <p className="text-sm text-red-700 font-medium mb-3">Delete &ldquo;{p.name}&rdquo;?</p>
+                        <p className="text-sm text-wc-red font-medium mb-3">Delete &ldquo;{p.name}&rdquo;?</p>
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleDelete(p.id)}
-                            className="flex-1 py-2 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
+                            className="flex-1 py-2 rounded-lg bg-wc-red text-white font-semibold text-sm hover:bg-wc-red/90 transition-colors"
                           >
                             Delete
                           </button>
                           <button
                             onClick={() => setDeletingId(null)}
-                            className="flex-1 py-2 rounded-lg bg-slate-100 text-slate-600 font-semibold text-sm hover:bg-slate-200 transition-colors"
+                            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                              d ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                            }`}
                           >
                             Cancel
                           </button>
@@ -716,13 +742,15 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                           value={renameInput}
                           onChange={e => setRenameInput(e.target.value)}
                           autoFocus
-                          className="flex-grow min-w-0 px-3 py-2 rounded-lg border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold"
+                          className={`flex-grow min-w-0 px-3 py-2 rounded-lg border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold ${
+                            d ? 'bg-white/10 border-white/20 text-white' : 'border-neutral-200'
+                          }`}
                         />
                         <button type="submit" className="p-2 rounded-lg bg-primary text-black hover:bg-primary/90 transition-colors">
                           <span className="material-symbols-outlined text-[18px]">check</span>
                         </button>
-                        <button type="button" onClick={() => setRenamingId(null)} className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors">
-                          <span className="material-symbols-outlined text-slate-500 text-[18px]">close</span>
+                        <button type="button" onClick={() => setRenamingId(null)} className={`p-2 rounded-lg transition-colors ${d ? 'bg-white/10 hover:bg-white/15' : 'bg-neutral-100 hover:bg-neutral-200'}`}>
+                          <span className={`material-symbols-outlined text-[18px] ${d ? 'text-white/50' : 'text-neutral-500'}`}>close</span>
                         </button>
                       </form>
                     ) : (
@@ -734,15 +762,15 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                           ) : (
                             <>
                               <svg className="absolute inset-0 w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-                                <circle cx="20" cy="20" r="16" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                                <circle cx="20" cy="20" r="16" fill="none" stroke="var(--color-neutral-100)" strokeWidth="3" />
                                 <circle
                                   cx="20" cy="20" r="16" fill="none"
-                                  stroke={stats.pct > 0 ? '#f9d406' : 'transparent'}
+                                  stroke={stats.pct > 0 ? 'var(--color-primary)' : 'transparent'}
                                   strokeWidth="3" strokeLinecap="round"
                                   strokeDasharray={`${(stats.pct / 100) * 100.5} 100.5`}
                                 />
                               </svg>
-                              <span className="relative text-[10px] font-bold text-slate-400">{stats.pct}%</span>
+                              <span className={`relative text-[10px] font-bold ${d ? 'text-white/40' : 'text-neutral-400'}`}>{stats.pct}%</span>
                             </>
                           )}
                         </div>
@@ -750,7 +778,7 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-slate-900 truncate">{p.name}</p>
+                            <p className={`text-sm font-bold truncate ${d ? 'text-white' : 'text-neutral-800'}`}>{p.name}</p>
                             {p.is_active && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold flex-shrink-0">
                                 <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
@@ -758,16 +786,16 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                               </span>
                             )}
                             {isCurrentlyEditing && (
-                              <span className="inline-flex px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-500 text-[10px] font-bold flex-shrink-0">
+                              <span className="inline-flex px-1.5 py-0.5 rounded-md bg-wc-blue-light text-wc-blue text-[10px] font-bold flex-shrink-0">
                                 Editing
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
+                          <p className={`text-[11px] mt-0.5 ${d ? 'text-white/30' : 'text-neutral-400'}`}>
                             {p.is_complete ? (
-                              <span className="text-emerald-500 font-medium">Complete</span>
+                              <span className="text-wc-green font-medium">Complete</span>
                             ) : (
-                              <span className="text-amber-500 font-medium">In Progress</span>
+                              <span className="text-wc-amber font-medium">In Progress</span>
                             )}
                             {' · '}{stats.gCount}/{totalGroups} groups · {stats.kCount}/{totalKnockout} knockout
                           </p>
@@ -778,27 +806,31 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                           {!isCurrentlyEditing && (
                             <button
                               onClick={() => { onLoadPrediction(p); onNavigate('groups'); }}
-                              className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                              className={`p-2 rounded-lg transition-colors ${d ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}
                               title="Edit this prediction"
                             >
-                              <span className="material-symbols-outlined text-slate-400 text-[20px]">edit</span>
+                              <span className={`material-symbols-outlined text-[20px] ${d ? 'text-white/40' : 'text-neutral-400'}`}>edit</span>
                             </button>
                           )}
                           <div className="relative">
                             <button
                               onClick={() => setActionMenuId(actionMenuId === p.id ? null : p.id)}
-                              className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                              className={`p-2 rounded-lg transition-colors ${d ? 'hover:bg-white/10' : 'hover:bg-neutral-100'}`}
                             >
-                              <span className="material-symbols-outlined text-slate-400 text-[20px]">more_vert</span>
+                              <span className={`material-symbols-outlined text-[20px] ${d ? 'text-white/40' : 'text-neutral-400'}`}>more_vert</span>
                             </button>
                             {actionMenuId === p.id && (
                               <>
                                 <div className="fixed inset-0 z-40" onClick={() => setActionMenuId(null)} />
-                                <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl shadow-lg border border-slate-200 py-1 w-44">
+                                <div className={`absolute right-0 top-full mt-1 z-50 rounded-xl shadow-lg border py-1 w-44 ${
+                                  d ? 'bg-neutral-800 border-white/10' : 'bg-white border-neutral-200'
+                                }`}>
                                   {p.is_complete && !p.is_active && (
                                     <button
                                       onClick={() => handleSetActive(p.id)}
-                                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
+                                        d ? 'text-white/70 hover:bg-white/10' : 'text-neutral-700 hover:bg-neutral-50'
+                                      }`}
                                     >
                                       <span className="material-symbols-outlined text-[18px] text-primary">star</span>
                                       Set Active
@@ -810,7 +842,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                                       setRenamingId(p.id);
                                       setActionMenuId(null);
                                     }}
-                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
+                                      d ? 'text-white/70 hover:bg-white/10' : 'text-neutral-700 hover:bg-neutral-50'
+                                    }`}
                                   >
                                     <span className="material-symbols-outlined text-[18px]">drive_file_rename_outline</span>
                                     Rename
@@ -821,7 +855,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                                         navigator.clipboard.writeText(`${window.location.origin}/shared/${p.share_token}`);
                                         setActionMenuId(null);
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${
+                                        d ? 'text-white/70 hover:bg-white/10' : 'text-neutral-700 hover:bg-neutral-50'
+                                      }`}
                                     >
                                       <span className="material-symbols-outlined text-[18px]">link</span>
                                       Copy Link
@@ -829,7 +865,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                                   )}
                                   <button
                                     onClick={() => { setDeletingId(p.id); setActionMenuId(null); }}
-                                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-wc-red transition-colors ${
+                                      d ? 'hover:bg-wc-red/10' : 'hover:bg-wc-red-light'
+                                    }`}
                                   >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                     Delete
@@ -851,12 +889,12 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
 
       {/* No predictions at all - CTA */}
       {!hasPredictions && (!user || savedPredictions.length === 0) && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-center">
+        <div className={`rounded-2xl shadow-sm border p-8 text-center ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-primary text-3xl">sports_soccer</span>
           </div>
-          <h3 className="text-lg font-bold text-slate-900 mb-1">No predictions yet</h3>
-          <p className="text-sm text-slate-400 mb-5">Start by picking group match winners</p>
+          <h3 className={`text-lg font-bold mb-1 ${d ? 'text-white' : 'text-neutral-800'}`}>No predictions yet</h3>
+          <p className={`text-sm mb-5 ${d ? 'text-white/40' : 'text-neutral-400'}`}>Start by picking group match winners</p>
           <button
             onClick={() => onNavigate('groups')}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
@@ -871,7 +909,7 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
       {user && (
         <button
           onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-red-400 font-medium text-sm hover:bg-red-50 transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-wc-red font-medium text-sm hover:bg-wc-red-light transition-colors"
         >
           <span className="material-symbols-outlined text-[18px]">logout</span>
           Sign out
@@ -881,8 +919,8 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
       {/* Name modal for new prediction */}
       {showNameModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowNameModal(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-4">Name your prediction</h3>
+          <div className={`rounded-2xl p-6 w-full max-w-sm shadow-xl ${d ? 'bg-neutral-800' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+            <h3 className={`text-lg font-bold mb-4 ${d ? 'text-white' : ''}`}>Name your prediction</h3>
             <form onSubmit={(e) => { e.preventDefault(); handleSaveCurrent(newPredName.trim() || undefined); }}>
               <input
                 type="text"
@@ -890,7 +928,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                 onChange={e => setNewPredName(e.target.value)}
                 autoFocus
                 placeholder="e.g. Realistic, Bold Picks..."
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold mb-4"
+                className={`w-full px-4 py-3 rounded-xl border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold mb-4 ${
+                  d ? 'bg-white/10 border-white/20 text-white placeholder-white/30' : 'border-neutral-200'
+                }`}
               />
               <div className="flex gap-2">
                 <button
@@ -903,7 +943,9 @@ function ProfileView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreak
                 <button
                   type="button"
                   onClick={() => setShowNameModal(false)}
-                  className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors ${
+                    d ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                  }`}
                 >
                   Cancel
                 </button>
@@ -927,11 +969,11 @@ function LiveBanner({ message }: { message: string }) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return null;
   return (
-    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between text-sm">
-      <span className="text-amber-700 font-medium">{message}</span>
+    <div className="bg-wc-amber-light border-b border-wc-amber-border px-4 py-2 flex items-center justify-between text-sm">
+      <span className="text-wc-amber font-medium">{message}</span>
       <button
         onClick={() => setDismissed(true)}
-        className="text-amber-500 hover:text-amber-700 ml-2"
+        className="text-wc-amber hover:text-wc-amber ml-2"
       >
         <span className="material-symbols-outlined text-[18px]">close</span>
       </button>

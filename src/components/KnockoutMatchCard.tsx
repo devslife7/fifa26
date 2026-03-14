@@ -81,12 +81,12 @@ export default function KnockoutMatchCard({
   }) => {
     if (!team) {
       return (
-        <div className="w-full flex items-center justify-between p-2 rounded-lg bg-slate-100 animate-pulse">
+        <div className="w-full flex items-center justify-between p-2 rounded-lg bg-neutral-100 animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 flex items-center justify-center bg-primary rounded-full">
               <span className="material-symbols-outlined text-[16px] font-bold">lock</span>
             </div>
-            <span className="font-bold text-sm text-slate-400 italic">TBD</span>
+            <span className="font-bold text-sm text-neutral-400 italic">TBD</span>
           </div>
         </div>
       );
@@ -99,9 +99,9 @@ export default function KnockoutMatchCard({
     return (
       <button
         className={`w-full flex items-center justify-between p-2 rounded-full transition-colors ${isSelected
-            ? 'bg-[#FEFAE9] ring-1 ring-inset ring-primary/70'
+            ? 'bg-primary-light ring-1 ring-inset ring-primary/70'
             : canPredictAction
-              ? 'hover:bg-slate-50'
+              ? 'hover:bg-neutral-50'
               : `opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
           } ${compact ? 'py-1.5' : ''}`}
         onClick={() => canPredictAction && onPredict(matchId, side)}
@@ -114,7 +114,7 @@ export default function KnockoutMatchCard({
               {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
             </span>
           )}
-          <span className={`font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-slate-900' : 'text-slate-600'}`}>
+          <span className={`font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-neutral-800' : 'text-neutral-600'}`}>
             {team.name}
           </span>
         </div>
@@ -124,38 +124,38 @@ export default function KnockoutMatchCard({
 
   return (
     <div className="relative group min-w-[180px]">
-      <div className={`bg-white rounded-xl border border-slate-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
-        <div className="bg-slate-50 px-3 py-1.5 flex justify-between items-center border-b border-slate-200">
+      <div className={`bg-white rounded-xl border border-neutral-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
+        <div className="bg-neutral-50 px-3 py-1.5 flex justify-between items-center border-b border-neutral-200">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase">{matchId}</span>
+            <span className="text-[10px] font-semibold text-neutral-500 uppercase">{matchId}</span>
             {liveMatch && (
               <>
-                <span className="text-[10px] text-slate-300">·</span>
-                <span className="text-[10px] text-slate-400 truncate">
+                <span className="text-[10px] text-neutral-300">·</span>
+                <span className="text-[10px] text-neutral-400 truncate">
                   {formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}
                 </span>
               </>
             )}
             {liveMatch?.venue && (
               <>
-                <span className="text-[10px] text-slate-300">·</span>
-                <span className="text-[9px] text-slate-400 truncate">{liveMatch.venue}</span>
+                <span className="text-[10px] text-neutral-300">·</span>
+                <span className="text-[9px] text-neutral-400 truncate">{liveMatch.venue}</span>
               </>
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {isFinished && liveMatch?.score && (
-              <span className="text-[10px] font-bold tabular-nums text-slate-600">
+              <span className="text-[10px] font-bold tabular-nums text-neutral-600">
                 {liveMatch.score.home}–{liveMatch.score.away}
               </span>
             )}
             {predictionCorrect !== null && (
-              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-green-500' : 'text-red-400'}`}>
+              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
                 {predictionCorrect ? 'check_circle' : 'cancel'}
               </span>
             )}
             {!canPredict && !liveMatch && (
-              <span className="text-[10px] font-semibold text-slate-400 italic">PENDING</span>
+              <span className="text-[10px] font-semibold text-neutral-400 italic">PENDING</span>
             )}
           </div>
         </div>

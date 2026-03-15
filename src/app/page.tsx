@@ -195,7 +195,7 @@ export default function Home() {
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' ? 'max-w-[1700px] px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-4' :
-        activeTab === 'profile' ? 'max-w-md px-4' :
+        activeTab === 'profile' ? 'max-w-2xl px-4' :
         'max-w-md px-4'
       }`}>
         {(activeTab === 'groups' || activeTab === 'bracket') && (() => {

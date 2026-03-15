@@ -121,6 +121,15 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       requestAnimationFrame(() => {
         const scrollLeft = container.scrollLeft;
         const containerWidth = container.clientWidth;
+
+        // If scrolled to the rightmost end, select Finals
+        const maxScroll = container.scrollWidth - containerWidth;
+        if (scrollLeft >= maxScroll - 10) {
+          setActiveRound(prev => prev !== 'F' ? 'F' : prev);
+          ticking = false;
+          return;
+        }
+
         let leftmostRound: KnockoutRound = rounds[0];
 
         for (const round of rounds) {

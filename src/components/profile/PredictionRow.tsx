@@ -74,7 +74,7 @@ export default function PredictionRow({
             value={renameInput}
             onChange={e => setRenameInput(e.target.value)}
             autoFocus
-            className={`flex-grow min-w-0 px-3 py-2 rounded-lg border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold ${
+            className={`flex-grow min-w-0 px-3 py-2 rounded-lg border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-base font-bold ${
               d ? 'bg-white/10 border-white/20 text-white' : 'border-neutral-200'
             }`}
           />
@@ -93,8 +93,16 @@ export default function PredictionRow({
     <div
       className={`rounded-2xl border transition-colors ${
         d
-          ? isCurrentlyEditing ? 'bg-white/10 border-primary/40 ring-1 ring-primary/20' : 'bg-white/5 border-white/10'
-          : isCurrentlyEditing ? 'bg-white border-primary/40 ring-1 ring-primary/20' : 'bg-white border-neutral-100'
+          ? isCurrentlyEditing
+            ? 'bg-white/10 border-primary/40 ring-1 ring-primary/20'
+            : p.is_active
+              ? 'bg-white/5 border-primary/30'
+              : 'bg-white/5 border-white/10'
+          : isCurrentlyEditing
+            ? 'bg-white border-primary/40 ring-1 ring-primary/20'
+            : p.is_active
+              ? 'bg-white border-primary/30'
+              : 'bg-white border-neutral-100'
       }`}
     >
       {/* Main row — tap to expand */}

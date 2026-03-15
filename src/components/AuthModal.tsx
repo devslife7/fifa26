@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 interface Props {
@@ -16,6 +16,13 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (step === 'otp') {
+      otpInputRef.current?.focus();
+    }
+  }, [step]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +93,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-base"
                   required
                   autoFocus
                 />
@@ -98,7 +105,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-base"
                   required
                 />
               </div>
@@ -115,6 +122,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
               <div>
                 <label className="block text-sm font-medium text-neutral-400 mb-1">Verification Code</label>
                 <input
+                  ref={otpInputRef}
                   type="text"
                   value={otpCode}
                   onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

@@ -9,7 +9,6 @@ import {
 } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
-import ActivePredictionCard from '@/components/profile/ActivePredictionCard';
 import WorkingDraftCard from '@/components/profile/WorkingDraftCard';
 import PredictionsList from '@/components/profile/PredictionsList';
 import GuestPrompt from '@/components/profile/GuestPrompt';
@@ -27,7 +26,7 @@ export default function ProfileView({
   groupPredictions, knockoutPredictions, thirdPlaceTiebreaker,
   onNavigate, onLoadPrediction, onNewPrediction,
 }: ProfileViewProps) {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const darkMode = true;
 
@@ -141,12 +140,6 @@ export default function ProfileView({
 
       {user ? (
         <>
-          {/* Zone 2: Active Prediction Spotlight */}
-          <ActivePredictionCard
-            activePrediction={activePrediction}
-            darkMode={d}
-          />
-
           {/* Zone 3: Working Draft (only if editing something and it's not the active prediction) */}
           {hasPredictions && !isEditingActive && (
             <WorkingDraftCard
@@ -183,18 +176,6 @@ export default function ProfileView({
             onDelete={handleDelete}
           />
 
-          {/* Zone 5: Footer */}
-          <div className="pt-2 flex items-center justify-center">
-            <button
-              onClick={signOut}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                d ? 'text-wc-red/70 hover:bg-wc-red/10' : 'text-wc-red/60 hover:bg-wc-red/5'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">logout</span>
-              Sign out
-            </button>
-          </div>
         </>
       ) : (
         /* Guest State */
@@ -219,18 +200,11 @@ export default function ProfileView({
                 onChange={e => setNewPredName(e.target.value)}
                 autoFocus
                 placeholder="e.g. Realistic, Bold Picks..."
-                className={`w-full px-4 py-3 rounded-xl border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm font-bold mb-4 ${
+                className={`w-full px-4 py-3 rounded-xl border focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-base font-bold mb-4 ${
                   d ? 'bg-white/10 border-white/20 text-white placeholder-white/30' : 'border-neutral-200'
                 }`}
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={savingCurrent}
-                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  {savingCurrent ? 'Saving...' : 'Save'}
-                </button>
                 <button
                   type="button"
                   onClick={() => setShowNameModal(false)}
@@ -239,6 +213,13 @@ export default function ProfileView({
                   }`}
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCurrent}
+                  className="flex-1 py-3 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {savingCurrent ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>

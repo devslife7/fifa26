@@ -60,15 +60,26 @@ export default function PredictionsList({
         </div>
       ) : predictions.length === 0 ? (
         <div className={`rounded-2xl border p-6 text-center ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100'}`}>
-          <span className={`material-symbols-outlined text-3xl mb-2 block ${d ? 'text-white/20' : 'text-neutral-300'}`}>folder_open</span>
-          <p className={`text-sm ${d ? 'text-white/40' : 'text-neutral-400'}`}>No saved predictions yet</p>
-          {hasPredictions && (
-            <p className={`text-xs mt-1 ${d ? 'text-white/30' : 'text-neutral-400'}`}>Use the save button above to save your current predictions</p>
-          )}
+          <span className={`material-symbols-outlined text-3xl mb-2 block ${d ? 'text-white/20' : 'text-neutral-300'}`}>emoji_events</span>
+          <p className={`text-sm font-semibold ${d ? 'text-white/50' : 'text-neutral-500'}`}>No predictions yet</p>
+          <p className={`text-xs mt-1 ${d ? 'text-white/30' : 'text-neutral-400'}`}>
+            {hasPredictions
+              ? 'Save your current predictions to compete on the leaderboard'
+              : 'Create your first prediction to compete on the leaderboard'}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {predictions.map(p => (
+          {/* No-active banner */}
+          {!predictions.some(p => p.is_active) && (
+            <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${d ? 'bg-primary/10 border border-primary/15' : 'bg-primary/5 border border-primary/10'}`}>
+              <span className="material-symbols-outlined text-[16px] text-primary">info</span>
+              <p className={`text-xs ${d ? 'text-white/50' : 'text-neutral-500'}`}>
+                Set a completed prediction as active to appear on the leaderboard
+              </p>
+            </div>
+          )}
+          {[...predictions].sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1)).map(p => (
             <PredictionRow
               key={p.id}
               prediction={p}

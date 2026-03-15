@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, GroupStanding } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
 import { generateBracket, getChampion } from '@/lib/bracket';
 import { teamsByCode, groups } from '@/data/teams';
-import { getAllGroupStandings } from '@/lib/standings';
+import { getGroupMatches } from '@/data/matches';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { loadPredictions, getEditingPredictionId, getEditingPredictionName, setEditingPrediction } from '@/lib/storage';
+import { loadPredictions, getEditingPredictionId, getEditingPredictionName, resetAllPredictions } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onComplete?: () => void;
+  onSaved?: () => void;
 }
 
 function FlagEmoji({ code, flagEmoji, size = 'normal' }: { code: string; flagEmoji: string; size?: 'small' | 'normal' }) {
@@ -23,51 +24,78 @@ function FlagEmoji({ code, flagEmoji, size = 'normal' }: { code: string; flagEmo
   return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
-function CaptureGroupCard({ group, standings }: { group: GroupLetter; standings: GroupStanding[] }) {
+function CaptureGroupCard({ group, groupPredictions }: { group: GroupLetter; groupPredictions: Record<string, MatchResult> }) {
+  const matches = getGroupMatches(group);
   return (
     <div style={{ backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-      <div style={{ padding: '6px 12px', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b' }}>Group {group}</span>
+      <div style={{ padding: '2px 10px', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', lineHeight: 1.2 }}>Group {group}</span>
       </div>
-      {standings.map((s, i) => {
-        const team = teamsByCode[s.team];
-        const isQualifier = i < 2;
-        const isTBD = s.team.startsWith('TBD');
+      {matches.map((match, i) => {
+        const result = groupPredictions[match.id];
+        const home = teamsByCode[match.home];
+        const away = teamsByCode[match.away];
+        const homeWins = result === 'home';
+        const awayWins = result === 'away';
+        const isDraw = result === 'draw';
+        const homeName = match.home.startsWith('TBD') ? 'TBD' : (home?.name ?? match.home);
+        const awayName = match.away.startsWith('TBD') ? 'TBD' : (away?.name ?? match.away);
         return (
           <div
-            key={s.team}
+            key={match.id}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '5px 10px',
-              fontSize: 12,
-              backgroundColor: isQualifier ? '#fffbeb' : 'transparent',
-              borderBottom: i < standings.length - 1 ? '1px solid #f1f5f9' : 'none',
+              padding: '3px 8px',
+              fontSize: 11,
+              borderBottom: i < matches.length - 1 ? '1px solid #f1f5f9' : 'none',
             }}
           >
-            <span style={{ color: '#94a3b8', width: 12, textAlign: 'right', fontSize: 10 }}>{i + 1}</span>
-            {team && !isTBD ? (
-              <span style={{ fontSize: 14, lineHeight: 1 }}>{team.flag}</span>
-            ) : (
-              <span style={{ fontSize: 14, lineHeight: 1, width: '1em' }}>&nbsp;</span>
-            )}
-            <span className="font-body" style={{
-              flex: 1,
-              whiteSpace: 'nowrap',
-              fontWeight: isQualifier ? 600 : 400,
-              color: isQualifier ? '#1e293b' : '#64748b',
+            {/* Home side */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+              <span className="font-body" style={{
+                whiteSpace: 'nowrap',
+                lineHeight: 1,
+                fontWeight: homeWins ? 700 : 400,
+                color: homeWins ? '#1e293b' : isDraw ? '#475569' : '#cbd5e1',
+                opacity: !homeWins && !isDraw ? 0.6 : 1,
+              }}>
+                {homeName}
+              </span>
+              {home && !match.home.startsWith('TBD') ? (
+                <span style={{ fontSize: 13, lineHeight: 1, opacity: !homeWins && !isDraw ? 0.45 : 1 }}>{home.flag}</span>
+              ) : (
+                <span style={{ width: 16, display: 'inline-block' }}>&nbsp;</span>
+              )}
+            </div>
+            {/* Center indicator */}
+            <div style={{
+              width: 28,
+              textAlign: 'center',
+              fontSize: 9,
+              lineHeight: 1,
+              fontWeight: isDraw ? 800 : 600,
+              color: isDraw ? '#1e293b' : '#cbd5e1',
             }}>
-              {isTBD ? 'TBD' : (team?.name ?? s.team)}
-            </span>
-            <span style={{
-              fontFamily: 'monospace',
-              fontSize: 11,
-              fontWeight: isQualifier ? 700 : 400,
-              color: isQualifier ? '#334155' : '#94a3b8',
-            }}>
-              {s.points}
-            </span>
+              {isDraw ? 'TIE' : 'vs'}
+            </div>
+            {/* Away side */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 3 }}>
+              {away && !match.away.startsWith('TBD') ? (
+                <span style={{ fontSize: 13, lineHeight: 1, opacity: !awayWins && !isDraw ? 0.45 : 1 }}>{away.flag}</span>
+              ) : (
+                <span style={{ width: 16, display: 'inline-block' }}>&nbsp;</span>
+              )}
+              <span className="font-body" style={{
+                whiteSpace: 'nowrap',
+                lineHeight: 1,
+                fontWeight: awayWins ? 700 : 400,
+                color: awayWins ? '#1e293b' : isDraw ? '#475569' : '#cbd5e1',
+                opacity: !awayWins && !isDraw ? 0.6 : 1,
+              }}>
+                {awayName}
+              </span>
+            </div>
           </div>
         );
       })}
@@ -76,11 +104,10 @@ function CaptureGroupCard({ group, standings }: { group: GroupLetter; standings:
 }
 
 function CaptureGroupsGrid({ groupPredictions }: { groupPredictions: Record<string, MatchResult> }) {
-  const allStandings = getAllGroupStandings(groupPredictions);
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
       {groups.map(g => (
-        <CaptureGroupCard key={g} group={g} standings={allStandings[g]} />
+        <CaptureGroupCard key={g} group={g} groupPredictions={groupPredictions} />
       ))}
     </div>
   );
@@ -88,7 +115,7 @@ function CaptureGroupsGrid({ groupPredictions }: { groupPredictions: Record<stri
 
 function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker }: Props) {
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
-  const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F'];
+  const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'FIN'];
 
   const teamRow = (team: { name: string; flag: string } | null, code: string | undefined, isWinner: boolean, hasBorder: boolean) => (
     <div
@@ -96,7 +123,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
         display: 'flex',
         alignItems: 'center',
         gap: 4,
-        padding: '4px 8px',
+        padding: '3px 8px',
         fontSize: 11,
         whiteSpace: 'nowrap',
         backgroundColor: isWinner ? '#f8fafc' : 'transparent',
@@ -110,7 +137,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
       ) : (
         <span style={{ width: 16 }}>&nbsp;</span>
       )}
-      <span className="font-body">{team?.name || 'TBD'}</span>
+      <span className="font-body" style={{ lineHeight: 1 }}>{team?.name || 'TBD'}</span>
     </div>
   );
 
@@ -121,7 +148,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
         return (
           <div key={round} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', height: '100%', flex: 1, gap: 4 }}>
             <h3 style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center', marginBottom: 2 }}>
-              {round === 'F' ? 'Final' : round}
+              {round === 'FIN' ? 'Final' : round}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', height: '100%' }}>
               {matches.map(match => {
@@ -142,7 +169,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
   );
 }
 
-export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onComplete }: Props) {
+export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onComplete, onSaved }: Props) {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -191,10 +218,8 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         return;
       }
 
-      // Track the saved prediction ID for future updates
-      if (data.predictions?.id) {
-        setEditingPrediction(data.predictions.id, data.predictions.name);
-      }
+      // Clear all local prediction data since prediction is now complete
+      resetAllPredictions();
 
       // Auto-activate if this is the first complete prediction
       if (data.predictions?.id && !data.predictions?.is_active) {
@@ -208,6 +233,8 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
       if (data.predictions?.share_token) {
         setShareUrl(`${window.location.origin}/shared/${data.predictions.share_token}`);
       }
+
+      onSaved?.();
     } catch {
       setError('Network error. Please try again.');
     } finally {

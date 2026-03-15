@@ -178,12 +178,12 @@ export function generateBracket(
   const finalHome = sf[0].result ? (sf[0].result === 'home' ? sf[0].home : sf[0].away) : undefined;
   const finalAway = sf[1].result ? (sf[1].result === 'home' ? sf[1].home : sf[1].away) : undefined;
   matches.push({
-    id: 'F-1',
-    round: 'F',
+    id: 'FIN-1',
+    round: 'FIN',
     position: 1,
     home: finalHome,
     away: finalAway,
-    result: knockoutPredictions['F-1'],
+    result: knockoutPredictions['FIN-1'],
   });
 
   return matches;
@@ -205,7 +205,7 @@ function generateEmptyBracket(): KnockoutMatch[] {
     matches.push({ id: `SF-${i}`, round: 'SF', position: i });
   }
   matches.push({ id: '3RD-1', round: '3RD', position: 1 });
-  matches.push({ id: 'F-1', round: 'F', position: 1 });
+  matches.push({ id: 'FIN-1', round: 'FIN', position: 1 });
 
   return matches;
 }
@@ -216,7 +216,7 @@ export function getChampion(
   thirdPlaceTiebreaker?: string[]
 ): string | undefined {
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
-  const final = bracket.find(m => m.id === 'F-1');
+  const final = bracket.find(m => m.id === 'FIN-1');
   if (!final || !final.result) return undefined;
   return final.result === 'home' ? final.home : final.away;
 }

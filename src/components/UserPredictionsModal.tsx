@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { LeaderboardPrediction, LiveMatch } from '@/types';
-import { groups, teamsByCode } from '@/data/teams';
-import GroupSection from './GroupSection';
+import { teamsByCode } from '@/data/teams';
+import { allGroupMatches } from '@/data/matches';
+import GroupMatchCard from './GroupMatchCard';
 import BracketView from './BracketView';
 
 interface Props {
@@ -20,6 +21,31 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
 
   const championTeam = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
   const championFlagUrl = prediction.champion_code && teamFlagsByCode ? teamFlagsByCode[prediction.champion_code] : undefined;
+
+  const matchesByDate = useMemo(() => {
+    const sorted = [...allGroupMatches].sort((a, b) => {
+      const dateA = liveMatches?.[a.id]?.utcDate ?? '';
+      const dateB = liveMatches?.[b.id]?.utcDate ?? '';
+      if (dateA && dateB) return dateA.localeCompare(dateB);
+      // Fallback: keep static order when no live data
+      return 0;
+    });
+
+    const sections: { label: string; matches: typeof sorted }[] = [];
+    for (const match of sorted) {
+      const utc = liveMatches?.[match.id]?.utcDate;
+      const label = utc
+        ? new Date(utc).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'Schedule TBD';
+      const last = sections[sections.length - 1];
+      if (last && last.label === label) {
+        last.matches.push(match);
+      } else {
+        sections.push({ label, matches: [match] });
+      }
+    }
+    return sections;
+  }, [liveMatches]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -76,17 +102,29 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
         {/* Content */}
         <div className={`flex-grow overflow-y-auto ${activeTab === 'groups' ? 'p-6 pb-24' : 'pb-24'}`}>
           {activeTab === 'groups' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {groups.map(g => (
-                <GroupSection
-                  key={g}
-                  group={g}
-                  predictions={prediction.group_matches}
-                  onPredict={() => {}}
-                  liveMatches={liveMatches}
-                  teamFlagsByCode={teamFlagsByCode}
-                  readOnly={true}
-                />
+            <div className="space-y-5 max-w-2xl mx-auto">
+              {matchesByDate.map(section => (
+                <div key={section.label}>
+                  <div className="sticky top-0 z-10 bg-background-dark/90 backdrop-blur-sm py-2 mb-2">
+                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
+                  </div>
+                  <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
+                    {section.matches.map(match => (
+                      <GroupMatchCard
+                        key={match.id}
+                        matchId={match.id}
+                        homeCode={match.home}
+                        awayCode={match.away}
+                        result={prediction.group_matches[match.id]}
+                        onPredict={() => {}}
+                        liveMatch={liveMatches?.[match.id]}
+                        teamFlagsByCode={teamFlagsByCode}
+                        readOnly={true}
+                        groupLabel={match.group}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           ) : (

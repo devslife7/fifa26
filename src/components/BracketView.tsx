@@ -16,7 +16,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
 
 const roundLabels: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -24,7 +24,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   QF: 'Quarter-finals',
   SF: 'Semi-finals',
   '3RD': 'Third Place',
-  F: 'Finals',
+  FIN: 'Finals',
 };
 
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
@@ -125,7 +125,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
         // If scrolled to the rightmost end, select Finals
         const maxScroll = container.scrollWidth - containerWidth;
         if (scrollLeft >= maxScroll - 10) {
-          setActiveRound(prev => prev !== 'F' ? 'F' : prev);
+          setActiveRound(prev => prev !== 'FIN' ? 'FIN' : prev);
           ticking = false;
           return;
         }

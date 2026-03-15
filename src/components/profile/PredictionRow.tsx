@@ -10,16 +10,19 @@ interface PredictionRowProps {
   isExpanded: boolean;
   darkMode: boolean;
   onToggleExpand: () => void;
+  onView: () => void;
   onEdit: () => void;
   onRename: (newName: string) => void;
   onSetActive: () => void;
   onCopyLink: () => void;
   onDelete: () => void;
+  onSaveImage: () => void;
+  isSavingImage: boolean;
 }
 
 export default function PredictionRow({
   prediction: p, isCurrentlyEditing, isExpanded, darkMode: d,
-  onToggleExpand, onEdit, onRename, onSetActive, onCopyLink, onDelete,
+  onToggleExpand, onView, onEdit, onRename, onSetActive, onCopyLink, onDelete, onSaveImage, isSavingImage,
 }: PredictionRowProps) {
   const [deleting, setDeleting] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -140,7 +143,7 @@ export default function PredictionRow({
                 Active
               </span>
             )}
-            {isCurrentlyEditing && (
+            {isCurrentlyEditing && !p.is_complete && (
               <span className="inline-flex px-1.5 py-0.5 rounded-md bg-wc-blue-light text-wc-blue text-[10px] font-bold flex-shrink-0">
                 Editing
               </span>
@@ -161,6 +164,9 @@ export default function PredictionRow({
             <span className={`text-[10px] ${d ? 'text-white/30' : 'text-neutral-400'}`}>
               {groupCount}/72 groups · {knockoutCount}/32 knockout
             </span>
+            <span className={`text-[10px] ${d ? 'text-white/20' : 'text-neutral-300'}`}>
+              · {new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
           </div>
         </div>
 
@@ -174,17 +180,34 @@ export default function PredictionRow({
       {isExpanded && (
         <div className={`px-4 pb-3 pt-0 flex items-center gap-2 flex-wrap border-t ${d ? 'border-white/5' : 'border-neutral-50'}`}>
           <div className="w-full pt-2.5 flex items-center gap-2 flex-wrap">
-            {!isCurrentlyEditing && (
-              <button
-                onClick={onEdit}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[14px]">edit</span>
-                Edit
-              </button>
-            )}
+            <button
+              onClick={onView}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">visibility</span>
+              View
+            </button>
+            <button
+              onClick={onSaveImage}
+              disabled={isSavingImage}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">{isSavingImage ? 'hourglass_empty' : 'photo_camera'}</span>
+              {isSavingImage ? 'Saving...' : 'Image'}
+            </button>
+            <button
+              onClick={onEdit}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">edit</span>
+              Edit
+            </button>
             <button
               onClick={() => { setRenameInput(p.name); setRenaming(true); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${

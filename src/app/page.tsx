@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
-import { groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
 import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionId, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
-import GroupSection from '@/components/GroupSection';
+import GroupMatchCard from '@/components/GroupMatchCard';
 import ThirdPlaceTable from '@/components/ThirdPlaceTable';
 import BracketView from '@/components/BracketView';
 import ProgressBar from '@/components/ProgressBar';
@@ -16,11 +15,10 @@ import BottomNav from '@/components/BottomNav';
 import RankingView from '@/components/RankingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import ProfileView from '@/components/ProfileView';
-import ChampionScreen from '@/components/ChampionScreen';
 
 export default function Home() {
   const { user } = useAuth();
-  const { matchesByLocalId: liveMatchesByLocalId, groupMatchesByGroup, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
+  const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('groups');
 
@@ -28,7 +26,6 @@ export default function Home() {
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [showChampionModal, setShowChampionModal] = useState(false);
 
   // Load local predictions on mount
   useEffect(() => {
@@ -122,7 +119,7 @@ export default function Home() {
         // Deselect: remove this match and all downstream
         const next = { ...prev };
         delete next[matchId];
-        const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+        const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
         const [round] = matchId.split('-');
         const roundIdx = roundOrder.indexOf(round);
         for (let i = roundIdx + 1; i < roundOrder.length; i++) {
@@ -139,7 +136,7 @@ export default function Home() {
       // Clear downstream
       clearKnockoutDownstream(matchId);
       // Remove downstream from state too
-      const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+      const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
       const [round] = matchId.split('-');
       const roundIdx = roundOrder.indexOf(round);
       const cleaned = { ...next };
@@ -154,10 +151,11 @@ export default function Home() {
       predictions.knockoutMatches = cleaned;
       savePredictions(predictions);
 
-      // Show champion screen after picking the final
-      if (matchId === 'F-1') {
+      // Navigate to profile after picking the final
+      if (matchId === 'FIN-1') {
         setTimeout(() => {
-          setShowChampionModal(true);
+          setActiveTab('profile');
+          setTimeout(() => window.scrollTo({ top: 0 }), 0);
         }, 600);
       }
 
@@ -178,6 +176,30 @@ export default function Home() {
   const tiesResolved = areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
   const canContinueToBracket = groupsComplete && tiesResolved;
 
+  const matchesByDate = useMemo(() => {
+    const sorted = [...allGroupMatches].sort((a, b) => {
+      const dateA = liveMatchesByLocalId?.[a.id]?.utcDate ?? '';
+      const dateB = liveMatchesByLocalId?.[b.id]?.utcDate ?? '';
+      if (dateA && dateB) return dateA.localeCompare(dateB);
+      return 0;
+    });
+
+    const sections: { label: string; matches: typeof sorted }[] = [];
+    for (const match of sorted) {
+      const utc = liveMatchesByLocalId?.[match.id]?.utcDate;
+      const label = utc
+        ? new Date(utc).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+        : 'Schedule TBD';
+      const last = sections[sections.length - 1];
+      if (last && last.label === label) {
+        last.matches.push(match);
+      } else {
+        sections.push({ label, matches: [match] });
+      }
+    }
+    return sections;
+  }, [liveMatchesByLocalId]);
+
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -194,7 +216,7 @@ export default function Home() {
       )}
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
-        activeTab === 'groups' ? 'max-w-[1700px] px-3 sm:px-4' :
+        activeTab === 'groups' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
         activeTab === 'profile' ? 'max-w-2xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
@@ -240,17 +262,28 @@ export default function Home() {
 
             </div>
 
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-x-6 gap-y-10">
-              {groups.map(g => (
-                <GroupSection
-                  key={g}
-                  group={g}
-                  predictions={groupPredictions}
-                  onPredict={handleGroupPredict}
-                  liveMatches={liveMatchesByLocalId}
-                  apiGroupMatches={groupMatchesByGroup?.[g]}
-                  teamFlagsByCode={teamFlagsByCode}
-                />
+            <div className="mt-6 space-y-5">
+              {matchesByDate.map(section => (
+                <div key={section.label}>
+                  <div className="sticky top-0 z-10 bg-background-dark/90 backdrop-blur-sm py-2 mb-2">
+                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
+                  </div>
+                  <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
+                    {section.matches.map(match => (
+                      <GroupMatchCard
+                        key={match.id}
+                        matchId={match.id}
+                        homeCode={match.home}
+                        awayCode={match.away}
+                        result={groupPredictions[match.id]}
+                        onPredict={handleGroupPredict}
+                        liveMatch={liveMatchesByLocalId?.[match.id]}
+                        teamFlagsByCode={teamFlagsByCode}
+                        groupLabel={match.group}
+                      />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -301,6 +334,11 @@ export default function Home() {
               setThirdPlaceTiebreaker([]);
               setActiveTab('groups');
             }}
+            onClearPredictions={() => {
+              setGroupPredictions({});
+              setKnockoutPredictions({});
+              setThirdPlaceTiebreaker([]);
+            }}
           />
         )}
       </main>
@@ -311,28 +349,6 @@ export default function Home() {
         onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
         groupsComplete={canContinueToBracket}
       />
-
-      {/* Champion modal */}
-      {showChampionModal && (
-        <div className="fixed inset-0 z-50 bg-background-dark/95 overflow-y-auto">
-          <button
-            onClick={() => setShowChampionModal(false)}
-            className="absolute top-4 right-4 z-10 p-2 text-white/60 hover:text-white transition-colors"
-          >
-            <span className="material-symbols-outlined text-2xl">close</span>
-          </button>
-          <ChampionScreen
-            groupPredictions={groupPredictions}
-            knockoutPredictions={knockoutPredictions}
-            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-            onComplete={() => {
-              setShowChampionModal(false);
-              setActiveTab('profile');
-              setTimeout(() => window.scrollTo({ top: 0 }), 0);
-            }}
-          />
-        </div>
-      )}
 
       {/* Rate limit toast */}
       {showRateLimitToast && (

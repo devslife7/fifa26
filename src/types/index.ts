@@ -31,7 +31,7 @@ export interface KnockoutMatch {
   awaySource?: MatchSource;
 }
 
-export type KnockoutRound = 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'F';
+export type KnockoutRound = 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FIN';
 
 export interface MatchSource {
   type: 'group_winner' | 'group_runner' | 'best_third' | 'knockout_winner';
@@ -98,6 +98,7 @@ export interface LeaderboardPrediction {
   group_matches: Record<string, MatchResult>;
   knockout_matches: Record<string, KnockoutResult>;
   third_place_tiebreaker?: string[] | null;
+  is_approved?: boolean;
 }
 
 export interface LiveMatch {

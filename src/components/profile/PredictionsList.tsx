@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { SavedPrediction, TabId } from '@/types';
+import { useState, useCallback } from 'react';
+import { SavedPrediction, TabId, LeaderboardPrediction } from '@/types';
 import PredictionRow from './PredictionRow';
+import UserPredictionsModal from '@/components/UserPredictionsModal';
+import PredictionCapture from '@/components/PredictionCapture';
 
 interface PredictionsListProps {
   predictions: SavedPrediction[];
@@ -23,6 +25,9 @@ export default function PredictionsList({
   onLoadPrediction, onNavigate, onNewPrediction, onRename, onSetActive, onDelete,
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [viewingPrediction, setViewingPrediction] = useState<SavedPrediction | null>(null);
+  const [capturingPrediction, setCapturingPrediction] = useState<SavedPrediction | null>(null);
+  const handleCaptureDone = useCallback(() => setCapturingPrediction(null), []);
 
   return (
     <div className="space-y-3">
@@ -87,6 +92,7 @@ export default function PredictionsList({
               isExpanded={expandedId === p.id}
               darkMode={d}
               onToggleExpand={() => setExpandedId(expandedId === p.id ? null : p.id)}
+              onView={() => setViewingPrediction(p)}
               onEdit={() => { onLoadPrediction(p); onNavigate('groups'); }}
               onRename={(name) => onRename(p.id, name)}
               onSetActive={() => onSetActive(p.id)}
@@ -96,9 +102,27 @@ export default function PredictionsList({
                 }
               }}
               onDelete={() => onDelete(p.id)}
+              onSaveImage={() => setCapturingPrediction(p)}
+              isSavingImage={capturingPrediction?.id === p.id}
             />
           ))}
         </div>
+      )}
+      {viewingPrediction && (
+        <UserPredictionsModal
+          prediction={{
+            user_id: '',
+            display_name: viewingPrediction.name,
+            champion_code: viewingPrediction.champion_code ?? null,
+            group_matches: viewingPrediction.group_matches ?? {},
+            knockout_matches: viewingPrediction.knockout_matches ?? {},
+            third_place_tiebreaker: viewingPrediction.third_place_tiebreaker,
+          }}
+          onClose={() => setViewingPrediction(null)}
+        />
+      )}
+      {capturingPrediction && (
+        <PredictionCapture prediction={capturingPrediction} onDone={handleCaptureDone} />
       )}
     </div>
   );

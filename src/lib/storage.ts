@@ -38,7 +38,7 @@ export function setKnockoutPrediction(matchId: string, result: KnockoutResult): 
 export function clearKnockoutDownstream(matchId: string): void {
   const predictions = loadPredictions();
   // Clear all downstream knockout matches when an upstream result changes
-  const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'F'];
+  const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
   const [round] = matchId.split('-');
   const roundIdx = roundOrder.indexOf(round);
 

@@ -13,6 +13,7 @@ import ProfileHeader from '@/components/profile/ProfileHeader';
 import WorkingDraftCard from '@/components/profile/WorkingDraftCard';
 import PredictionsList from '@/components/profile/PredictionsList';
 import GuestPrompt from '@/components/profile/GuestPrompt';
+import ChampionScreen from '@/components/ChampionScreen';
 
 interface ProfileViewProps {
   groupPredictions: Record<string, MatchResult>;
@@ -21,11 +22,12 @@ interface ProfileViewProps {
   onNavigate: (tab: TabId) => void;
   onLoadPrediction: (prediction: SavedPrediction) => void;
   onNewPrediction: () => void;
+  onClearPredictions: () => void;
 }
 
 export default function ProfileView({
   groupPredictions, knockoutPredictions, thirdPlaceTiebreaker,
-  onNavigate, onLoadPrediction, onNewPrediction,
+  onNavigate, onLoadPrediction, onNewPrediction, onClearPredictions,
 }: ProfileViewProps) {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
@@ -47,6 +49,7 @@ export default function ProfileView({
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
 
   const d = darkMode;
+  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   // Fetch saved predictions
   const fetchSaved = useCallback(async () => {
@@ -172,10 +175,20 @@ export default function ProfileView({
         onSignIn={() => setShowAuth(true)}
       />
 
+      {/* Champion Section — only show if not yet saved */}
+      {championCode && !loadingSaved && !savedPredictions.some(p => p.id === currentEditingId && p.is_complete) && (
+        <ChampionScreen
+          groupPredictions={groupPredictions}
+          knockoutPredictions={knockoutPredictions}
+          thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+          onSaved={() => { onClearPredictions(); fetchSaved(); }}
+        />
+      )}
+
       {user ? (
         <>
-          {/* Zone 3: Working Draft (only if editing something and it's not the active prediction) */}
-          {hasPredictions && !isEditingActive && (
+          {/* Zone 3: Working Draft (only if editing something, not the active prediction, and no champion section showing) */}
+          {hasPredictions && !isEditingActive && !championCode && (
             <WorkingDraftCard
               name={currentEditingName}
               predictionId={currentEditingId}

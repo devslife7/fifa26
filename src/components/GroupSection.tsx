@@ -29,6 +29,15 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
   // Fall back to static if API yielded no usable matches (e.g. all localMatchIds null)
   const displayMatches = matches.length > 0 ? matches : staticMatches;
 
+  // Sort by start date when live data is available
+  const sortedMatches = liveMatches
+    ? [...displayMatches].sort((a, b) => {
+        const dateA = liveMatches[a.id]?.utcDate ?? '';
+        const dateB = liveMatches[b.id]?.utcDate ?? '';
+        return dateA.localeCompare(dateB);
+      })
+    : displayMatches;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -44,7 +53,7 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
       </div>
 
       <div className="flex flex-col bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
-        {displayMatches.map(match => (
+        {sortedMatches.map(match => (
           <GroupMatchCard
             key={match.id}
             matchId={match.id}

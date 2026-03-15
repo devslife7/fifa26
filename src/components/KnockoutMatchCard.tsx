@@ -2,6 +2,7 @@
 
 import { KnockoutResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
+import { KNOCKOUT_POINTS } from '@/lib/scoring';
 
 interface Props {
   matchId: string;
@@ -136,12 +137,6 @@ export default function KnockoutMatchCard({
                 </span>
               </>
             )}
-            {liveMatch?.venue && (
-              <>
-                <span className="text-[10px] text-neutral-300">·</span>
-                <span className="text-[9px] text-neutral-400 truncate">{liveMatch.venue}</span>
-              </>
-            )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {isFinished && liveMatch?.score && (
@@ -150,8 +145,15 @@ export default function KnockoutMatchCard({
               </span>
             )}
             {predictionCorrect !== null && (
-              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
-                {predictionCorrect ? 'check_circle' : 'cancel'}
+              <span className="inline-flex items-center gap-0.5">
+                <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
+                  {predictionCorrect ? 'check_circle' : 'cancel'}
+                </span>
+                {predictionCorrect && (
+                  <span className="text-[11px] font-bold text-wc-green font-body">
+                    +{KNOCKOUT_POINTS[matchId.split('-')[0]] ?? 0}
+                  </span>
+                )}
               </span>
             )}
             {!canPredict && !liveMatch && (

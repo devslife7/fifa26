@@ -12,6 +12,7 @@ interface Props {
   liveMatch?: LiveMatch;
   teamFlagsByCode?: Record<string, string>;
   readOnly?: boolean;
+  groupLabel?: string;
 }
 
 
@@ -19,8 +20,11 @@ function PredictionCheck({ prediction, actualResult }: { prediction?: MatchResul
   if (!prediction || !actualResult) return null;
   const correct = prediction === actualResult;
   return (
-    <span className={`material-symbols-outlined text-[14px] font-variation-fill ${correct ? 'text-wc-green' : 'text-wc-red'}`}>
-      {correct ? 'check_circle' : 'cancel'}
+    <span className="inline-flex items-center gap-0.5">
+      <span className={`material-symbols-outlined text-[14px] font-variation-fill ${correct ? 'text-wc-green' : 'text-wc-red'}`}>
+        {correct ? 'check_circle' : 'cancel'}
+      </span>
+      {correct && <span className="text-[11px] font-bold text-wc-green font-body">+1</span>}
     </span>
   );
 }
@@ -62,7 +66,7 @@ function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string
   return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
-export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode, readOnly = false }: Props) {
+export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode, readOnly = false, groupLabel }: Props) {
   const home = teamsByCode[homeCode];
   const away = teamsByCode[awayCode];
 
@@ -88,6 +92,29 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
   return (
     <div className="overflow-hidden relative border-b border-white/5 last:border-0">
+      {groupLabel && (
+        <div className="px-3 pt-1.5 flex items-center gap-1.5">
+          <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Group {groupLabel}</span>
+          {liveMatch?.utcDate && (
+            <>
+              <span className="text-[10px] text-neutral-600">·</span>
+              <span className="text-[10px] font-semibold text-neutral-500">
+                {new Date(liveMatch.utcDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </>
+          )}
+          {isFinished && (
+            <div className="ml-auto flex items-center gap-1.5">
+              {liveMatch?.score && (
+                <span className="text-[11px] font-bold tabular-nums text-neutral-300">
+                  {liveMatch.score.home}–{liveMatch.score.away}
+                </span>
+              )}
+              <PredictionCheck prediction={result} actualResult={liveMatch?.actualResult} />
+            </div>
+          )}
+        </div>
+      )}
       <div className="relative flex items-stretch px-1 py-0.5">
 
         {/* Animated Background Pill */}
@@ -146,17 +173,6 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
         </button>
       </div>
 
-      {/* Footer: score for finished */}
-      {liveMatch && isFinished && (
-        <div className="px-4 flex items-center justify-end gap-1.5 pt-2">
-          {liveMatch.score && (
-            <span className="text-[11px] font-bold tabular-nums text-neutral-300">
-              {liveMatch.score.home}–{liveMatch.score.away}
-            </span>
-          )}
-          <PredictionCheck prediction={result} actualResult={liveMatch.actualResult} />
-        </div>
-      )}
     </div>
   );
 }

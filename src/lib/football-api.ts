@@ -148,7 +148,7 @@ const STAGE_TO_ROUND: Record<string, string> = {
   QUARTER_FINALS: 'QF',
   SEMI_FINALS: 'SF',
   THIRD_PLACE: '3RD',
-  FINAL: 'F',
+  FINAL: 'FIN',
 };
 
 // --- Group letter extraction ---

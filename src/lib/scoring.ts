@@ -12,16 +12,17 @@ interface PredictionRow {
   champion_code: string | null;
 }
 
-const KNOCKOUT_POINTS: Record<string, number> = {
+export const KNOCKOUT_POINTS: Record<string, number> = {
   R32: 2,
   R16: 3,
   QF: 4,
   SF: 5,
   F: 6,
+  FIN: 6,
 };
 
-const CHAMPION_POINTS = 10;
-const GROUP_POINTS = 1;
+export const CHAMPION_POINTS = 10;
+export const GROUP_POINTS = 1;
 
 export function calculateScore(
   prediction: PredictionRow,

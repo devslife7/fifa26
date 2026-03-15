@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LeaderboardEntry, LeaderboardPrediction, MatchResult, LiveMatch } from '@/types';
+import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, MatchResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { detectThirdPlaceTie } from '@/lib/standings';
@@ -12,13 +12,6 @@ const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p1', display_name: 'Mateo Hernandez', total_points: 87, champion_code: 'BR', calculated_at: '', position_change: 0 },
   { user_id: 'p2', display_name: 'Sarah Jenkins', total_points: 82, champion_code: 'FR', calculated_at: '', position_change: 1 },
   { user_id: 'p3', display_name: 'Luca Rossi', total_points: 76, champion_code: 'IT', calculated_at: '', position_change: -1 },
-  { user_id: 'p4', display_name: 'Emily Chen', total_points: 71, champion_code: 'AR', calculated_at: '', position_change: 2 },
-  { user_id: 'p5', display_name: 'James O\'Brien', total_points: 68, champion_code: 'DE', calculated_at: '', position_change: -2 },
-  { user_id: 'p6', display_name: 'Yuki Tanaka', total_points: 65, champion_code: 'JP', calculated_at: '', position_change: 3 },
-  { user_id: 'p7', display_name: 'Carlos Medina', total_points: 62, champion_code: 'ES', calculated_at: '', position_change: 0 },
-  { user_id: 'p8', display_name: 'Priya Patel', total_points: 59, champion_code: 'BR', calculated_at: '', position_change: -1 },
-  { user_id: 'p9', display_name: 'David Kim', total_points: 56, champion_code: 'KR', calculated_at: '', position_change: 1 },
-  { user_id: 'p10', display_name: 'Fatima Al-Rashid', total_points: 54, champion_code: 'AR', calculated_at: '', position_change: 4 },
 ];
 
 // Generate placeholder predictions from PLACEHOLDER_USERS
@@ -43,7 +36,7 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
       km[`SF-${i + 1}`] = (ui + i + 3) % 2 === 0 ? 'home' : 'away';
     }
     km['3RD-1'] = ui % 2 === 0 ? 'home' : 'away';
-    km['F-1'] = (ui + 1) % 2 === 0 ? 'home' : 'away';
+    km['FIN-1'] = (ui + 1) % 2 === 0 ? 'home' : 'away';
     // Compute third-place tiebreaker so the bracket can resolve
     const { tied, slotsToFill } = detectThirdPlaceTie(gm);
     const tiebreaker = slotsToFill > 0 ? tied.slice(0, slotsToFill).map(t => t.team) : null;
@@ -54,6 +47,7 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
       group_matches: gm,
       knockout_matches: km,
       third_place_tiebreaker: tiebreaker,
+      is_approved: ui % 2 === 0,
     };
   });
 }
@@ -83,23 +77,47 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       .then(data => ({ predictions: data.predictions ?? [], totalUsers: data.total_users ?? 0 }))
       .catch(() => ({ predictions: [], totalUsers: 0 }));
 
-    Promise.all([fetchLeaderboard, fetchPredictions]).then(([entries, { predictions: preds, totalUsers: total }]) => {
+    const fetchMyPredictions = user
+      ? fetch('/api/predictions')
+          .then(res => res.json())
+          .then(data => (data.predictions ?? []) as SavedPrediction[])
+          .catch(() => [] as SavedPrediction[])
+      : Promise.resolve([] as SavedPrediction[]);
+
+    Promise.all([fetchLeaderboard, fetchPredictions, fetchMyPredictions]).then(([entries, { predictions: preds, totalUsers: total }, myPreds]) => {
       if (entries.length === 0) {
         setLeaderboard(PLACEHOLDER_USERS);
         setUsePlaceholder(true);
       } else {
         setLeaderboard(entries);
       }
+
+      // Build the user's active prediction as a LeaderboardPrediction
+      const myActive = myPreds.find((p: SavedPrediction) => p.is_active && p.is_complete);
+      const myLeaderboardPred: LeaderboardPrediction | null = myActive && user ? {
+        user_id: user.id,
+        display_name: (user.user_metadata?.display_name as string) ?? 'You',
+        champion_code: myActive.champion_code,
+        group_matches: myActive.group_matches ?? {},
+        knockout_matches: myActive.knockout_matches ?? {},
+        third_place_tiebreaker: myActive.third_place_tiebreaker,
+        is_approved: (myActive as Record<string, unknown>).is_approved as boolean ?? false,
+      } : null;
+
       if (preds.length === 0) {
-        setPredictions(generatePlaceholderPredictions());
-        setTotalUsers(PLACEHOLDER_USERS.length);
+        const placeholder = generatePlaceholderPredictions();
+        // Prepend the user's real prediction to placeholder data
+        setPredictions(myLeaderboardPred ? [myLeaderboardPred, ...placeholder] : placeholder);
+        setTotalUsers(PLACEHOLDER_USERS.length + (myLeaderboardPred ? 1 : 0));
       } else {
-        setPredictions(preds);
+        // Ensure the user's prediction is included in real data
+        const alreadyIncluded = myLeaderboardPred && preds.some((p: LeaderboardPrediction) => p.user_id === user?.id);
+        setPredictions(myLeaderboardPred && !alreadyIncluded ? [myLeaderboardPred, ...preds] : preds);
         setTotalUsers(total || preds.length);
       }
       setLoading(false);
     });
-  }, []);
+  }, [user]);
 
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
@@ -159,8 +177,21 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
-                            <div className="text-xs text-neutral-400 truncate font-body">
-                              {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-neutral-400 truncate font-body">
+                                {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
+                              </span>
+                              {pred.is_approved ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-green/15 text-wc-green shrink-0">
+                                  <span className="material-symbols-outlined text-[12px] font-variation-fill">check_circle</span>
+                                  Approved
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-amber/15 text-wc-amber shrink-0">
+                                  <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                  Pending
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">

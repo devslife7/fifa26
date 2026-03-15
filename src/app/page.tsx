@@ -265,7 +265,7 @@ export default function Home() {
             <div className="mt-6 space-y-5">
               {matchesByDate.map(section => (
                 <div key={section.label}>
-                  <div className="sticky top-0 z-10 bg-background-dark/90 backdrop-blur-sm py-2 mb-2">
+                  <div className="py-2 mb-2">
                     <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
                   </div>
                   <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">

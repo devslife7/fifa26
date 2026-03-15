@@ -16,6 +16,7 @@ import BottomNav from '@/components/BottomNav';
 import RankingView from '@/components/RankingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import ProfileView from '@/components/ProfileView';
+import ChampionScreen from '@/components/ChampionScreen';
 
 export default function Home() {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ export default function Home() {
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [showChampionModal, setShowChampionModal] = useState(false);
 
   // Load local predictions on mount
   useEffect(() => {
@@ -152,11 +154,10 @@ export default function Home() {
       predictions.knockoutMatches = cleaned;
       savePredictions(predictions);
 
-      // Navigate to profile after picking the final
+      // Show champion screen after picking the final
       if (matchId === 'F-1') {
         setTimeout(() => {
-          setActiveTab('profile');
-          setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0);
+          setShowChampionModal(true);
         }, 600);
       }
 
@@ -193,10 +194,10 @@ export default function Home() {
       )}
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
-        activeTab === 'groups' ? 'max-w-[1700px] px-4' :
-        activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-4' :
-        activeTab === 'profile' ? 'max-w-2xl px-4' :
-        'max-w-md px-4'
+        activeTab === 'groups' ? 'max-w-[1700px] px-3 sm:px-4' :
+        activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
+        activeTab === 'profile' ? 'max-w-2xl px-3 sm:px-4' :
+        'max-w-md px-3 sm:px-4'
       }`}>
         {(activeTab === 'groups' || activeTab === 'bracket') && (() => {
           const editName = getEditingPredictionName();
@@ -276,9 +277,6 @@ export default function Home() {
 
         {activeTab === 'ranking' && (
           <RankingView
-            lastUpdated={lastUpdated}
-            liveLoading={liveLoading}
-            onRefreshScores={refetch}
             liveMatches={liveMatchesByLocalId}
             teamFlagsByCode={teamFlagsByCode}
           />
@@ -313,6 +311,28 @@ export default function Home() {
         onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
         groupsComplete={canContinueToBracket}
       />
+
+      {/* Champion modal */}
+      {showChampionModal && (
+        <div className="fixed inset-0 z-50 bg-background-dark/95 overflow-y-auto">
+          <button
+            onClick={() => setShowChampionModal(false)}
+            className="absolute top-4 right-4 z-10 p-2 text-white/60 hover:text-white transition-colors"
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
+          <ChampionScreen
+            groupPredictions={groupPredictions}
+            knockoutPredictions={knockoutPredictions}
+            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+            onComplete={() => {
+              setShowChampionModal(false);
+              setActiveTab('profile');
+              setTimeout(() => window.scrollTo({ top: 0 }), 0);
+            }}
+          />
+        </div>
+      )}
 
       {/* Rate limit toast */}
       {showRateLimitToast && (

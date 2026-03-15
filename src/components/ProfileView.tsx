@@ -7,6 +7,7 @@ import {
   loadPredictions, getEditingPredictionId, getEditingPredictionName,
   setEditingPrediction, getDarkMode, setDarkMode as persistDarkMode,
 } from '@/lib/storage';
+import { getChampion } from '@/lib/bracket';
 import AuthModal from '@/components/AuthModal';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import WorkingDraftCard from '@/components/profile/WorkingDraftCard';
@@ -36,6 +37,7 @@ export default function ProfileView({
   const [savingCurrent, setSavingCurrent] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [newPredName, setNewPredName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const currentEditingId = getEditingPredictionId();
   const currentEditingName = getEditingPredictionName();
@@ -54,19 +56,35 @@ export default function ProfileView({
       const res = await fetch('/api/predictions');
       const data = await res.json();
       setSavedPredictions(data.predictions ?? []);
-    } catch { /* ignore */ }
+    } catch { setError('Failed to load saved predictions.'); }
     setLoadingSaved(false);
   }, [user]);
 
   useEffect(() => { fetchSaved(); }, [fetchSaved]);
 
+  // Auto-dismiss error after 5 seconds
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   // Save current working draft
   const handleSaveCurrent = async (name?: string) => {
     if (!user) { setShowAuth(true); return; }
     setSavingCurrent(true);
+    setError(null);
     try {
       const local = loadPredictions();
       const predictionId = currentEditingId;
+
+      // Compute champion from current state
+      const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker) ?? null;
+
+      // Preserve completion status if this prediction was previously completed
+      const existing = savedPredictions.find(p => p.id === predictionId);
+      const isComplete = existing?.is_complete ?? false;
+
       const res = await fetch('/api/predictions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,18 +94,26 @@ export default function ProfileView({
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
-          championCode: null,
-          isComplete: false,
+          championCode,
+          isComplete,
         }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? 'Failed to save predictions.');
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data.predictions?.id) {
+      if (data.predictions?.id) {
         setEditingPrediction(data.predictions.id, data.predictions.name);
         await fetchSaved();
       }
-    } catch { /* ignore */ }
-    setSavingCurrent(false);
-    setShowNameModal(false);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setSavingCurrent(false);
+      setShowNameModal(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -97,7 +123,7 @@ export default function ProfileView({
         setEditingPrediction(null);
       }
       await fetchSaved();
-    } catch { /* ignore */ }
+    } catch { setError('Failed to delete prediction.'); }
   };
 
   const handleSetActive = async (id: string) => {
@@ -108,7 +134,7 @@ export default function ProfileView({
         body: JSON.stringify({ predictionId: id }),
       });
       await fetchSaved();
-    } catch { /* ignore */ }
+    } catch { setError('Failed to set active prediction.'); }
   };
 
   const handleRename = async (id: string, newName: string) => {
@@ -122,7 +148,7 @@ export default function ProfileView({
         setEditingPrediction(id, newName);
       }
       await fetchSaved();
-    } catch { /* ignore */ }
+    } catch { setError('Failed to rename prediction.'); }
   };
 
   const activePrediction = savedPredictions.find(p => p.is_active) ?? null;
@@ -132,6 +158,14 @@ export default function ProfileView({
 
   return (
     <div className="pt-2 pb-12 space-y-4">
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-wc-red/15 border border-wc-red/30 rounded-xl text-wc-red text-sm font-medium">
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {error}
+        </div>
+      )}
+
       {/* Zone 1: Identity Header */}
       <ProfileHeader
         darkMode={d}

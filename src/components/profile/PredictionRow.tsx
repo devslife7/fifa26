@@ -27,7 +27,7 @@ export default function PredictionRow({
 
   const groupCount = Object.keys(p.group_matches ?? {}).length;
   const knockoutCount = Object.keys(p.knockout_matches ?? {}).length;
-  const pct = Math.round(((groupCount + knockoutCount) / (72 + 48)) * 100);
+  const pct = Math.round(((groupCount + knockoutCount) / (72 + 32)) * 100);
   const champion = p.champion_code ? teamsByCode[p.champion_code] : null;
 
   // Delete confirmation
@@ -125,7 +125,7 @@ export default function PredictionRow({
                   strokeDasharray={`${(pct / 100) * 100.5} 100.5`}
                 />
               </svg>
-              <span className={`relative text-[10px] font-bold ${d ? 'text-white/40' : 'text-neutral-400'}`}>{pct}%</span>
+              <span className={`relative ${pct === 100 ? 'text-[8px]' : 'text-[10px]'} font-bold ${d ? 'text-white/40' : 'text-neutral-400'}`}>{pct}%</span>
             </>
           )}
         </div>
@@ -159,7 +159,7 @@ export default function PredictionRow({
               </span>
             )}
             <span className={`text-[10px] ${d ? 'text-white/30' : 'text-neutral-400'}`}>
-              {groupCount}/72 groups · {knockoutCount}/48 knockout
+              {groupCount}/72 groups · {knockoutCount}/32 knockout
             </span>
           </div>
         </div>

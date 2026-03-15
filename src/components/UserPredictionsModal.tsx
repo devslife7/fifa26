@@ -74,7 +74,7 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
         </div>
 
         {/* Content */}
-        <div className={`flex-grow overflow-y-auto ${activeTab === 'groups' ? 'p-6' : ''}`}>
+        <div className={`flex-grow overflow-y-auto ${activeTab === 'groups' ? 'p-6 pb-24' : 'pb-24'}`}>
           {activeTab === 'groups' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {groups.map(g => (

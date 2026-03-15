@@ -59,22 +59,11 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
 }
 
 interface RankingViewProps {
-  lastUpdated: number | null;
-  liveLoading: boolean;
-  onRefreshScores: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
 }
 
-function formatRelativeTime(ts: number): string {
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-export default function RankingView({ lastUpdated, liveLoading, onRefreshScores, liveMatches, teamFlagsByCode }: RankingViewProps) {
+export default function RankingView({ liveMatches, teamFlagsByCode }: RankingViewProps) {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
@@ -131,23 +120,10 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
       <header className="p-6 sticky top-0 bg-background-dark/80 backdrop-blur-md z-30">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-neutral-400">
-              {lastUpdated ? `Updated ${formatRelativeTime(lastUpdated)}` : ''}
-            </span>
-            <button
-              onClick={onRefreshScores}
-              disabled={liveLoading}
-              className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-300 disabled:opacity-50 transition-colors"
-            >
-              <span className={`material-symbols-outlined text-[16px] ${liveLoading ? 'animate-spin' : ''}`}>refresh</span>
-              <span>{liveLoading ? 'Refreshing…' : 'Refresh scores'}</span>
-            </button>
-          </div>
         </div>
       </header>
 
-      <div className="px-6 md:grid md:grid-cols-[1fr,300px] md:gap-8">
+      <div className="px-0 md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
           {loading ? (
             <div className="flex items-center justify-center py-20">

@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
-import { MatchResult, KnockoutResult, KnockoutRound } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, GroupStanding } from '@/types';
 import { generateBracket, getChampion } from '@/lib/bracket';
-import { teamsByCode } from '@/data/teams';
+import { teamsByCode, groups } from '@/data/teams';
+import { getAllGroupStandings } from '@/lib/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { loadPredictions, getEditingPredictionId, getEditingPredictionName, setEditingPrediction } from '@/lib/storage';
 import AuthModal from '@/components/AuthModal';
@@ -13,6 +14,7 @@ interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
+  onComplete?: () => void;
 }
 
 function FlagEmoji({ code, flagEmoji, size = 'normal' }: { code: string; flagEmoji: string; size?: 'small' | 'normal' }) {
@@ -21,36 +23,114 @@ function FlagEmoji({ code, flagEmoji, size = 'normal' }: { code: string; flagEmo
   return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
+function CaptureGroupCard({ group, standings }: { group: GroupLetter; standings: GroupStanding[] }) {
+  return (
+    <div style={{ backgroundColor: '#ffffff', borderRadius: 8, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ padding: '6px 12px', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b' }}>Group {group}</span>
+      </div>
+      {standings.map((s, i) => {
+        const team = teamsByCode[s.team];
+        const isQualifier = i < 2;
+        const isTBD = s.team.startsWith('TBD');
+        return (
+          <div
+            key={s.team}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 10px',
+              fontSize: 12,
+              backgroundColor: isQualifier ? '#fffbeb' : 'transparent',
+              borderBottom: i < standings.length - 1 ? '1px solid #f1f5f9' : 'none',
+            }}
+          >
+            <span style={{ color: '#94a3b8', width: 12, textAlign: 'right', fontSize: 10 }}>{i + 1}</span>
+            {team && !isTBD ? (
+              <span style={{ fontSize: 14, lineHeight: 1 }}>{team.flag}</span>
+            ) : (
+              <span style={{ fontSize: 14, lineHeight: 1, width: '1em' }}>&nbsp;</span>
+            )}
+            <span className="font-body" style={{
+              flex: 1,
+              whiteSpace: 'nowrap',
+              fontWeight: isQualifier ? 600 : 400,
+              color: isQualifier ? '#1e293b' : '#64748b',
+            }}>
+              {isTBD ? 'TBD' : (team?.name ?? s.team)}
+            </span>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: 11,
+              fontWeight: isQualifier ? 700 : 400,
+              color: isQualifier ? '#334155' : '#94a3b8',
+            }}>
+              {s.points}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CaptureGroupsGrid({ groupPredictions }: { groupPredictions: Record<string, MatchResult> }) {
+  const allStandings = getAllGroupStandings(groupPredictions);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+      {groups.map(g => (
+        <CaptureGroupCard key={g} group={g} standings={allStandings[g]} />
+      ))}
+    </div>
+  );
+}
+
 function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker }: Props) {
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
-  const rounds: KnockoutRound[] = ['R16', 'QF', 'SF', 'F']; // Skip R32 to save space
-  
+  const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'F'];
+
+  const teamRow = (team: { name: string; flag: string } | null, code: string | undefined, isWinner: boolean, hasBorder: boolean) => (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '4px 8px',
+        fontSize: 11,
+        whiteSpace: 'nowrap',
+        backgroundColor: isWinner ? '#f8fafc' : 'transparent',
+        fontWeight: isWinner ? 700 : 400,
+        color: isWinner ? '#1e293b' : '#64748b',
+        borderBottom: hasBorder ? '1px solid #f1f5f9' : 'none',
+      }}
+    >
+      {team && !code?.startsWith('TBD') ? (
+        <span style={{ fontSize: 13, lineHeight: 1 }}>{team.flag}</span>
+      ) : (
+        <span style={{ width: 16 }}>&nbsp;</span>
+      )}
+      <span className="font-body">{team?.name || 'TBD'}</span>
+    </div>
+  );
+
   return (
-    <div className="flex gap-6 p-8 bg-neutral-50 w-full h-[800px] items-center justify-center">
+    <div style={{ display: 'flex', gap: 8, padding: 20, backgroundColor: '#f8fafc', width: '100%', height: 920, alignItems: 'center', justifyContent: 'center' }}>
       {rounds.map(round => {
-        const matches = bracket.filter(m => m.round === round);
+        const matches = bracket.filter(m => m.round === round && m.round !== '3RD');
         return (
-          <div key={round} className="flex flex-col justify-around h-full flex-1 gap-4">
-            <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-widest text-center mb-2">
+          <div key={round} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', height: '100%', flex: 1, gap: 4 }}>
+            <h3 style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center', marginBottom: 2 }}>
               {round === 'F' ? 'Final' : round}
             </h3>
-            <div className="flex flex-col justify-around h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', height: '100%' }}>
               {matches.map(match => {
                 const home = match.home ? teamsByCode[match.home] : null;
                 const away = match.away ? teamsByCode[match.away] : null;
-                const isHomeWinner = match.result === 'home';
-                const isAwayWinner = match.result === 'away';
-                
                 return (
-                  <div key={match.id} className="flex flex-col bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden text-sm">
-                    <div className={`flex items-center gap-3 px-4 py-3 border-b border-neutral-100 ${isHomeWinner ? 'bg-neutral-50 font-bold text-neutral-800' : 'text-neutral-500'}`}>
-                      {home ? <FlagEmoji code={match.home!} flagEmoji={home.flag} size="normal" /> : <div className="w-7" />}
-                      <span className="truncate font-body">{home?.name || 'TBD'}</span>
-                    </div>
-                    <div className={`flex items-center gap-3 px-4 py-3 ${isAwayWinner ? 'bg-neutral-50 font-bold text-neutral-800' : 'text-neutral-500'}`}>
-                      {away ? <FlagEmoji code={match.away!} flagEmoji={away.flag} size="normal" /> : <div className="w-7" />}
-                      <span className="truncate font-body">{away?.name || 'TBD'}</span>
-                    </div>
+                  <div key={match.id} style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', borderRadius: 6, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                    {teamRow(home, match.home, match.result === 'home', true)}
+                    {teamRow(away, match.away, match.result === 'away', false)}
                   </div>
                 );
               })}
@@ -62,7 +142,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
   );
 }
 
-export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker }: Props) {
+export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onComplete }: Props) {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -146,11 +226,11 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
     setTakingScreenshot(true);
     try {
       const canvas = await html2canvas(captureRef.current, {
-        backgroundColor: 'var(--color-neutral-50)',
+        backgroundColor: '#f8fafc',
         scale: 2, // higher res
         logging: false,
         useCORS: true,
-        windowWidth: 1200,
+        windowWidth: 1600,
         onclone: (clonedDoc) => {
           // html2canvas doesn't support oklch/lab colors yet, so we need to
           // convert any tailwind v4 oklch colors to hex/rgb in the cloned document
@@ -192,10 +272,10 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
       if (navigator.share && navigator.canShare) {
         try {
           const blob = await (await fetch(image)).blob();
-          const file = new File([blob], `fifa26-champion-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`, { type: 'image/png' });
+          const file = new File([blob], `fifa26-predictions-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`, { type: 'image/png' });
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: 'My FIFA 26 Champion Prediction',
+              title: 'My FIFA 26 Predictions',
               files: [file]
             });
             return; // If share succeeds, we're done
@@ -207,7 +287,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
       
       // Fallback to standard download
       const link = document.createElement('a');
-      link.download = `fifa26-champion-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+      link.download = `fifa26-predictions-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`;
       link.href = image;
       document.body.appendChild(link);
       link.click();
@@ -235,24 +315,36 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
     <div className="flex flex-col items-center justify-center py-16 text-center">
       {/* Hidden container for the full bracket screenshot */}
       <div className="overflow-hidden h-0 w-0 absolute left-[-9999px]">
-        <div ref={captureRef} className="bg-neutral-50 p-12 flex flex-col items-center w-[1200px]">
-          <div className="flex items-center justify-center gap-6 mb-10">
-            <div className="text-7xl">🏆</div>
+        <div ref={captureRef} style={{ backgroundColor: '#f8fafc', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 1600 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 32 }}>
+            <div style={{ fontSize: 60 }}>🏆</div>
             <div>
-              <h2 className="text-4xl font-black text-neutral-800">My FIFA 26 Predictions</h2>
-              <p className="text-neutral-500 font-medium text-xl mt-1">Champion: <span className="text-primary font-bold font-body">{champion.name}</span></p>
+              <h2 style={{ fontSize: 28, fontWeight: 900, color: '#1e293b', margin: 0 }}>My FIFA 26 Predictions</h2>
+              <p style={{ color: '#64748b', fontWeight: 500, fontSize: 18, marginTop: 4 }}>Champion: <span className="font-body" style={{ color: '#d4a017', fontWeight: 700 }}>{champion.flag} {champion.name}</span></p>
             </div>
           </div>
-          
-          <div className="w-full bg-white rounded-[2rem] shadow-sm border border-neutral-200 overflow-hidden">
-            <CompactBracketView 
-              groupPredictions={groupPredictions} 
-              knockoutPredictions={knockoutPredictions} 
-              thirdPlaceTiebreaker={thirdPlaceTiebreaker} 
-            />
+
+          {/* Group Stage */}
+          <div style={{ width: '100%', marginBottom: 24 }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 12 }}>Group Stage</h3>
+            <CaptureGroupsGrid groupPredictions={groupPredictions} />
           </div>
-          
-          <div className="mt-10 text-neutral-400 font-bold tracking-widest uppercase text-base">
+
+          {/* Knockout Bracket */}
+          <div style={{ width: '100%' }}>
+            <h3 style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: 12 }}>Knockout Bracket</h3>
+            <div style={{ backgroundColor: '#ffffff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              <CompactBracketView
+                groupPredictions={groupPredictions}
+                knockoutPredictions={knockoutPredictions}
+                thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div style={{ marginTop: 32, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: 14 }}>
             fifa26.app
           </div>
         </div>
@@ -315,6 +407,15 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               Copy Share Link
             </button>
             <p className="text-xs text-neutral-400 break-all">{shareUrl}</p>
+            {onComplete && (
+              <button
+                onClick={onComplete}
+                className="w-full py-3 mt-2 bg-white/10 text-white font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+              >
+                Continue to Profile
+                <span className="material-symbols-outlined text-lg">arrow_forward</span>
+              </button>
+            )}
           </div>
         ) : (
           <>

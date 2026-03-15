@@ -14,7 +14,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  createServerClient(url, key, {
+  const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -32,6 +32,9 @@ export async function updateSession(request: NextRequest) {
       },
     },
   });
+
+  // Trigger session refresh so expired tokens get renewed
+  await supabase.auth.getUser();
 
   return supabaseResponse;
 }

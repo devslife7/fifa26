@@ -33,7 +33,7 @@ export default function WorkingDraftCard({
               </span>
               <span className="hidden sm:block">·</span>
               <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-wc-blue inline-block" />{knockoutCount}/48 knockout
+                <span className="w-1.5 h-1.5 rounded-full bg-wc-blue inline-block" />{knockoutCount}/32 knockout
               </span>
               {!predictionId && <><span className="hidden sm:block">·</span><span className="text-wc-amber font-medium whitespace-nowrap">unsaved</span></>}
             </p>
@@ -41,7 +41,7 @@ export default function WorkingDraftCard({
         </div>
         <div className="flex items-stretch gap-2 flex-shrink-0 w-full sm:w-auto mt-1 sm:mt-0">
           <button
-            onClick={() => onNavigate('groups')}
+            onClick={() => onNavigate(groupCount >= 72 && knockoutCount < 32 ? 'bracket' : 'groups')}
             className={`flex-1 sm:flex-none flex items-center justify-center gap-1 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold transition-colors ${
               d ? 'bg-white/10 text-white/60 hover:bg-white/15' : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200'
             }`}

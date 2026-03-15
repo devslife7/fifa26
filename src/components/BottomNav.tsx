@@ -18,7 +18,7 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
 export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Props) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-dark border-t border-white/10">
-      <div className="max-w-2xl mx-auto flex justify-between items-center px-4 pt-3 pb-nav-safe">
+      <div className="flex items-center pt-2 pb-nav-safe">
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;
           const isLocked = !groupsComplete && (tab.id === 'bracket');
@@ -27,17 +27,20 @@ export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Pr
             <button
               key={tab.id}
               onClick={() => !isLocked && onTabChange(tab.id)}
-              className={`flex flex-col items-center gap-1 transition-colors ${isActive
+              className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[48px] transition-colors relative ${isActive
                   ? 'text-primary'
                   : isLocked
                     ? 'text-neutral-400/30 cursor-not-allowed'
                     : 'text-neutral-400 hover:text-primary'
                 }`}
             >
-              <span className={`material-symbols-outlined text-2xl ${isActive ? 'font-variation-fill' : ''}`}>
+              <span className={`material-symbols-outlined text-2xl transition-transform ${isActive ? 'font-variation-fill scale-110' : ''}`}>
                 {isLocked ? 'lock' : tab.icon}
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-tighter font-body">{tab.label}</span>
+              {isActive
+                ? <span className="text-[11px] font-bold uppercase tracking-tighter font-body">{tab.label}</span>
+                : <span className="text-[10px] font-bold uppercase tracking-tighter font-body">{tab.label}</span>
+              }
             </button>
           );
         })}

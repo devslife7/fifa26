@@ -48,7 +48,7 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
             </span>
             <span>·</span>
             <span className="inline-flex items-center gap-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-wc-blue inline-block" />{knockoutCount}/48 knockout
+              <span className="w-1.5 h-1.5 rounded-full bg-wc-blue inline-block" />{knockoutCount}/32 knockout
             </span>
           </p>
           <button

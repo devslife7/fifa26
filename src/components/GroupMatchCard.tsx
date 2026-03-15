@@ -87,19 +87,19 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   };
 
   return (
-    <div className="overflow-hidden relative border-b border-neutral-100 last:border-0">
-      <div className="relative flex items-stretch p-1">
+    <div className="overflow-hidden relative border-b border-white/5 last:border-0">
+      <div className="relative flex items-stretch px-1 py-0.5">
 
         {/* Animated Background Pill */}
         <div
-          className={`absolute top-1 bottom-1 bg-primary-light rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-inset ring-primary/70' : 'opacity-0'}`}
+          className={`absolute top-0.5 bottom-0.5 bg-primary/15 rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-inset ring-primary/70' : 'opacity-0'}`}
           style={getPillStyle()}
         />
 
         {/* Home */}
         <button
-          className={`relative z-10 flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
-            selected('home') ? 'text-neutral-800' : `${readOnly ? '' : 'hover:text-neutral-800'} text-neutral-500`
+          className={`relative z-10 flex-1 min-w-0 flex items-center gap-3 p-2 transition-colors duration-300 ${
+            selected('home') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-400`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('home')}
           disabled={readOnly}
@@ -110,31 +110,31 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           <div className="hidden sm:flex items-center">
             <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="small" />
           </div>
-          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-left font-body">
+          <span className="text-sm font-semibold leading-tight truncate text-left font-body">
             {home.name}
           </span>
         </button>
 
         {/* Draw / VS */}
         <button
-          className={`relative z-10 w-12 sm:w-14 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300 ${
-            selected('draw') ? 'text-neutral-800' : `${readOnly ? '' : 'hover:text-neutral-800'} text-neutral-400`
+          className={`relative z-10 w-12 sm:w-14 flex-shrink-0 flex items-center justify-center transition-colors duration-300 ${
+            selected('draw') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-500`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('draw')}
           disabled={readOnly}
         >
-          <span className="font-bold text-sm sm:text-xs md:text-sm">TIE</span>
+          <span className="font-bold text-xs font-body">TIE</span>
         </button>
 
         {/* Away */}
         <button
-          className={`relative z-10 flex-1 min-w-0 flex items-center justify-end gap-1.5 sm:gap-2 px-2 sm:px-3 py-3 rounded-full transition-colors duration-300 ${
-            selected('away') ? 'text-neutral-800' : `${readOnly ? '' : 'hover:text-neutral-800'} text-neutral-500`
+          className={`relative z-10 flex-1 min-w-0 flex items-center justify-end gap-3 p-2 transition-colors duration-300 ${
+            selected('away') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-400`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('away')}
           disabled={readOnly}
         >
-          <span className="text-sm sm:text-xs md:text-sm font-bold leading-tight truncate text-right font-body">
+          <span className="text-sm font-semibold leading-tight truncate text-right font-body">
             {away.name}
           </span>
           <div className="sm:hidden flex items-center">
@@ -150,7 +150,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
       {liveMatch && isFinished && (
         <div className="px-4 flex items-center justify-end gap-1.5 pt-2">
           {liveMatch.score && (
-            <span className="text-[11px] font-bold tabular-nums text-neutral-600">
+            <span className="text-[11px] font-bold tabular-nums text-neutral-300">
               {liveMatch.score.home}–{liveMatch.score.away}
             </span>
           )}

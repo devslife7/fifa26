@@ -258,7 +258,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center w-full p-8 rounded-3xl bg-neutral-50">
+      <div className="flex flex-col items-center justify-center w-full p-8 rounded-3xl bg-white/5">
         <div className="relative mb-8">
           <div className="text-8xl animate-trophy-glow">🏆</div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-3 bg-primary/20 rounded-full blur-xl" />
@@ -276,7 +276,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           Your Predicted Champion
         </p>
 
-        <div className="bg-white rounded-2xl border border-primary/20 px-8 py-6 max-w-sm shadow-sm animate-pulse-gold">
+        <div className="bg-neutral-900 rounded-2xl border border-primary/20 px-8 py-6 max-w-sm shadow-sm animate-pulse-gold">
           <p className="text-neutral-500 text-sm">
             FIFA World Cup 2026
           </p>
@@ -292,7 +292,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           <button
             onClick={handleScreenshot}
             disabled={takingScreenshot}
-            className="flex-1 py-3 bg-white border border-neutral-200 text-neutral-700 font-bold rounded-xl hover:bg-neutral-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="flex-1 py-3 bg-white/10 border border-white/10 text-white font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[20px]">
               {takingScreenshot ? 'hourglass_empty' : 'photo_camera'}
@@ -303,7 +303,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
 
         {shareUrl ? (
           <div className="space-y-3">
-            <div className="bg-wc-green-light border border-wc-green-border rounded-xl p-4 text-center">
+            <div className="bg-wc-green/15 border border-wc-green/30 rounded-xl p-4 text-center">
               <span className="material-symbols-outlined text-wc-green text-2xl font-variation-fill">check_circle</span>
               <p className="text-wc-green font-bold mt-1">Predictions Saved!</p>
             </div>
@@ -319,7 +319,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         ) : (
           <>
             {error && (
-              <div className="mb-4 p-3 bg-wc-red-light border border-wc-red-border rounded-lg text-wc-red text-sm">
+              <div className="mb-4 p-3 bg-wc-red/15 border border-wc-red/30 rounded-lg text-wc-red text-sm">
                 {error}
               </div>
             )}

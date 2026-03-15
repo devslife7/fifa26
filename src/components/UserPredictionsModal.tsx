@@ -24,13 +24,13 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div 
-        className="bg-background-light w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+        className="bg-background-dark w-full max-w-5xl max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-shrink-0">
+        <div className="bg-neutral-900 px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-xl font-black text-neutral-800">{prediction.display_name}&apos;s Predictions</h2>
+            <h2 className="text-xl font-black text-white">{prediction.display_name}&apos;s Predictions</h2>
             {championTeam && (
               <div className="flex items-center gap-1.5 mt-1 text-sm font-semibold text-neutral-500">
                 <span className="text-xs font-medium text-neutral-400">Predicted Champion:</span>
@@ -47,18 +47,18 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 hover:text-neutral-700 transition-colors"
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-neutral-400 hover:bg-white/15 hover:text-white transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white px-6 border-b border-neutral-200 flex-shrink-0 flex gap-6">
+        <div className={`bg-neutral-900 px-6 flex-shrink-0 flex gap-6 ${activeTab === 'groups' ? 'border-b border-white/10' : ''}`}>
           <button
             onClick={() => setActiveTab('groups')}
             className={`py-3 text-sm font-bold border-b-2 transition-colors ${
-              activeTab === 'groups' ? 'border-primary text-neutral-800' : 'border-transparent text-neutral-400 hover:text-neutral-600'
+              activeTab === 'groups' ? 'border-primary text-white' : 'border-transparent text-neutral-500 hover:text-neutral-300'
             }`}
           >
             Group Stage
@@ -66,7 +66,7 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
           <button
             onClick={() => setActiveTab('bracket')}
             className={`py-3 text-sm font-bold border-b-2 transition-colors ${
-              activeTab === 'bracket' ? 'border-primary text-neutral-800' : 'border-transparent text-neutral-400 hover:text-neutral-600'
+              activeTab === 'bracket' ? 'border-primary text-white' : 'border-transparent text-neutral-500 hover:text-neutral-300'
             }`}
           >
             Knockout Bracket
@@ -74,7 +74,7 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
         </div>
 
         {/* Content */}
-        <div className="flex-grow overflow-y-auto p-6">
+        <div className={`flex-grow overflow-y-auto ${activeTab === 'groups' ? 'p-6' : ''}`}>
           {activeTab === 'groups' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {groups.map(g => (
@@ -90,16 +90,15 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
               ))}
             </div>
           ) : (
-            <div className="-mx-6 -my-6">
-              <BracketView
-                groupPredictions={prediction.group_matches}
-                knockoutPredictions={prediction.knockout_matches}
-                onPredict={() => {}}
-                liveMatches={liveMatches}
-                teamFlagsByCode={teamFlagsByCode}
-                readOnly={true}
-              />
-            </div>
+            <BracketView
+              groupPredictions={prediction.group_matches}
+              knockoutPredictions={prediction.knockout_matches}
+              thirdPlaceTiebreaker={prediction.third_place_tiebreaker ?? undefined}
+              onPredict={() => {}}
+              liveMatches={liveMatches}
+              teamFlagsByCode={teamFlagsByCode}
+              readOnly={true}
+            />
           )}
         </div>
       </div>

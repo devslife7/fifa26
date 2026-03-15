@@ -12,14 +12,14 @@ export default function StandingsTable({ standings, showQualification = true }: 
   return (
     <div className="overflow-x-auto no-scrollbar">
       <table className="w-full text-left text-sm">
-        <thead className="bg-neutral-50 text-neutral-500 font-bold">
+        <thead className="bg-white/5 text-neutral-400 font-bold">
           <tr>
             <th className="py-3 px-4 w-12 text-center">Pos</th>
             <th className="py-3 px-2">Team</th>
             <th className="py-3 px-4 text-center w-16">Pts</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-neutral-100">
+        <tbody className="divide-y divide-white/5">
           {standings.map((s, i) => {
             const team = teamsByCode[s.team];
             if (!team) return null;

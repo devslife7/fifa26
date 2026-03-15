@@ -55,7 +55,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="bg-neutral-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-background-dark p-6 text-center">
           <div className="text-4xl mb-2">🏆</div>
@@ -72,7 +72,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
         {/* Form */}
         <div className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-wc-red-light border border-wc-red-border rounded-lg text-wc-red text-sm">
+            <div className="mb-4 p-3 bg-wc-red/15 border border-wc-red/30 rounded-lg text-wc-red text-sm">
               {error}
             </div>
           )}
@@ -80,25 +80,25 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
           {step === 'email' ? (
             <form onSubmit={handleSendOtp} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-600 mb-1">Display Name</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">Display Name</label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   required
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-600 mb-1">Email</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
+                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
                   required
                 />
               </div>
@@ -113,13 +113,13 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-600 mb-1">Verification Code</label>
+                <label className="block text-sm font-medium text-neutral-400 mb-1">Verification Code</label>
                 <input
                   type="text"
                   value={otpCode}
                   onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="000000"
-                  className="w-full px-4 py-3 rounded-xl border border-neutral-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-center text-2xl tracking-[0.3em] font-mono"
+                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-center text-2xl tracking-[0.3em] font-mono"
                   maxLength={6}
                   required
                   autoFocus
@@ -135,7 +135,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
               <button
                 type="button"
                 onClick={() => { setStep('email'); setOtpCode(''); setError(null); }}
-                className="w-full py-2 text-neutral-400 text-sm hover:text-neutral-600 transition-colors"
+                className="w-full py-2 text-neutral-500 text-sm hover:text-neutral-300 transition-colors"
               >
                 Use a different email
               </button>
@@ -144,7 +144,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
 
           <button
             onClick={onClose}
-            className="w-full mt-3 py-2 text-neutral-400 text-sm hover:text-neutral-600 transition-colors"
+            className="w-full mt-3 py-2 text-neutral-500 text-sm hover:text-neutral-300 transition-colors"
           >
             Cancel
           </button>

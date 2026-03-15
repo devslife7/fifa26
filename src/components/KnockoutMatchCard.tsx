@@ -81,7 +81,7 @@ export default function KnockoutMatchCard({
   }) => {
     if (!team) {
       return (
-        <div className="w-full flex items-center justify-between p-2 rounded-lg bg-neutral-100 animate-pulse">
+        <div className="w-full flex items-center justify-between p-2 rounded-lg bg-white/10 animate-pulse">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 flex items-center justify-center bg-primary rounded-full">
               <span className="material-symbols-outlined text-[16px] font-bold">lock</span>
@@ -99,9 +99,9 @@ export default function KnockoutMatchCard({
     return (
       <button
         className={`w-full flex items-center justify-between p-2 rounded-full transition-colors ${isSelected
-            ? 'bg-primary-light ring-1 ring-inset ring-primary/70'
+            ? 'bg-primary/15 ring-1 ring-inset ring-primary/70'
             : canPredictAction
-              ? 'hover:bg-neutral-50'
+              ? 'hover:bg-white/5'
               : `opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
           } ${compact ? 'py-1.5' : ''}`}
         onClick={() => canPredictAction && onPredict(matchId, side)}
@@ -114,7 +114,7 @@ export default function KnockoutMatchCard({
               {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
             </span>
           )}
-          <span className={`font-body font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-neutral-800' : 'text-neutral-600'}`}>
+          <span className={`font-body font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-white' : 'text-neutral-400'}`}>
             {team.name}
           </span>
         </div>
@@ -124,8 +124,8 @@ export default function KnockoutMatchCard({
 
   return (
     <div className="relative group min-w-[180px]">
-      <div className={`bg-white rounded-xl border border-neutral-200 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
-        <div className="bg-neutral-50 px-3 py-1.5 flex justify-between items-center border-b border-neutral-200">
+      <div className={`bg-neutral-900 rounded-xl border border-white/10 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
+        <div className="bg-white/5 px-3 py-1.5 flex justify-between items-center border-b border-white/5">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="text-[10px] font-semibold text-neutral-500 uppercase">{matchId}</span>
             {liveMatch && (
@@ -145,7 +145,7 @@ export default function KnockoutMatchCard({
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {isFinished && liveMatch?.score && (
-              <span className="text-[10px] font-bold tabular-nums text-neutral-600">
+              <span className="text-[10px] font-bold tabular-nums text-neutral-300">
                 {liveMatch.score.home}–{liveMatch.score.away}
               </span>
             )}
@@ -159,7 +159,7 @@ export default function KnockoutMatchCard({
             )}
           </div>
         </div>
-        <div className="px-3 py-2">
+        <div className="px-1.5 py-2">
           <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />
           <TeamSlot team={away} code={awayCode} side="away" isSelected={result === 'away'} />
         </div>

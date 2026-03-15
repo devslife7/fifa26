@@ -36,6 +36,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const isScrollingFromClick = useRef(false);
 
   const setRoundRef = useCallback((round: KnockoutRound, el: HTMLDivElement | null) => {
     roundRefs.current[round] = el;
@@ -50,17 +51,18 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const hasMounted = useRef(false);
 
   // On mount, scroll directly to the furthest round with predictions (before paint)
+  // In readOnly mode (modal), always start at R32
   useLayoutEffect(() => {
     let targetRound: KnockoutRound = 'R32';
     const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
     for (const round of rounds) {
       const prefix = round + '-';
       const count = Object.keys(knockoutPredictions).filter(k => k.startsWith(prefix)).length;
-      if (count > 0) targetRound = round;
       const size = roundSizes[round];
       if (size && count === size) {
         completedRounds.current.add(round);
       }
+      if (!readOnly && count > 0) targetRound = round;
     }
     const el = roundRefs.current[targetRound];
     const container = scrollContainerRef.current;
@@ -114,7 +116,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
 
     let ticking = false;
     const handleScroll = () => {
-      if (ticking) return;
+      if (ticking || isScrollingFromClick.current) return;
       ticking = true;
       requestAnimationFrame(() => {
         const scrollLeft = container.scrollLeft;
@@ -164,6 +166,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   // Tab click → scroll to round
   const handleTabClick = (round: KnockoutRound) => {
     setActiveRound(round);
+    isScrollingFromClick.current = true;
     const el = roundRefs.current[round];
     const container = scrollContainerRef.current;
     if (el && container) {
@@ -175,6 +178,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 50);
     }
+    setTimeout(() => { isScrollingFromClick.current = false; }, 400);
   };
 
   if (!allGroupsDone) {
@@ -198,8 +202,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   return (
     <div>
       {/* Sticky Round Tabs */}
-      <div className="sticky top-0 z-20 bg-white">
-        <div className="flex items-center border-b border-neutral-200">
+      <div className="sticky top-0 z-20 bg-background-dark">
+        <div className="flex items-center border-b border-white/10">
           <div 
             ref={tabsContainerRef}
             className="flex overflow-x-auto no-scrollbar gap-6 px-4 flex-1"
@@ -210,8 +214,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                 ref={(el) => setTabRef(round, el)}
                 className={`pb-3 pt-4 whitespace-nowrap text-sm font-bold transition-colors relative ${
                   activeRound === round
-                    ? 'text-neutral-800'
-                    : 'text-neutral-400 hover:text-neutral-600'
+                    ? 'text-white'
+                    : 'text-neutral-500 hover:text-neutral-300'
                 }`}
                 onClick={() => handleTabClick(round)}
               >

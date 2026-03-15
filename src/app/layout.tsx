@@ -40,8 +40,9 @@ export default function RootLayout({
     <html lang="en" className={`${fwc2026.variable} ${notoSans.variable}`}>
       <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <meta name="theme-color" content="#0a0f1a" />
       </head>
-      <body className="bg-background-light font-display text-neutral-800 min-h-screen antialiased">
+      <body className="bg-background-dark font-display text-neutral-200 min-h-screen antialiased">
         <AuthProvider>
           {children}
         </AuthProvider>

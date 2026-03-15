@@ -13,12 +13,11 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'bracket', label: 'Bracket', icon: 'account_tree' },
   { id: 'profile', label: 'Profile', icon: 'person' },
   { id: 'ranking', label: 'Ranking', icon: 'leaderboard' },
-  { id: 'tracking', label: 'Tracking', icon: 'query_stats' },
 ];
 
 export default function BottomNav({ activeTab, onTabChange, groupsComplete }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-light border-t border-neutral-200">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background-dark border-t border-white/10">
       <div className="max-w-2xl mx-auto flex justify-between items-center px-4 pt-3 pb-nav-safe">
         {tabs.map(tab => {
           const isActive = activeTab === tab.id;

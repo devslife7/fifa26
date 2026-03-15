@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { LeaderboardEntry, LeaderboardPrediction, MatchResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
+import { detectThirdPlaceTie } from '@/lib/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from './UserPredictionsModal';
 
@@ -18,26 +19,6 @@ const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p8', display_name: 'Priya Patel', total_points: 59, champion_code: 'BR', calculated_at: '', position_change: -1 },
   { user_id: 'p9', display_name: 'David Kim', total_points: 56, champion_code: 'KR', calculated_at: '', position_change: 1 },
   { user_id: 'p10', display_name: 'Fatima Al-Rashid', total_points: 54, champion_code: 'AR', calculated_at: '', position_change: 4 },
-  { user_id: 'p11', display_name: 'Marco Bianchi', total_points: 51, champion_code: 'IT', calculated_at: '', position_change: -3 },
-  { user_id: 'p12', display_name: 'Sophie Dubois', total_points: 48, champion_code: 'FR', calculated_at: '', position_change: 0 },
-  { user_id: 'p13', display_name: 'Raj Kapoor', total_points: 46, champion_code: 'BR', calculated_at: '', position_change: 2 },
-  { user_id: 'p14', display_name: 'Olivia Martinez', total_points: 43, champion_code: 'US', calculated_at: '', position_change: -1 },
-  { user_id: 'p15', display_name: 'Noah Williams', total_points: 41, champion_code: 'GB-ENG', calculated_at: '', position_change: 0 },
-  { user_id: 'p16', display_name: 'Chloe Andersson', total_points: 39, champion_code: 'SE', calculated_at: '', position_change: 1 },
-  { user_id: 'p17', display_name: 'Hassan Youssef', total_points: 37, champion_code: 'MA', calculated_at: '', position_change: -2 },
-  { user_id: 'p18', display_name: 'Mia Johnson', total_points: 35, champion_code: 'AR', calculated_at: '', position_change: 5 },
-  { user_id: 'p19', display_name: 'Tomas Silva', total_points: 33, champion_code: 'PT', calculated_at: '', position_change: -4 },
-  { user_id: 'p20', display_name: 'Aisha Okafor', total_points: 31, champion_code: 'NG', calculated_at: '', position_change: 0 },
-  { user_id: 'p21', display_name: 'Ethan Brown', total_points: 29, champion_code: 'US', calculated_at: '', position_change: 1 },
-  { user_id: 'p22', display_name: 'Ingrid Larsen', total_points: 27, champion_code: 'DE', calculated_at: '', position_change: -1 },
-  { user_id: 'p23', display_name: 'Kenji Nakamura', total_points: 25, champion_code: 'JP', calculated_at: '', position_change: 2 },
-  { user_id: 'p24', display_name: 'Ana Petrovic', total_points: 23, champion_code: 'HR', calculated_at: '', position_change: -3 },
-  { user_id: 'p25', display_name: 'Lucas Bergmann', total_points: 21, champion_code: 'DE', calculated_at: '', position_change: 0 },
-  { user_id: 'p26', display_name: 'Zara Khan', total_points: 19, champion_code: 'BR', calculated_at: '', position_change: 1 },
-  { user_id: 'p27', display_name: 'Diego Fernandez', total_points: 17, champion_code: 'AR', calculated_at: '', position_change: -2 },
-  { user_id: 'p28', display_name: 'Emma Wilson', total_points: 15, champion_code: 'GB-ENG', calculated_at: '', position_change: 0 },
-  { user_id: 'p29', display_name: 'Ryu Watanabe', total_points: 13, champion_code: 'JP', calculated_at: '', position_change: 1 },
-  { user_id: 'p30', display_name: 'Clara Fontaine', total_points: 11, champion_code: 'FR', calculated_at: '', position_change: -1 },
 ];
 
 // Generate placeholder predictions from PLACEHOLDER_USERS
@@ -63,12 +44,16 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
     }
     km['3RD-1'] = ui % 2 === 0 ? 'home' : 'away';
     km['F-1'] = (ui + 1) % 2 === 0 ? 'home' : 'away';
+    // Compute third-place tiebreaker so the bracket can resolve
+    const { tied, slotsToFill } = detectThirdPlaceTie(gm);
+    const tiebreaker = slotsToFill > 0 ? tied.slice(0, slotsToFill).map(t => t.team) : null;
     return {
       user_id: u.user_id,
       display_name: u.display_name,
       champion_code: u.champion_code,
       group_matches: gm,
       knockout_matches: km,
+      third_place_tiebreaker: tiebreaker,
     };
   });
 }
@@ -143,7 +128,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
   return (
     <div className="flex-grow pb-24">
       {/* Header */}
-      <header className="p-6 sticky top-0 bg-background-light/80 backdrop-blur-md z-30">
+      <header className="p-6 sticky top-0 bg-background-dark/80 backdrop-blur-md z-30">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
           <div className="flex items-center gap-3">
@@ -153,7 +138,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
             <button
               onClick={onRefreshScores}
               disabled={liveLoading}
-              className="flex items-center gap-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-700 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-300 disabled:opacity-50 transition-colors"
             >
               <span className={`material-symbols-outlined text-[16px] ${liveLoading ? 'animate-spin' : ''}`}>refresh</span>
               <span>{liveLoading ? 'Refreshing…' : 'Refresh scores'}</span>
@@ -180,7 +165,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                   </div>
 
                   {usePlaceholder && (
-                    <div className="mb-3 px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-center">
+                    <div className="mb-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-center">
                       <p className="text-xs text-neutral-400">Preview data — real predictions appear once users submit</p>
                     </div>
                   )}
@@ -194,7 +179,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                         <button
                           key={pred.user_id}
                           onClick={() => setSelectedPrediction(pred)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-primary/30 transition-colors text-left cursor-pointer group"
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
@@ -227,7 +212,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
               </div>
 
               {usePlaceholder && (
-                <div className="mb-4 px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-center">
+                <div className="mb-4 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-center">
                   <p className="text-xs text-neutral-400">Preview data — real scores appear once the tournament begins</p>
                 </div>
               )}
@@ -293,7 +278,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                     <button 
                       key={entry.user_id} 
                       onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
-                      className={`w-full flex items-center bg-white p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-neutral-100'} ${userPrediction ? 'cursor-pointer hover:bg-neutral-50 hover:border-primary/30 transition-colors group' : ''}`}
+                      className={`w-full flex items-center bg-neutral-900 p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-white/10'} ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:border-primary/30 transition-colors group' : ''}`}
                     >
                       <div className="w-10 flex justify-center">
                         {medal}
@@ -311,7 +296,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                       </div>
                       <div className="text-right flex items-center gap-3">
                         <div>
-                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-neutral-700'}`}>
+                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-neutral-300'}`}>
                             {rank === 1 ? '+' : ''}{entry.total_points}
                           </div>
                           <div className="text-[10px] font-bold text-neutral-400 uppercase">Points</div>
@@ -326,7 +311,7 @@ export default function RankingView({ lastUpdated, liveLoading, onRefreshScores,
                   <button 
                     key={entry.user_id} 
                     onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-neutral-200 group' : 'hover:bg-neutral-100'}`}
+                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
                   >
                     <div className="w-10 text-center text-sm font-bold text-neutral-400">
                       {rank}

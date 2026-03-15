@@ -3,6 +3,7 @@ import { Predictions, MatchResult, KnockoutResult, SavedPrediction } from '@/typ
 const STORAGE_KEY = 'fifa26-predictions';
 const EDITING_ID_KEY = 'fifa26-editing-prediction-id';
 const EDITING_NAME_KEY = 'fifa26-editing-prediction-name';
+const DARK_MODE_KEY = 'fifa26-dark-mode';
 
 export function loadPredictions(): Predictions {
   if (typeof window === 'undefined') {
@@ -79,6 +80,16 @@ export function setEditingPrediction(id: string | null, name?: string | null): v
     localStorage.removeItem(EDITING_ID_KEY);
     localStorage.removeItem(EDITING_NAME_KEY);
   }
+}
+
+export function getDarkMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(DARK_MODE_KEY) === 'true';
+}
+
+export function setDarkMode(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DARK_MODE_KEY, String(enabled));
 }
 
 export function loadFromServer(prediction: SavedPrediction): void {

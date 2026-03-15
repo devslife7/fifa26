@@ -3,36 +3,45 @@
 interface Props {
   groupCount: number;
   knockoutCount: number;
+  groupsComplete: boolean;
+  tiesResolved: boolean;
+  onContinueToBracket: () => void;
 }
 
 const GROUP_MATCHES = 72;
+const TOTAL_STEPS = 73; // 72 group matches + 1 third-place resolution
 const SEGMENTS = 12;
 
-export default function ProgressBar({ groupCount, knockoutCount }: Props) {
+export default function ProgressBar({ groupCount, knockoutCount, groupsComplete, tiesResolved, onContinueToBracket }: Props) {
   const groupPct = (groupCount / GROUP_MATCHES) * 100;
   const isComplete = groupCount === GROUP_MATCHES;
   const isStarted = groupCount > 0;
+  const totalCount = groupCount + (isComplete && tiesResolved ? 1 : 0);
 
   return (
     <div className="sticky top-0 z-30">
-      <div className="bg-background-light pt-5 pb-4">
+      <div className="bg-background-dark pt-5 pb-4">
         {/* Hero row */}
         <div className="flex items-end justify-between mb-3">
           <div className="flex items-baseline gap-1">
             <span className="text-[46px] font-black leading-none tracking-tighter tabular-nums">
-              {groupCount}
+              {totalCount}
             </span>
-            <span className="text-base font-bold text-neutral-300 tracking-tight">
-              /{GROUP_MATCHES}
+            <span className="text-base font-bold text-neutral-500 tracking-tight">
+              /{TOTAL_STEPS}
             </span>
           </div>
 
           <div className="flex flex-col items-end gap-1 pb-1.5">
             {isComplete ? (
-              <span className="flex items-center gap-1 text-xs font-extrabold text-wc-green uppercase tracking-widest">
-                <span className="material-symbols-outlined text-[14px] font-variation-fill">check_circle</span>
-                Groups Done
-              </span>
+              <button
+                onClick={onContinueToBracket}
+                disabled={!groupsComplete || !tiesResolved}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-black font-bold text-xs hover:bg-primary-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue to Bracket
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </button>
             ) : (
               <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-[0.08em]">
                 {Math.round(groupPct)}% complete
@@ -46,18 +55,17 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
           </div>
         </div>
 
-        {/* Segmented track — 12 notched sections */}
+        {/* Segmented track — 12 group segments + 1 third-place segment */}
         <div className="flex gap-[3px]">
           {Array.from({ length: SEGMENTS }).map((_, i) => {
             const segStart = (i / SEGMENTS) * 100;
             const segEnd = ((i + 1) / SEGMENTS) * 100;
-            // How full is this segment? 0–1
             const fill = Math.max(0, Math.min(1, (groupPct - segStart) / (segEnd - segStart)));
 
             return (
               <div
                 key={i}
-                className="flex-1 h-[10px] rounded-[3px] bg-neutral-200/70 overflow-hidden"
+                className="flex-1 h-[10px] rounded-[3px] bg-white/10 overflow-hidden"
               >
                 {fill > 0 && (
                   <div
@@ -79,20 +87,36 @@ export default function ProgressBar({ groupCount, knockoutCount }: Props) {
               </div>
             );
           })}
+          {/* Third-place tiebreaker segment */}
+          <div className="flex-1 h-[10px] rounded-[3px] bg-white/10 overflow-hidden">
+            {isComplete && tiesResolved && (
+              <div
+                className="h-full rounded-[3px] transition-all duration-500 ease-out bg-primary"
+                style={{
+                  width: '100%',
+                  boxShadow: '0 0 8px rgba(249,212,6,0.5)',
+                }}
+              />
+            )}
+          </div>
         </div>
 
         {/* Unlock hint */}
-        {!isComplete && (
+        {!isComplete ? (
           <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-[0.12em] mt-2.5">
             {isStarted
-              ? `${GROUP_MATCHES - groupCount} remaining to unlock bracket`
+              ? `${TOTAL_STEPS - totalCount} remaining to unlock bracket`
               : 'Complete all group matches to unlock bracket'}
           </p>
-        )}
+        ) : !tiesResolved ? (
+          <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-[0.12em] mt-2.5">
+            Resolve 3rd place tiebreaker below
+          </p>
+        ) : null}
       </div>
 
       {/* Bottom edge accent — thin gold progress line */}
-      <div className="h-px bg-neutral-200/60 relative overflow-hidden">
+      <div className="h-px bg-white/5 relative overflow-hidden">
         <div
           className="absolute inset-y-0 left-0 bg-primary/60 transition-all duration-500"
           style={{ width: `${Math.min(groupPct, 100)}%` }}

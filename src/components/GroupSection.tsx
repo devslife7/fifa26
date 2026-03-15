@@ -36,14 +36,14 @@ export default function GroupSection({ group, predictions, onPredict, onStanding
         {onStandings && (
           <button
             onClick={() => onStandings(group)}
-            className="text-xs font-bold uppercase tracking-wider text-neutral-400 hover:text-primary transition-colors"
+            className="text-xs font-bold uppercase tracking-wider text-neutral-500 hover:text-primary transition-colors"
           >
             Standings
           </button>
         )}
       </div>
 
-      <div className="flex flex-col bg-white border border-neutral-200 rounded-3xl overflow-hidden">
+      <div className="flex flex-col bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
         {displayMatches.map(match => (
           <GroupMatchCard
             key={match.id}

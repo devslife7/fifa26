@@ -77,7 +77,7 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
           style={{ height: pullDistance }}
         >
           <div
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-lg border border-neutral-100"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-neutral-900 shadow-lg border border-white/10"
             style={{
               opacity: progress,
               transform: `scale(${0.5 + progress * 0.5})`,

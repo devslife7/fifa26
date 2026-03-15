@@ -59,7 +59,7 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'bracket' | 'tracking' | 'ranking' | 'profile';
+export type TabId = 'groups' | 'bracket' | 'ranking' | 'profile';
 
 export interface LeaderboardEntry {
   user_id: string;
@@ -97,6 +97,7 @@ export interface LeaderboardPrediction {
   champion_code: string | null;
   group_matches: Record<string, MatchResult>;
   knockout_matches: Record<string, KnockoutResult>;
+  third_place_tiebreaker?: string[] | null;
 }
 
 export interface LiveMatch {

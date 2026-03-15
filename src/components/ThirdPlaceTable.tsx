@@ -48,7 +48,7 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
     <div className="mt-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-neutral-800 tracking-tight">Third-Place Teams</h2>
+          <h2 className="text-2xl font-black text-white tracking-tight">Third-Place Teams</h2>
           <p className="text-neutral-500 text-sm mt-1">
             Top 8 of 12 third-place teams advance to the Round of 32
           </p>
@@ -56,7 +56,7 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
       </div>
 
       {ranking.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center shadow-sm">
+        <div className="bg-neutral-900 rounded-2xl border border-white/10 p-12 text-center">
           <div className="text-4xl mb-4 opacity-50">📋</div>
           <p className="text-neutral-500 font-medium">
             Complete group stage predictions to see the third-place ranking
@@ -75,9 +75,9 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden shadow-sm">
+          <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-neutral-50/80 text-neutral-500 font-bold border-b border-neutral-100">
+              <thead className="bg-white/5 text-neutral-400 font-bold border-b border-white/5">
                 <tr>
                   <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-8 sm:w-12 text-xs sm:text-sm">#</th>
                   <th className="text-left py-3 px-2 sm:py-4 sm:px-2 text-xs sm:text-sm">Team</th>
@@ -86,7 +86,7 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                   <th className="text-center py-3 px-2 sm:py-4 sm:px-4 w-24 sm:w-32 text-xs sm:text-sm">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="divide-y divide-white/5">
                 {displayOrder.map((entry, i) => {
                   const team = teamsByCode[entry.team];
                   if (!team) return null;
@@ -101,14 +101,14 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                       key={entry.team}
                       className={`
                         transition-all duration-200 relative
-                        ${isAdvances ? 'bg-wc-green-light/30' : ''}
-                        ${isTied && isSelected ? 'bg-neutral-100/80 shadow-[inset_4px_0_0_0_var(--color-neutral-900)]' : ''}
-                        ${isTied && !isSelected ? 'hover:bg-neutral-50 cursor-pointer' : ''}
+                        ${isAdvances ? 'bg-wc-green/10' : ''}
+                        ${isTied && isSelected ? 'bg-white/10 shadow-[inset_4px_0_0_0_var(--color-primary)]' : ''}
+                        ${isTied && !isSelected ? 'hover:bg-white/5 cursor-pointer' : ''}
                         ${isEliminated ? 'opacity-75' : ''}
                       `}
                       onClick={isTied ? () => handleToggle(entry.team) : undefined}
                     >
-                      <td className={`py-3 px-1 sm:py-4 sm:px-3 text-center font-bold text-xs sm:text-sm ${isTied && isSelected ? 'text-neutral-800' : 'text-neutral-400'}`}>{i + 1}</td>
+                      <td className={`py-3 px-1 sm:py-4 sm:px-3 text-center font-bold text-xs sm:text-sm ${isTied && isSelected ? 'text-white' : 'text-neutral-400'}`}>{i + 1}</td>
                       <td className="py-3 px-2 sm:py-4 sm:px-2">
                         <div className="flex items-center gap-2 sm:gap-3">
                           {teamFlagsByCode?.[entry.team] ? (
@@ -127,22 +127,22 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                           ) : (
                             <span className="text-lg sm:text-xl leading-none">{team.flag}</span>
                           )}
-                          <span className={`font-body font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-neutral-500' : 'text-neutral-800'}`}>
+                          <span className={`font-body font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-neutral-500' : 'text-white'}`}>
                             {team.name}
                           </span>
                         </div>
                       </td>
                       <td className="text-center py-3 px-1 sm:py-4 sm:px-3">
-                        <span className="bg-neutral-100 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-600">
+                        <span className="bg-white/10 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-300">
                           {entry.group}
                         </span>
                       </td>
-                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3 font-black text-neutral-800 text-sm sm:text-base">
+                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3 font-black text-white text-sm sm:text-base">
                         {entry.standing.points}
                       </td>
                       <td className="text-center py-3 px-2 sm:py-4 sm:px-4">
                         {isAdvances && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-green-light text-wc-green w-full font-body">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-green/15 text-wc-green w-full font-body">
                             Advances
                           </span>
                         )}
@@ -150,15 +150,15 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                           <button
                             className={`w-full text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold transition-all duration-200 border font-body ${
                               isSelected
-                                ? 'bg-black text-white border-black shadow-md scale-105'
-                                : 'bg-white text-neutral-600 border-neutral-200 hover:border-black hover:text-black'
+                                ? 'bg-primary text-black border-primary shadow-md scale-105'
+                                : 'bg-white/10 text-neutral-300 border-white/15 hover:border-primary hover:text-primary'
                             }`}
                           >
                             {isSelected ? '✓ Picked' : 'Tap to pick'}
                           </button>
                         )}
                         {isEliminated && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-red-light text-wc-red w-full font-body">
+                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-red/15 text-wc-red w-full font-body">
                             Eliminated
                           </span>
                         )}
@@ -174,11 +174,11 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
 
       {ranking.length > 0 && ranking.length < 12 && (
         <div className="mt-6 flex items-center justify-center gap-2 text-neutral-400">
-          <div className="h-px bg-neutral-200 flex-1 max-w-[100px]"></div>
+          <div className="h-px bg-white/10 flex-1 max-w-[100px]"></div>
           <p className="text-[10px] uppercase tracking-widest font-bold">
             {ranking.length}/12 groups completed
           </p>
-          <div className="h-px bg-neutral-200 flex-1 max-w-[100px]"></div>
+          <div className="h-px bg-white/10 flex-1 max-w-[100px]"></div>
         </div>
       )}
     </div>

@@ -101,7 +101,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         group_matches: myActive.group_matches ?? {},
         knockout_matches: myActive.knockout_matches ?? {},
         third_place_tiebreaker: myActive.third_place_tiebreaker,
-        is_approved: (myActive as Record<string, unknown>).is_approved as boolean ?? false,
+        is_approved: myActive.is_approved ?? false,
       } : null;
 
       if (preds.length === 0) {

@@ -87,6 +87,7 @@ export interface SavedPrediction {
   group_matches: Record<string, MatchResult>;
   knockout_matches: Record<string, KnockoutResult>;
   third_place_tiebreaker: string[] | null;
+  is_approved?: boolean;
   created_at: string;
   updated_at: string;
 }

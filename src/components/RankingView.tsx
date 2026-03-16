@@ -177,7 +177,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                              <span className="text-neutral-500 font-mono mr-1.5">#{100 + idx}</span>
+                              <span className="text-neutral-500 font-mono mr-1.5">#{pred.prediction_number ?? idx + 1}</span>
                               {pred.display_name}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">

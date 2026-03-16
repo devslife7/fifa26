@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('id, user_id, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, is_approved, profiles(display_name)')
+    .select('prediction_number, user_id, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, is_approved, profiles(display_name)')
     .eq('is_complete', true)
     .eq('is_active', true)
     .not('user_id', 'is', null)
@@ -19,7 +19,7 @@ export async function GET() {
   const predictions = (data ?? []).map((row: Record<string, unknown>) => {
     const profile = row.profiles as { display_name: string } | null;
     return {
-      id: row.id,
+      prediction_number: row.prediction_number,
       user_id: row.user_id,
       display_name: profile?.display_name ?? 'Unknown',
       champion_code: row.champion_code,

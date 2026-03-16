@@ -118,7 +118,7 @@ export async function sendPredictionEmail({
   `;
 
   await getResend().emails.send({
-    from: 'FIFA 26 Predictions <predictions@fifa26.app>',
+    from: 'FIFA 26 Predictions <no-reply@contact.marcosvelasco.com>',
     to,
     subject: `🏆 Your FIFA 26 Predictions — ${championFlag} ${championName}`,
     html,

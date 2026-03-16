@@ -79,6 +79,7 @@ export interface UserScore {
 
 export interface SavedPrediction {
   id: string;
+  prediction_number?: number;
   name: string;
   is_active: boolean;
   is_complete: boolean;
@@ -95,7 +96,7 @@ export interface SavedPrediction {
 }
 
 export interface LeaderboardPrediction {
-  id?: string;
+  prediction_number?: number;
   user_id: string;
   display_name: string;
   champion_code: string | null;

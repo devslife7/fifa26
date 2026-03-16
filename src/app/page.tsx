@@ -5,7 +5,7 @@ import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
 import { generateRandomKnockoutPredictions } from '@/lib/bracket';
-import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionId, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
+import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/GroupMatchCard';
@@ -232,16 +232,10 @@ export default function Home() {
       }`}>
         {(activeTab === 'groups' || activeTab === 'bracket') && (() => {
           const editName = getEditingPredictionName();
-          const editId = getEditingPredictionId();
           return editName ? (
             <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
               <span className="material-symbols-outlined text-primary text-[16px]">edit_note</span>
               <span className="text-xs font-semibold text-primary truncate">Editing: {editName}</span>
-            </div>
-          ) : editId ? null : (groupCount > 0 || knockoutCount > 0) ? (
-            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-white/10 border border-white/10">
-              <span className="material-symbols-outlined text-neutral-500 text-[16px]">edit_note</span>
-              <span className="text-xs font-medium text-neutral-400">New Prediction (unsaved)</span>
             </div>
           ) : null;
         })()}

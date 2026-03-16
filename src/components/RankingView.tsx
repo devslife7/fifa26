@@ -177,19 +177,19 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                                 {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
                               </span>
                               {pred.is_approved ? (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-green/15 text-wc-green shrink-0">
-                                  <span className="material-symbols-outlined text-[12px] font-variation-fill">check_circle</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-green/15 text-wc-green shrink-0">
+                                  <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.59L7 10l-2.41-2.41L3.5 8.68 7 12.18l5.5-5.5-1.09-1.09z"/></svg>
                                   Approved
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-amber/15 text-wc-amber shrink-0">
-                                  <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-amber/15 text-wc-amber shrink-0">
+                                  <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7.25 4v4.75H11v-1.5H8.75V4h-1.5z"/></svg>
                                   Pending
                                 </span>
                               )}
                             </div>
                           </div>
-                          <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
+                          <span className="material-symbols-outlined text-neutral-500 text-[14px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
                         </button>
                       );
                     })}

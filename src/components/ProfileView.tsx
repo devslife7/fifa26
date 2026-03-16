@@ -214,7 +214,7 @@ export default function ProfileView({
             localStorage.setItem('prediction_submitted', 'true');
             localStorage.setItem('prediction_submitted_snapshot', predictionsSnapshot);
             fetchSaved();
-            if (user) onNavigate('ranking');
+            onNavigate('ranking');
           }}
           user={user}
           onSignIn={() => setShowAuth(true)}

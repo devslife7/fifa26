@@ -65,6 +65,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [usePlaceholder, setUsePlaceholder] = useState(false);
   const [totalUsers, setTotalUsers] = useState(0);
   const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
+  const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const fetchLeaderboard = fetch('/api/leaderboard')
@@ -183,7 +184,11 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                     const renderCard = (pred: LeaderboardPrediction, idx: number) => (
                       <button
                         key={`${pred.user_id}-${pred.prediction_number ?? idx}`}
-                        onClick={() => setSelectedPrediction(pred)}
+                        onClick={() => {
+                          const lbIdx = leaderboard.findIndex(e => e.user_id === pred.user_id);
+                          setSelectedPrediction(pred);
+                          setSelectedRank(lbIdx >= 0 ? lbIdx + 1 : undefined);
+                        }}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
                       >
                         <div className="flex-grow min-w-0">
@@ -278,7 +283,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   return (
                     <button 
                       key={entry.user_id} 
-                      onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                      onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
                       className={`w-full flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'cursor-pointer hover:bg-neutral-800 transition-colors' : ''}`}
                     >
                       <div className="w-10 text-center font-black text-primary text-lg">
@@ -308,7 +313,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   return (
                     <button 
                       key={entry.user_id} 
-                      onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                      onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
                       className={`w-full flex items-center bg-neutral-900 p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-white/10'} ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:border-primary/30 transition-colors group' : ''}`}
                     >
                       <div className="w-10 flex justify-center">
@@ -341,7 +346,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 return (
                   <button 
                     key={entry.user_id} 
-                    onClick={() => userPrediction && setSelectedPrediction(userPrediction)}
+                    onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
                     className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
                   >
                     <div className="w-10 text-center text-sm font-bold text-neutral-400">
@@ -403,7 +408,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       {selectedPrediction && (
         <UserPredictionsModal
           prediction={selectedPrediction}
-          onClose={() => setSelectedPrediction(null)}
+          rank={selectedRank}
+          onClose={() => { setSelectedPrediction(null); setSelectedRank(undefined); }}
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
         />

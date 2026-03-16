@@ -10,6 +10,7 @@ import type { KnockoutRound } from '@/types';
 
 interface Props {
   prediction: LeaderboardPrediction;
+  rank?: number;
   onClose: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
@@ -43,7 +44,7 @@ function TeamName({ code, flagsByCode }: { code: string; flagsByCode?: Record<st
   );
 }
 
-export default function UserPredictionsModal({ prediction, onClose, liveMatches, teamFlagsByCode }: Props) {
+export default function UserPredictionsModal({ prediction, rank, onClose, liveMatches, teamFlagsByCode }: Props) {
   const championTeam = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
   const championFlagUrl = prediction.champion_code && teamFlagsByCode ? teamFlagsByCode[prediction.champion_code] : undefined;
 
@@ -170,6 +171,61 @@ export default function UserPredictionsModal({ prediction, onClose, liveMatches,
 
         {/* Scrollable Content */}
         <div className="flex-grow overflow-y-auto">
+
+          {/* ── SCORE BREAKDOWN ── */}
+          <div className="px-4 sm:px-5 pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-primary text-xl font-variation-fill">bar_chart</span>
+              <h3 className="font-black text-base">Score Breakdown</h3>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-neutral-900/80 overflow-hidden">
+              {/* Top row: Total Points + Rank */}
+              <div className="flex items-end justify-between px-4 py-3">
+                <div>
+                  <div className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">Total Points</div>
+                  <div className="text-3xl font-black text-primary tabular-nums leading-tight">{pointsSummary.totalPoints}</div>
+                </div>
+                {rank && (
+                  <div className="text-right">
+                    <div className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">Rank</div>
+                    <div className="text-3xl font-black text-neutral-200 tabular-nums leading-tight">#{rank}</div>
+                  </div>
+                )}
+              </div>
+              {/* Bottom row: Group / Knockout / Champion */}
+              <div className="grid grid-cols-3 border-t border-white/10">
+                <div className="flex flex-col items-center py-3 border-r border-white/10">
+                  <div className="text-xl font-black text-wc-green tabular-nums">{pointsSummary.groupPoints}</div>
+                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Group</div>
+                  <div className="text-[10px] text-neutral-500 font-body">{pointsSummary.groupCorrect}/{pointsSummary.groupTotal} correct</div>
+                </div>
+                <div className="flex flex-col items-center py-3 border-r border-white/10">
+                  {(() => {
+                    const koCorrect = Object.values(pointsSummary.knockoutByRound).reduce((s, r) => s + r.correct, 0);
+                    const koTotal = Object.values(pointsSummary.knockoutByRound).reduce((s, r) => s + r.total, 0);
+                    return (
+                      <>
+                        <div className="text-xl font-black text-blue-400 tabular-nums">{pointsSummary.knockoutPoints}</div>
+                        <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Knockout</div>
+                        <div className="text-[10px] text-neutral-500 font-body">{koCorrect}/{koTotal} correct</div>
+                      </>
+                    );
+                  })()}
+                </div>
+                <div className="flex flex-col items-center py-3">
+                  {pointsSummary.championCorrect ? (
+                    <div className="text-xl font-black text-primary tabular-nums">+{CHAMPION_POINTS}</div>
+                  ) : (
+                    <span className="material-symbols-outlined text-xl text-neutral-600">block</span>
+                  )}
+                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Champion</div>
+                  <div className="text-[10px] text-neutral-500 font-body">
+                    {pointsSummary.championCorrect ? 'Correct!' : liveMatches?.['FIN-1']?.status === 'FINISHED' ? 'Wrong' : 'TBD'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* ── GROUP STAGE ── */}
           <div className="px-4 sm:px-5 pt-4 pb-1 flex items-center justify-between sticky top-0 z-10 bg-background-dark">

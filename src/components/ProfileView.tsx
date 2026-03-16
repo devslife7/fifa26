@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
@@ -40,6 +40,10 @@ export default function ProfileView({
   const [showNameModal, setShowNameModal] = useState(false);
   const [newPredName, setNewPredName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('prediction_submitted') === 'true';
+  });
 
   const currentEditingId = getEditingPredictionId();
   const currentEditingName = getEditingPredictionName();
@@ -47,6 +51,19 @@ export default function ProfileView({
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
+
+  // Reset submitted flag when predictions change (user edited something)
+  const predictionsSnapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions);
+  const prevSnapshot = useRef(predictionsSnapshot);
+  useEffect(() => {
+    if (prevSnapshot.current !== predictionsSnapshot) {
+      prevSnapshot.current = predictionsSnapshot;
+      if (submitted) {
+        setSubmitted(false);
+        localStorage.removeItem('prediction_submitted');
+      }
+    }
+  }, [predictionsSnapshot, submitted]);
 
   const d = darkMode;
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -178,12 +195,18 @@ export default function ProfileView({
       )}
 
       {/* Champion Section — only show if not yet saved */}
-      {championCode && !loadingSaved && !savedPredictions.some(p => p.id === currentEditingId && p.is_complete) && (
+      {championCode && !submitted && !loadingSaved && !savedPredictions.some(p => p.id === currentEditingId && p.is_complete) && (
         <ChampionScreen
           groupPredictions={groupPredictions}
           knockoutPredictions={knockoutPredictions}
           thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-          onSaved={() => { onClearPredictions(); fetchSaved(); onNavigate('ranking'); }}
+          onSaved={() => {
+            setSubmitted(true);
+            if (!user) {
+              localStorage.setItem('prediction_submitted', 'true');
+            }
+            fetchSaved();
+          }}
           user={user}
           onSignIn={() => setShowAuth(true)}
           onEdit={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}
@@ -229,6 +252,39 @@ export default function ProfileView({
           />
 
         </>
+      ) : submitted ? (
+        /* Post-submission state for guests */
+        <div className="flex flex-col items-center pt-8 pb-4 text-center">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 -m-8 rounded-full bg-wc-green/[0.06] blur-3xl" />
+            <div className="w-16 h-16 rounded-full bg-wc-green/15 border border-wc-green/20 flex items-center justify-center relative">
+              <span className="material-symbols-outlined text-wc-green text-3xl font-variation-fill">check_circle</span>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-black mb-2">Prediction Submitted!</h2>
+          <p className="text-sm text-neutral-400 font-body leading-relaxed max-w-[300px] mx-auto mb-8">
+            Sign in to track your prediction, see how it stacks up on the leaderboard, and manage multiple predictions.
+          </p>
+
+          <div className="w-full max-w-xs space-y-3">
+            <button
+              onClick={() => setShowAuth(true)}
+              className="group w-full py-4 rounded-2xl bg-primary text-black font-bold text-base hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_0_32px_rgba(249,212,6,0.15)]"
+            >
+              <span className="material-symbols-outlined text-[20px]">person</span>
+              Sign In
+            </button>
+
+            <button
+              onClick={() => onNavigate('ranking')}
+              className="w-full py-3 rounded-xl font-semibold text-sm text-neutral-400 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">leaderboard</span>
+              View Leaderboard
+            </button>
+          </div>
+        </div>
       ) : !championCode ? (
         /* Guest State — hidden when champion section is showing (it has its own Sign In / Edit buttons) */
         <GuestPrompt
@@ -282,7 +338,7 @@ export default function ProfileView({
       {showAuth && (
         <AuthModal
           onClose={() => setShowAuth(false)}
-          onAuthenticated={() => { setShowAuth(false); fetchSaved(); }}
+          onAuthenticated={() => { setShowAuth(false); setSubmitted(false); localStorage.removeItem('prediction_submitted'); fetchSaved(); }}
         />
       )}
     </div>

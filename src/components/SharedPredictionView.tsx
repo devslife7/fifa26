@@ -27,7 +27,7 @@ export default function SharedPredictionView({
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-5xl mb-4">🏆</div>
+          <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-14 h-14 mb-4 mx-auto" />
           <h1 className="text-2xl font-black mb-1">{displayName}&apos;s Predictions</h1>
           <p className="text-neutral-400 text-sm">FIFA World Cup 2026</p>
         </div>

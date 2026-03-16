@@ -65,7 +65,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
       <div className="bg-neutral-900 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-background-dark p-6 text-center">
-          <div className="text-4xl mb-2">🏆</div>
+          <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 mb-2 mx-auto" />
           <h2 className="text-white text-xl font-bold">
             {step === 'email' ? 'Sign In to Save' : 'Enter Code'}
           </h2>

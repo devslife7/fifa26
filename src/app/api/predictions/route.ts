@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth-server';
 import { sendPredictionEmail } from '@/lib/email';
 import { resolveTeam } from '@/lib/email-helpers';
+import { getTopThree } from '@/lib/bracket';
 
 const MAX_PREDICTIONS = 10;
 
@@ -80,13 +81,26 @@ export async function POST(request: Request) {
       const origin = request.headers.get('origin') || 'https://fifa26.app';
       const shareUrl = `${origin}/shared/${data.share_token}`;
       const champion = resolveTeam(championCode);
+      const topThree = getTopThree(groupMatches ?? {}, knockoutMatches ?? {}, thirdPlaceTiebreaker ?? undefined);
+      const second = topThree.second ? resolveTeam(topThree.second) : null;
+      const third = topThree.third ? resolveTeam(topThree.third) : null;
 
       sendPredictionEmail({
         to: submitterEmail,
         name: submitterName,
+        predictionId: data.id,
+        predictionNumber: data.prediction_number,
+        shareToken: data.share_token,
         championName: champion.name,
         championFlag: champion.flag,
         shareUrl,
+        secondName: second?.name,
+        secondFlag: second?.flag,
+        thirdName: third?.name,
+        thirdFlag: third?.flag,
+        groupMatches: groupMatches ?? {},
+        knockoutMatches: knockoutMatches ?? {},
+        thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? undefined,
       }).catch((err) => {
         console.error('Failed to send prediction email:', err);
       });

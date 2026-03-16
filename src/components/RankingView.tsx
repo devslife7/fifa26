@@ -146,7 +146,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         <div className="flex-grow">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="text-4xl animate-trophy-glow">🏆</div>
+              <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 animate-trophy-glow" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -159,57 +159,95 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   </div>
 
 
-                  <div className="space-y-2">
-                    {predictions.map((pred, idx) => {
-                      return (
-                        <button
-                          key={pred.user_id}
-                          onClick={() => setSelectedPrediction(pred)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
-                        >
-                          <div className="flex-grow min-w-0">
-                            <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                              {pred.display_name}
-                              <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
+                  {(() => {
+                    const approved = predictions.filter(p => p.is_approved).sort((a, b) => {
+                      if (!a.updated_at || !b.updated_at) return 0;
+                      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+                    });
+                    const pending = predictions.filter(p => !p.is_approved).sort((a, b) => {
+                      if (!a.created_at || !b.created_at) return 0;
+                      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    });
+
+                    const formatCreatedAt = (date?: string | null) => {
+                      if (!date) return null;
+                      return new Date(date).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      });
+                    };
+
+                    const renderCard = (pred: LeaderboardPrediction, idx: number) => (
+                      <button
+                        key={pred.user_id}
+                        onClick={() => setSelectedPrediction(pred)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
+                      >
+                        <div className="flex-grow min-w-0">
+                          <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                            {pred.display_name}
+                            <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-neutral-400 truncate font-body">
+                              {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
+                            </span>
+                            {pred.created_at && (
+                              <>
+                                <span className="text-neutral-600 text-[10px]">·</span>
+                                <span className="text-[11px] text-neutral-500 font-body shrink-0">
+                                  {formatCreatedAt(pred.created_at)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-neutral-500 text-[14px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
+                      </button>
+                    );
+
+                    return (
+                      <>
+                        {approved.length > 0 && (
+                          <div className="mb-4">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <svg className="w-2.5 h-2.5 text-wc-green" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.59L7 10l-2.41-2.41L3.5 8.68 7 12.18l5.5-5.5-1.09-1.09z"/></svg>
+                              <span className="text-xs font-bold font-body text-wc-green">Approved</span>
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-neutral-400 truncate font-body">
-                                {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
-                              </span>
-                              {pred.is_approved ? (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-green/15 text-wc-green shrink-0">
-                                  <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.59L7 10l-2.41-2.41L3.5 8.68 7 12.18l5.5-5.5-1.09-1.09z"/></svg>
-                                  Approved
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-amber/15 text-wc-amber shrink-0">
-                                  <svg className="w-2.5 h-2.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7.25 4v4.75H11v-1.5H8.75V4h-1.5z"/></svg>
-                                  Pending
-                                </span>
-                              )}
+                            <div className="space-y-2">
+                              {approved.map((pred, idx) => renderCard(pred, idx))}
                             </div>
                           </div>
-                          <span className="material-symbols-outlined text-neutral-500 text-[14px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        )}
+                        {pending.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <svg className="w-2.5 h-2.5 text-wc-amber" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7.25 4v4.75H11v-1.5H8.75V4h-1.5z"/></svg>
+                              <span className="text-xs font-bold font-body text-wc-amber">Pending</span>
+                            </div>
+                            <div className="space-y-2">
+                              {pending.map((pred, idx) => renderCard(pred, idx))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
               {/* Leaderboard List */}
+              {!usePlaceholder && (
               <div className="flex items-center gap-2 mb-3">
                 <span className="material-symbols-outlined text-primary text-xl font-variation-fill">emoji_events</span>
                 <h2 className="font-bold text-lg">Rankings</h2>
               </div>
-
-              {usePlaceholder && (
-                <div className="mb-4 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-center">
-                  <p className="text-xs text-neutral-400">Preview data — real scores appear once the tournament begins</p>
-                </div>
               )}
 
-              {leaderboard.map((entry, idx) => {
+              {!usePlaceholder && leaderboard.map((entry, idx) => {
                 const rank = idx + 1;
                 const isCurrentUser = !usePlaceholder && user?.id === entry.user_id;
                 const medal = getMedalIcon(rank);
@@ -325,49 +363,47 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
         {/* How to Score Points */}
         <section className="mt-10 md:mt-0 mb-4 md:sticky md:top-20 md:self-start">
-          <div className="bg-background-dark rounded-2xl overflow-hidden shadow-lg">
-            <div className="px-5 pt-5 pb-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-xl font-variation-fill">scoreboard</span>
-              </div>
-              <div>
-                <h2 className="text-white font-bold text-lg leading-tight">How to Score Points</h2>
-                <p className="text-neutral-500 text-xs">Predict correctly, climb the ranks</p>
-              </div>
+          <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-neutral-900/80 to-background-dark">
+            {/* Subtle gold accent line at top */}
+            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+            <div className="px-4 pt-4 pb-1">
+              <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase text-neutral-500 font-body">Scoring</h2>
             </div>
 
-            <div className="px-4 pb-4 space-y-2">
+            <div className="px-4 pb-4 pt-2">
               {[
-                { round: 'Group Stage', desc: 'Correct result (W/D/L)', pts: 1 },
-                { round: 'Round of 32', desc: 'Correct winner', pts: 2 },
-                { round: 'Round of 16', desc: 'Correct winner', pts: 3 },
-                { round: 'Quarterfinals', desc: 'Correct winner', pts: 4 },
-                { round: 'Semifinals', desc: 'Correct winner', pts: 5 },
-                { round: 'Final', desc: 'Correct finalist', pts: 6 },
-                { round: 'Champion', desc: 'Correct champion', pts: 10 },
-              ].map((row, i) => {
-                const isChampion = i === 6;
-                return (
-                  <div
-                    key={row.round}
-                    className={`flex items-center rounded-xl px-4 py-3 ${
-                      isChampion
-                        ? 'bg-primary/10 border border-primary/20'
-                        : 'bg-white/5'
-                    }`}
-                  >
-                    <div className="flex-grow">
-                      <div className={`font-semibold text-sm ${isChampion ? 'text-primary' : 'text-white'}`}>
-                        {row.round}
-                      </div>
-                      <div className="text-[11px] text-neutral-500">{row.desc}</div>
+                { round: 'Groups', pts: 1 },
+                { round: 'R32', pts: 2 },
+                { round: 'R16', pts: 3 },
+                { round: 'QF', pts: 4 },
+                { round: 'SF', pts: 5 },
+                { round: 'Final', pts: 6 },
+              ].map((row, i) => (
+                <div key={row.round} className="flex items-center justify-between py-[7px] border-b border-white/[0.04] last:border-0">
+                  <span className="text-[13px] font-medium text-neutral-400 font-body">{row.round}</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex gap-px">
+                      {Array.from({ length: i + 1 }).map((_, j) => (
+                        <div key={j} className="w-[3px] h-[10px] rounded-full bg-primary/30" />
+                      ))}
                     </div>
-                    <div className={`font-black text-lg tabular-nums ${isChampion ? 'text-primary' : 'text-white'}`}>
-                      +{row.pts}
-                    </div>
+                    <span className="text-[13px] font-black tabular-nums text-neutral-200 w-5 text-right">+{row.pts}</span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
+
+              {/* Champion row — special */}
+              <div className="mt-2 relative">
+                <div className="absolute inset-0 rounded-lg bg-primary/[0.07]" />
+                <div className="relative flex items-center justify-between px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[16px] font-variation-fill">emoji_events</span>
+                    <span className="text-[13px] font-bold text-primary">Champion</span>
+                  </div>
+                  <span className="text-base font-black tabular-nums text-primary">+10</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>

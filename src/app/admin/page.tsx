@@ -196,7 +196,7 @@ export default function AdminPage() {
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="text-4xl animate-trophy-glow">🏆</div>
+            <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 animate-trophy-glow" />
           </div>
         ) : predictions.length === 0 ? (
           <div className="text-center py-20 text-neutral-400">

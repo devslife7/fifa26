@@ -5,7 +5,7 @@ import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types
 import { generateBracket, getChampion, getTopThree } from '@/lib/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
-import { loadPredictions, getEditingPredictionId, getEditingPredictionName, resetAllPredictions } from '@/lib/storage';
+import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/storage';
 import { copyImageToClipboard } from '@/lib/clipboard';
 import type { AppUser } from '@/components/providers/AuthProvider';
 
@@ -264,9 +264,6 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         return;
       }
 
-      // Clear all local prediction data since prediction is now complete
-      resetAllPredictions();
-
       if (data.predictions?.share_token) {
         setShareUrl(`${window.location.origin}/shared/${data.predictions.share_token}`);
       }
@@ -300,7 +297,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   if (!champion) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-7xl mb-6">🏆</div>
+        <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-20 h-20 mb-6 mx-auto" />
         <h2 className="text-3xl font-bold mb-3">Your Champion</h2>
         <p className="text-neutral-400 max-w-md">
           Complete all match predictions to reveal your predicted FIFA World Cup 2026 champion
@@ -349,9 +346,9 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
       </div>
 
       {/* Trophy Hero */}
-      <div>
+      <div className="flex flex-col items-center">
         <div className="relative mb-2">
-          <div className="text-[80px] leading-none">🏆</div>
+          <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-24 h-24 mx-auto" />
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-32 h-6 bg-primary/20 blur-2xl rounded-full" />
         </div>
         <div className="mb-3">

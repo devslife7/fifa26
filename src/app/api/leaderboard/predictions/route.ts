@@ -6,9 +6,8 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('prediction_number, user_id, submitter_name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, is_approved, profiles(display_name)')
+    .select('prediction_number, user_id, submitter_name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, is_approved, profiles!left(display_name)')
     .eq('is_complete', true)
-    .eq('is_active', true)
     .order('completed_at', { ascending: true });
 
   if (error) {

@@ -12,6 +12,7 @@ interface Props {
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onPredict: (matchId: string, result: KnockoutResult) => void;
+  onRandomize?: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
   readOnly?: boolean;
@@ -28,7 +29,7 @@ const roundLabels: Record<KnockoutRound, string> = {
   FIN: 'Finals',
 };
 
-export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -214,10 +215,19 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       {/* Sticky Round Tabs */}
       <div className="sticky top-0 z-20 bg-background-dark">
         <div className="flex items-center border-b border-white/10">
-          <div 
+          <div
             ref={tabsContainerRef}
             className="flex overflow-x-auto no-scrollbar gap-6 px-4 flex-1"
           >
+            {!readOnly && onRandomize && (
+              <button
+                onClick={onRandomize}
+                className="pb-3 pt-4 whitespace-nowrap text-sm font-bold text-neutral-500 hover:text-primary transition-colors flex items-center gap-1 shrink-0"
+                title="Randomize bracket"
+              >
+                <span className="material-symbols-outlined text-[18px]">casino</span>
+              </button>
+            )}
             {rounds.map(round => (
               <button
                 key={round}

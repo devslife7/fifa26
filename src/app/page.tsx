@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
+import { generateRandomKnockoutPredictions } from '@/lib/bracket';
 import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionId, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
@@ -20,7 +21,7 @@ export default function Home() {
   const { user } = useAuth();
   const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+  const [activeTab, setActiveTab] = useState<TabId>('ranking');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
@@ -112,6 +113,14 @@ export default function Home() {
     setKnockoutPredictions({});
     setThirdPlaceTiebreaker([]);
   }, []);
+
+  const handleRandomizeBracket = useCallback(() => {
+    const randomPredictions = generateRandomKnockoutPredictions(groupPredictions, thirdPlaceTiebreaker);
+    setKnockoutPredictions(randomPredictions);
+    const predictions = loadPredictions();
+    predictions.knockoutMatches = randomPredictions;
+    savePredictions(predictions);
+  }, [groupPredictions, thirdPlaceTiebreaker]);
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
     setKnockoutPredictions(prev => {
@@ -303,6 +312,7 @@ export default function Home() {
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onPredict={handleKnockoutPredict}
+            onRandomize={handleRandomizeBracket}
             liveMatches={liveMatchesByLocalId}
             teamFlagsByCode={teamFlagsByCode}
           />

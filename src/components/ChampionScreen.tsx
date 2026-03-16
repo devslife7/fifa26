@@ -464,10 +464,17 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           </>
         ) : (
           <>
+            <button
+              onClick={() => setShowSubmitModal(true)}
+              className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 text-lg"
+            >
+              <span className="material-symbols-outlined font-variation-fill">send</span>
+              Submit Predictions
+            </button>
             {onSignIn && (
               <button
                 onClick={onSignIn}
-                className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors text-lg"
+                className="w-full py-3 bg-white/10 text-white/80 font-bold rounded-xl hover:bg-white/15 transition-colors"
               >
                 Sign In
               </button>
@@ -475,7 +482,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="w-full py-3 bg-white/10 text-white/80 font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-white/5 text-white/50 font-bold rounded-xl hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-[18px]">edit</span>
                 Edit Predictions

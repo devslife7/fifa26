@@ -183,7 +183,7 @@ export default function ProfileView({
           groupPredictions={groupPredictions}
           knockoutPredictions={knockoutPredictions}
           thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-          onSaved={() => { onClearPredictions(); fetchSaved(); }}
+          onSaved={() => { onClearPredictions(); fetchSaved(); onNavigate('ranking'); }}
           user={user}
           onSignIn={() => setShowAuth(true)}
           onEdit={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}

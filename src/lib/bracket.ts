@@ -210,6 +210,48 @@ function generateEmptyBracket(): KnockoutMatch[] {
   return matches;
 }
 
+export function generateRandomKnockoutPredictions(
+  groupPredictions: Record<string, MatchResult>,
+  thirdPlaceTiebreaker?: string[]
+): Record<string, KnockoutResult> {
+  const predictions: Record<string, KnockoutResult> = {};
+  const pick = (): KnockoutResult => Math.random() < 0.5 ? 'home' : 'away';
+
+  // Generate round by round, feeding winners forward
+  const bracket = generateBracket(groupPredictions, {}, thirdPlaceTiebreaker);
+  const r32 = bracket.filter(m => m.round === 'R32');
+
+  // R32
+  for (const m of r32) {
+    if (m.home && m.away) {
+      predictions[m.id] = pick();
+    }
+  }
+
+  // Rebuild with R32 predictions to get R16 teams
+  const afterR32 = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
+  for (const m of afterR32.filter(m => m.round === 'R16')) {
+    if (m.home && m.away) predictions[m.id] = pick();
+  }
+
+  const afterR16 = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
+  for (const m of afterR16.filter(m => m.round === 'QF')) {
+    if (m.home && m.away) predictions[m.id] = pick();
+  }
+
+  const afterQF = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
+  for (const m of afterQF.filter(m => m.round === 'SF')) {
+    if (m.home && m.away) predictions[m.id] = pick();
+  }
+
+  const afterSF = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
+  for (const m of afterSF.filter(m => m.round === '3RD' || m.round === 'FIN')) {
+    if (m.home && m.away) predictions[m.id] = pick();
+  }
+
+  return predictions;
+}
+
 export function getChampion(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,

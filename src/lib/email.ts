@@ -141,9 +141,19 @@ export async function sendPredictionEmail({
               <!-- Podium -->
               ${podiumHtml ? `<tr><td style="padding: 0 32px;">${podiumHtml}</td></tr>` : ''}
 
+              <!-- Predictions Image -->
+              <tr>
+                <td style="padding: 16px 32px;">
+                  <p style="font-size: 13px; color: rgba(255,255,255,0.5); margin: 0 0 12px; text-align: center;">Your complete predictions at a glance:</p>
+                  <a href="${shareUrl}" style="text-decoration: none;">
+                    <img src="${shareUrl.replace('/shared/', '/api/og/predictions/')}" width="436" style="display: block; width: 100%; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);" alt="All your FIFA 26 group stage and knockout bracket predictions" />
+                  </a>
+                </td>
+              </tr>
+
               <!-- Share Link -->
               <tr>
-                <td style="padding: 24px 32px 32px;">
+                <td style="padding: 16px 32px 32px;">
                   <p style="font-size: 13px; color: rgba(255,255,255,0.5); margin: 0 0 12px; text-align: center;">Share your predictions with friends:</p>
                   <a href="${shareUrl}" style="display: block; background-color: #d4a017; color: #000000; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 24px; border-radius: 10px; text-align: center;">
                     View My Predictions

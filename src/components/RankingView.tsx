@@ -142,7 +142,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         </div>
       </header>
 
-      <div className="px-0 md:grid md:grid-cols-[1fr,300px] md:gap-8">
+      <div className="px-6 md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -156,20 +156,11 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl font-variation-fill">assignment</span>
                     <h2 className="font-bold text-lg">Predictions</h2>
-                    <span className="text-xs text-neutral-400 ml-auto">{predictions.length}/{totalUsers} completed</span>
                   </div>
 
-                  {usePlaceholder && (
-                    <div className="mb-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-center">
-                      <p className="text-xs text-neutral-400">Preview data — real predictions appear once users submit</p>
-                    </div>
-                  )}
 
                   <div className="space-y-2">
                     {predictions.map((pred, idx) => {
-                      const groupCount = Object.keys(pred.group_matches).length;
-                      const knockoutCount = Object.keys(pred.knockout_matches).length;
-
                       return (
                         <button
                           key={pred.user_id}
@@ -186,29 +177,19 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                                 {getChampionLabel(pred.champion_code) ?? 'No champion pick'}
                               </span>
                               {pred.is_approved ? (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-green/15 text-wc-green shrink-0">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-green/15 text-wc-green shrink-0">
                                   <span className="material-symbols-outlined text-[12px] font-variation-fill">check_circle</span>
                                   Approved
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-amber/15 text-wc-amber shrink-0">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold font-body bg-wc-amber/15 text-wc-amber shrink-0">
                                   <span className="material-symbols-outlined text-[12px]">schedule</span>
                                   Pending
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <div className="text-right">
-                              <div className="text-[11px] font-bold text-neutral-500 tabular-nums">{groupCount}/72</div>
-                              <div className="text-[9px] text-neutral-400 uppercase">Groups</div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-[11px] font-bold text-neutral-500 tabular-nums">{knockoutCount}</div>
-                              <div className="text-[9px] text-neutral-400 uppercase">KO</div>
-                            </div>
-                            <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors ml-1">chevron_right</span>
-                          </div>
+                          <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
                         </button>
                       );
                     })}

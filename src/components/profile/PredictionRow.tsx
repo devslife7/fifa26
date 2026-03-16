@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { SavedPrediction, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
+import { getTopThree } from '@/lib/bracket';
 
 interface PredictionRowProps {
   prediction: SavedPrediction;
@@ -32,6 +33,13 @@ export default function PredictionRow({
   const knockoutCount = Object.keys(p.knockout_matches ?? {}).length;
   const pct = Math.round(((groupCount + knockoutCount) / (72 + 32)) * 100);
   const champion = p.champion_code ? teamsByCode[p.champion_code] : null;
+
+  const topThree = p.is_complete
+    ? getTopThree(p.group_matches ?? {}, p.knockout_matches ?? {}, p.third_place_tiebreaker ?? undefined)
+    : null;
+  const firstTeam = topThree?.first ? teamsByCode[topThree.first] : null;
+  const secondTeam = topThree?.second ? teamsByCode[topThree.second] : null;
+  const thirdTeam = topThree?.third ? teamsByCode[topThree.third] : null;
 
   // Delete confirmation
   if (deleting) {
@@ -168,6 +176,22 @@ export default function PredictionRow({
               · {new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
+          {/* Podium: 1st, 2nd, 3rd */}
+          {firstTeam && secondTeam && thirdTeam && (
+            <div className="flex items-center gap-2.5 mt-1.5">
+              {[
+                { team: firstTeam, color: 'text-medal-gold', label: '1st' },
+                { team: secondTeam, color: 'text-medal-silver', label: '2nd' },
+                { team: thirdTeam, color: 'text-medal-bronze', label: '3rd' },
+              ].map(({ team, color, label }) => (
+                <span key={label} className="inline-flex items-center gap-1">
+                  <span className={`text-[10px] font-bold ${color}`}>{label}</span>
+                  <span className="text-sm">{team.flag}</span>
+                  <span className={`text-[10px] ${d ? 'text-white/40' : 'text-neutral-500'}`}>{team.code}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Expand indicator */}

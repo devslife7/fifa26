@@ -14,6 +14,7 @@ interface Props {
   liveMatch?: LiveMatch;
   teamFlagsByCode?: Record<string, string>;
   readOnly?: boolean;
+  venue?: string;
 }
 
 function formatMatchDate(utcDate: string): string {
@@ -59,6 +60,7 @@ export default function KnockoutMatchCard({
   liveMatch,
   teamFlagsByCode,
   readOnly = false,
+  venue,
 }: Props) {
   const home = homeCode ? teamsByCode[homeCode] : null;
   const away = awayCode ? teamsByCode[awayCode] : null;
@@ -99,12 +101,12 @@ export default function KnockoutMatchCard({
 
     return (
       <button
-        className={`w-full flex items-center justify-between p-2 rounded-full transition-colors ${isSelected
+        className={`w-full flex items-center justify-between px-3 py-3 rounded-full transition-colors ${isSelected
             ? 'bg-primary/15 ring-1 ring-inset ring-primary/70'
             : canPredictAction
               ? 'hover:bg-white/5'
               : `opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
-          } ${compact ? 'py-1.5' : ''}`}
+          }`}
         onClick={() => canPredictAction && onPredict(matchId, side)}
         disabled={!canPredictAction}
       >
@@ -124,18 +126,25 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className="relative group min-w-[180px]">
+    <div className="relative group min-w-[240px]">
       <div className={`bg-neutral-900 rounded-xl border border-white/10 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
         <div className="bg-white/5 px-3 py-1.5 flex justify-between items-center border-b border-white/5">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-semibold text-neutral-500 uppercase">{matchId}</span>
-            {liveMatch && (
-              <>
-                <span className="text-[10px] text-neutral-300">·</span>
-                <span className="text-[10px] text-neutral-400 truncate">
-                  {formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}
-                </span>
-              </>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-neutral-500 uppercase">{matchId}</span>
+              {liveMatch && (
+                <>
+                  <span className="text-[10px] text-neutral-300">·</span>
+                  <span className="text-[10px] text-neutral-400 truncate">
+                    {formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}
+                  </span>
+                </>
+              )}
+            </div>
+            {(liveMatch?.venue || venue) && (
+              <span className="text-[9px] text-neutral-500 truncate">
+                {liveMatch?.venue ?? venue}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -161,7 +170,7 @@ export default function KnockoutMatchCard({
             )}
           </div>
         </div>
-        <div className="px-1.5 py-2">
+        <div className="px-1 py-1.5">
           <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />
           <TeamSlot team={away} code={awayCode} side="away" isSelected={result === 'away'} />
         </div>

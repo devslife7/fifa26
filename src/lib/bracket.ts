@@ -220,3 +220,19 @@ export function getChampion(
   if (!final || !final.result) return undefined;
   return final.result === 'home' ? final.home : final.away;
 }
+
+export function getTopThree(
+  groupPredictions: Record<string, MatchResult>,
+  knockoutPredictions: Record<string, KnockoutResult>,
+  thirdPlaceTiebreaker?: string[]
+): { first?: string; second?: string; third?: string } {
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const final = bracket.find(m => m.id === 'FIN-1');
+  const thirdMatch = bracket.find(m => m.id === '3RD-1');
+
+  const first = final?.result ? (final.result === 'home' ? final.home : final.away) : undefined;
+  const second = final?.result ? (final.result === 'home' ? final.away : final.home) : undefined;
+  const third = thirdMatch?.result ? (thirdMatch.result === 'home' ? thirdMatch.home : thirdMatch.away) : undefined;
+
+  return { first, second, third };
+}

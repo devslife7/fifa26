@@ -104,3 +104,45 @@ export const allGroupMatches: GroupMatch[] = [
 export function getGroupMatches(group: GroupLetter): GroupMatch[] {
   return allGroupMatches.filter(m => m.group === group);
 }
+
+// FIFA World Cup 2026 — knockout stage venues (official schedule)
+export const KNOCKOUT_VENUES: Record<string, string> = {
+  // Round of 32
+  'R32-1':  'BC Place, Vancouver',
+  'R32-2':  'BMO Field, Toronto',
+  'R32-3':  'Lumen Field, Seattle',
+  'R32-4':  'Estadio BBVA, Monterrey',
+  'R32-5':  'Estadio Akron, Guadalajara',
+  'R32-6':  'Estadio Azteca, Mexico City',
+  'R32-7':  'Levi\'s Stadium, San Francisco',
+  'R32-8':  'SoFi Stadium, Los Angeles',
+  'R32-9':  'Mercedes-Benz Stadium, Atlanta',
+  'R32-10': 'Hard Rock Stadium, Miami',
+  'R32-11': 'NRG Stadium, Houston',
+  'R32-12': 'AT&T Stadium, Dallas',
+  'R32-13': 'Lincoln Financial Field, Philadelphia',
+  'R32-14': 'Gillette Stadium, Foxborough',
+  'R32-15': 'Geodis Park, Nashville',
+  'R32-16': 'MetLife Stadium, East Rutherford',
+  // Round of 16
+  'R16-1': 'BC Place, Vancouver',
+  'R16-2': 'Lumen Field, Seattle',
+  'R16-3': 'SoFi Stadium, Los Angeles',
+  'R16-4': 'Estadio Azteca, Mexico City',
+  'R16-5': 'Hard Rock Stadium, Miami',
+  'R16-6': 'Mercedes-Benz Stadium, Atlanta',
+  'R16-7': 'NRG Stadium, Houston',
+  'R16-8': 'MetLife Stadium, East Rutherford',
+  // Quarter-finals
+  'QF-1': 'Gillette Stadium, Foxborough',
+  'QF-2': 'SoFi Stadium, Los Angeles',
+  'QF-3': 'Hard Rock Stadium, Miami',
+  'QF-4': 'AT&T Stadium, Dallas',
+  // Semi-finals
+  'SF-1': 'AT&T Stadium, Dallas',
+  'SF-2': 'MetLife Stadium, East Rutherford',
+  // Third place
+  '3RD-1': 'Hard Rock Stadium, Miami',
+  // Final
+  'FIN-1': 'MetLife Stadium, East Rutherford',
+};

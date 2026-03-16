@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react
 import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket } from '@/lib/bracket';
 import { areAllGroupsComplete } from '@/lib/standings';
+import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
 
 interface Props {
@@ -247,7 +248,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
           <div
             key={round}
             ref={(el) => setRoundRef(round, el)}
-            className="flex-shrink-0 w-48"
+            className="flex-shrink-0 w-64"
           >
             <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest text-center mb-4">
               {roundLabels[round]}
@@ -264,6 +265,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                   liveMatch={liveMatches?.[match.id]}
                   teamFlagsByCode={teamFlagsByCode}
                   readOnly={readOnly}
+                  venue={KNOCKOUT_VENUES[match.id]}
                 />
               ))}
             </div>

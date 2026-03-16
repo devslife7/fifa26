@@ -40,7 +40,7 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
 
       {/* Local progress or start CTA */}
       {hasPredictions ? (
-        <div className={`rounded-2xl border p-5 ${d ? 'bg-white/5 border-white/10' : 'bg-white border-neutral-100 shadow-sm'}`}>
+        <div className={`rounded-2xl border p-5 ${d ? 'border-white/10' : 'bg-white border-neutral-100 shadow-sm'}`}>
           <p className={`text-sm font-semibold mb-1 ${d ? 'text-white' : 'text-neutral-800'}`}>Your progress so far</p>
           <p className={`text-xs mb-3 flex items-center gap-1.5 ${d ? 'text-white/40' : 'text-neutral-400'}`}>
             <span className="inline-flex items-center gap-0.5">
@@ -52,7 +52,7 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
             </span>
           </p>
           <button
-            onClick={() => onNavigate('groups')}
+            onClick={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}
             className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-colors ${
               d ? 'bg-white/10 text-white/80 hover:bg-white/15' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}

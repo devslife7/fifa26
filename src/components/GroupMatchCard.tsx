@@ -115,7 +115,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           )}
         </div>
       )}
-      <div className="relative flex items-stretch px-1 py-0.5">
+      <div className="relative flex items-stretch px-1 py-1.5">
 
         {/* Animated Background Pill */}
         <div

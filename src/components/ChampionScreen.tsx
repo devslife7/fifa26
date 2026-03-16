@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
-import { generateBracket, getChampion } from '@/lib/bracket';
+import { generateBracket, getChampion, getTopThree } from '@/lib/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -180,6 +180,9 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
 
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const champion = championCode ? teamsByCode[championCode] : null;
+  const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const secondTeam = topThree.second ? teamsByCode[topThree.second] : null;
+  const thirdTeam = topThree.third ? teamsByCode[topThree.third] : null;
 
   const handleSave = async () => {
     if (!user) {
@@ -377,7 +380,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center w-full p-8 rounded-3xl bg-white/5">
+      <div className="flex flex-col items-center justify-center w-full p-8">
         <div className="relative mb-8">
           <div className="text-8xl animate-trophy-glow">🏆</div>
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-3 bg-primary/20 rounded-full blur-xl" />
@@ -395,13 +398,39 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           Your Predicted Champion
         </p>
 
-        <div className="bg-neutral-900 rounded-2xl border border-primary/20 px-8 py-6 max-w-sm shadow-sm animate-pulse-gold">
-          <p className="text-neutral-500 text-sm">
-            FIFA World Cup 2026
-          </p>
-          <p className="text-primary font-bold text-lg mt-1 font-body">
-            {champion.flag} {champion.name}
-          </p>
+        {/* Podium: 1st, 2nd, 3rd */}
+        <div className="flex items-end justify-center gap-3 mb-8 w-full max-w-sm">
+          {/* 2nd Place */}
+          {secondTeam && (
+            <div className="flex-1 flex flex-col items-center">
+              <span className="text-3xl mb-2">{secondTeam.flag}</span>
+              <div className="w-full rounded-t-xl bg-white/5 border border-white/10 border-b-0 pt-4 pb-3 flex flex-col items-center">
+                <span className="text-medal-silver text-xs font-bold uppercase tracking-wider">2nd</span>
+                <p className="text-white/70 text-xs font-bold mt-1 font-body">{secondTeam.name}</p>
+              </div>
+              <div className="w-full h-16 bg-white/5 border border-white/10 border-t-0 rounded-b-none" />
+            </div>
+          )}
+          {/* 1st Place */}
+          <div className="flex-1 flex flex-col items-center">
+            <span className="text-4xl mb-2">{champion.flag}</span>
+            <div className="w-full rounded-t-xl bg-primary/10 border border-primary/20 border-b-0 pt-4 pb-3 flex flex-col items-center">
+              <span className="text-medal-gold text-xs font-bold uppercase tracking-wider">1st</span>
+              <p className="text-primary text-xs font-bold mt-1 font-body">{champion.name}</p>
+            </div>
+            <div className="w-full h-24 bg-primary/10 border border-primary/20 border-t-0 rounded-b-none" />
+          </div>
+          {/* 3rd Place */}
+          {thirdTeam && (
+            <div className="flex-1 flex flex-col items-center">
+              <span className="text-3xl mb-2">{thirdTeam.flag}</span>
+              <div className="w-full rounded-t-xl bg-white/5 border border-white/10 border-b-0 pt-4 pb-3 flex flex-col items-center">
+                <span className="text-medal-bronze text-xs font-bold uppercase tracking-wider">3rd</span>
+                <p className="text-white/70 text-xs font-bold mt-1 font-body">{thirdTeam.name}</p>
+              </div>
+              <div className="w-full h-10 bg-white/5 border border-white/10 border-t-0 rounded-b-none" />
+            </div>
+          )}
         </div>
       </div>
 

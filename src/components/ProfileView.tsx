@@ -169,11 +169,13 @@ export default function ProfileView({
         </div>
       )}
 
-      {/* Zone 1: Identity Header */}
-      <ProfileHeader
-        darkMode={d}
-        onSignIn={() => setShowAuth(true)}
-      />
+      {/* Zone 1: Identity Header (only for signed-in users) */}
+      {user && (
+        <ProfileHeader
+          darkMode={d}
+          onSignIn={() => setShowAuth(true)}
+        />
+      )}
 
       {/* Champion Section — only show if not yet saved */}
       {championCode && !loadingSaved && !savedPredictions.some(p => p.id === currentEditingId && p.is_complete) && (

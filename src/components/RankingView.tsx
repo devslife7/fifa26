@@ -96,6 +96,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       const myActive = myPreds.find((p: SavedPrediction) => p.is_active && p.is_complete);
       const myLeaderboardPred: LeaderboardPrediction | null = myActive && user ? {
         prediction_number: myActive.prediction_number,
+        name: myActive.name,
         user_id: user.id,
         display_name: user.display_name ?? 'You',
         champion_code: myActive.champion_code,
@@ -187,8 +188,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       >
                         <div className="flex-grow min-w-0">
                           <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                            {pred.name || pred.display_name}
+                            {pred.display_name}
                             <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
+                            {pred.name && <span className="text-neutral-400 font-normal ml-1.5">— {pred.name}</span>}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-neutral-400 truncate font-body">

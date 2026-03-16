@@ -51,8 +51,8 @@ export async function POST(request: Request) {
 
   // Anonymous submission (no predictionId, has submitterEmail)
   if (!predictionId && submitterEmail) {
-    if (!submitterName || !submitterEmail) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    if (!submitterEmail) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
@@ -65,8 +65,8 @@ export async function POST(request: Request) {
       .from('predictions')
       .insert({
         user_id: null,
-        name: name || `${submitterName}'s Predictions`,
-        submitter_name: submitterName,
+        name: name || 'My Predictions',
+        submitter_name: submitterName || submitterEmail.split('@')[0],
         submitter_email: submitterEmail,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
       sendPredictionEmail({
         to: submitterEmail,
-        name: submitterName,
+        name: submitterName || name || 'Predictor',
         predictionId: data.id,
         predictionNumber: data.prediction_number,
         shareToken: data.share_token,

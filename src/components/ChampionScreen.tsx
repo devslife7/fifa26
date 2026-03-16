@@ -177,7 +177,6 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const [error, setError] = useState<string | null>(null);
   const [copyingImage, setCopyingImage] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [submitterName, setSubmitterName] = useState('');
   const [submitterEmail, setSubmitterEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [validatingEmail, setValidatingEmail] = useState(false);
@@ -191,45 +190,38 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const secondTeam = topThree.second ? teamsByCode[topThree.second] : null;
   const thirdTeam = topThree.third ? teamsByCode[topThree.third] : null;
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
     setError(null);
     setEmailError(null);
 
-    if (!submitterName.trim()) {
-      setError('Please enter your name');
-      return;
-    }
-
-    if (!submitterEmail.trim()) {
-      setEmailError('Please enter your email');
-      return;
-    }
-
-    // Client-side email format check
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(submitterEmail)) {
-      setEmailError('Please enter a valid email address');
-      return;
-    }
-
-    // Server-side MX validation
-    setValidatingEmail(true);
-    try {
-      const validateRes = await fetch('/api/validate-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: submitterEmail }),
-      });
-      const validateData = await validateRes.json();
-      if (!validateData.valid) {
-        setEmailError(validateData.reason || 'Invalid email');
-        setValidatingEmail(false);
+    if (!user) {
+      if (!submitterEmail.trim()) {
+        setEmailError('Please enter your email');
         return;
       }
-    } catch {
-      // If validation endpoint fails, proceed anyway
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(submitterEmail)) {
+        setEmailError('Please enter a valid email address');
+        return;
+      }
+      setValidatingEmail(true);
+      try {
+        const validateRes = await fetch('/api/validate-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: submitterEmail }),
+        });
+        const validateData = await validateRes.json();
+        if (!validateData.valid) {
+          setEmailError(validateData.reason || 'Invalid email');
+          setValidatingEmail(false);
+          return;
+        }
+      } catch {
+        // If validation endpoint fails, proceed anyway
+      }
+      setValidatingEmail(false);
     }
-    setValidatingEmail(false);
 
     await savePredictions();
   };
@@ -248,14 +240,13 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           predictionId: predictionId || undefined,
-          name: predictionName || predictionNameInput.trim() || (user ? `${user.display_name}'s Predictions` : `${submitterName.trim()}'s Predictions`),
+          name: predictionName || predictionNameInput.trim() || 'My Predictions',
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
           ...(!user && {
-            submitterName: submitterName.trim(),
             submitterEmail: submitterEmail.trim(),
           }),
         }),
@@ -509,79 +500,54 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               </div>
             )}
 
-            {user ? (
-              <>
-                <div className="space-y-3 mb-5">
+            <div className="space-y-3 mb-5">
+              <input
+                type="text"
+                placeholder="Prediction name"
+                value={predictionNameInput}
+                onChange={(e) => setPredictionNameInput(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+              />
+              {!user && (
+                <div>
                   <input
-                    type="text"
-                    placeholder="Your name"
-                    value={predictionNameInput}
-                    onChange={(e) => setPredictionNameInput(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                    type="email"
+                    placeholder="Your email"
+                    value={submitterEmail}
+                    onChange={(e) => { setSubmitterEmail(e.target.value); setEmailError(null); }}
+                    className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                      emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                    }`}
                   />
-                </div>
-
-                <button
-                  onClick={() => savePredictions()}
-                  disabled={saving}
-                  className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
-                >
-                  {saving ? 'Submitting...' : (
-                    <>
-                      <span className="material-symbols-outlined font-variation-fill">send</span>
-                      Submit
-                    </>
+                  {emailError && (
+                    <p className="text-xs text-wc-red mt-1.5 ml-1">{emailError}</p>
                   )}
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="space-y-3 mb-5">
-                  <input
-                    type="text"
-                    placeholder="Your name"
-                    value={submitterName}
-                    onChange={(e) => setSubmitterName(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
-                  />
-                  <div>
-                    <input
-                      type="email"
-                      placeholder="Your email"
-                      value={submitterEmail}
-                      onChange={(e) => { setSubmitterEmail(e.target.value); setEmailError(null); }}
-                      className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
-                        emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
-                      }`}
-                    />
-                    {emailError && (
-                      <p className="text-xs text-wc-red mt-1.5 ml-1">{emailError}</p>
-                    )}
-                  </div>
                 </div>
+              )}
+            </div>
 
-                <div className="mb-5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl">
-                  <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-                    Your predictions will be sent to your email. Your submission will be reviewed for approval.
-                  </p>
-                </div>
-
-                <button
-                  onClick={handleSave}
-                  disabled={saving || validatingEmail}
-                  className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
-                >
-                  {saving || validatingEmail ? (
-                    validatingEmail ? 'Validating...' : 'Submitting...'
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined font-variation-fill">send</span>
-                      Submit
-                    </>
-                  )}
-                </button>
-              </>
+            {!user && (
+              <div className="mb-5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
+                  Your predictions will be sent to your email. Your submission will be reviewed for approval.
+                </p>
+              </div>
             )}
+
+            <button
+              onClick={user ? () => savePredictions() : handleSubmit}
+              disabled={saving || validatingEmail}
+              className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
+            >
+              {saving || validatingEmail ? (
+                validatingEmail ? 'Validating...' : 'Submitting...'
+              ) : (
+                <>
+                  <span className="material-symbols-outlined font-variation-fill">send</span>
+                  Submit
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}

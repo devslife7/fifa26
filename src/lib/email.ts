@@ -4,6 +4,55 @@ function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
+export async function sendOtpEmail(to: string, code: string) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+        <tr>
+          <td align="center">
+            <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px; background-color: #141414; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+              <tr>
+                <td style="padding: 32px 32px 16px; text-align: center;">
+                  <div style="font-size: 48px; margin-bottom: 8px;">🏆</div>
+                  <h1 style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">Your Verification Code</h1>
+                  <p style="margin: 8px 0 0; font-size: 14px; color: rgba(255,255,255,0.5);">Enter this code to sign in to FIFA 26 Predictions</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px 24px; text-align: center;">
+                  <div style="background: linear-gradient(135deg, rgba(212,160,23,0.15), rgba(212,160,23,0.05)); border: 1px solid rgba(212,160,23,0.2); border-radius: 12px; padding: 24px;">
+                    <div style="font-size: 36px; font-weight: 800; letter-spacing: 0.3em; color: #d4a017; font-family: monospace;">${code}</div>
+                  </div>
+                  <p style="margin: 16px 0 0; font-size: 13px; color: rgba(255,255,255,0.35);">This code expires in 10 minutes</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 32px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center;">
+                  <p style="margin: 0; font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;">fifa26.app</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  await getResend().emails.send({
+    from: 'FIFA 26 Predictions <no-reply@contact.marcosvelasco.com>',
+    to,
+    subject: '🏆 Your FIFA 26 Verification Code',
+    html,
+  });
+}
+
 interface SendPredictionEmailParams {
   to: string;
   name: string;

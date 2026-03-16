@@ -1,0 +1,37 @@
+import { NextResponse } from 'next/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { generateOtp } from '@/lib/auth';
+import { sendOtpEmail } from '@/lib/email';
+
+export async function POST(request: Request) {
+  const { email, displayName } = await request.json();
+
+  if (!email || !displayName) {
+    return NextResponse.json({ error: 'Email and display name are required' }, { status: 400 });
+  }
+
+  const code = generateOtp();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
+
+  const supabase = createServiceClient();
+
+  const { error } = await supabase.from('otp_codes').insert({
+    email: email.toLowerCase(),
+    code,
+    display_name: displayName,
+    expires_at: expiresAt,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: 'Failed to create OTP' }, { status: 500 });
+  }
+
+  try {
+    await sendOtpEmail(email, code);
+  } catch (err) {
+    console.error('Failed to send OTP email:', err);
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}

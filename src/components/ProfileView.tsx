@@ -184,6 +184,9 @@ export default function ProfileView({
           knockoutPredictions={knockoutPredictions}
           thirdPlaceTiebreaker={thirdPlaceTiebreaker}
           onSaved={() => { onClearPredictions(); fetchSaved(); }}
+          user={user}
+          onSignIn={() => setShowAuth(true)}
+          onEdit={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}
         />
       )}
 
@@ -226,8 +229,8 @@ export default function ProfileView({
           />
 
         </>
-      ) : (
-        /* Guest State */
+      ) : !championCode ? (
+        /* Guest State — hidden when champion section is showing (it has its own Sign In / Edit buttons) */
         <GuestPrompt
           darkMode={d}
           groupCount={groupCount}
@@ -235,7 +238,7 @@ export default function ProfileView({
           onSignIn={() => setShowAuth(true)}
           onNavigate={onNavigate}
         />
-      )}
+      ) : null}
 
       {/* Name modal for new prediction */}
       {showNameModal && (

@@ -95,8 +95,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       // Build the user's active prediction as a LeaderboardPrediction
       const myActive = myPreds.find((p: SavedPrediction) => p.is_active && p.is_complete);
       const myLeaderboardPred: LeaderboardPrediction | null = myActive && user ? {
+        prediction_number: myActive.prediction_number,
         user_id: user.id,
-        display_name: (user.user_metadata?.display_name as string) ?? 'You',
+        display_name: user.display_name ?? 'You',
         champion_code: myActive.champion_code,
         group_matches: myActive.group_matches ?? {},
         knockout_matches: myActive.knockout_matches ?? {},
@@ -177,8 +178,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         >
                           <div className="flex-grow min-w-0">
                             <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                              <span className="text-neutral-500 font-mono mr-1.5">#{pred.prediction_number ?? idx + 1}</span>
                               {pred.display_name}
+                              <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-neutral-400 truncate font-body">

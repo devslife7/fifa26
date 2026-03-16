@@ -29,7 +29,7 @@ export default function ProfileHeader({ darkMode: d, onSignIn }: ProfileHeaderPr
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
 
-  const displayName = user?.user_metadata?.display_name || 'Player';
+  const displayName = user?.display_name || 'Player';
   const initials = displayName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
@@ -76,7 +76,7 @@ export default function ProfileHeader({ darkMode: d, onSignIn }: ProfileHeaderPr
               <div className="absolute right-0 top-full mt-1 w-40 rounded-xl bg-neutral-800 border border-white/10 shadow-xl z-50 overflow-hidden">
                 <button
                   onClick={() => {
-                    setNameInput(user.user_metadata?.display_name || '');
+                    setNameInput(user.display_name || '');
                     setEditingName(true);
                     setMenuOpen(false);
                   }}

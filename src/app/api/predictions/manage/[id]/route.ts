@@ -1,24 +1,25 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   // Verify ownership and check if active
   const { data: prediction } = await supabase
     .from('predictions')
     .select('id, is_active')
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .single();
 
   if (!prediction) {
@@ -32,7 +33,7 @@ export async function DELETE(
     .from('predictions')
     .delete()
     .eq('id', id)
-    .eq('user_id', user.id);
+    .eq('user_id', user.sub);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -43,7 +44,7 @@ export async function DELETE(
     const { data: nextActive } = await supabase
       .from('predictions')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', user.sub)
       .eq('is_complete', true)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -65,12 +66,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const { name } = await request.json();
   if (!name || typeof name !== 'string') {
@@ -81,7 +82,7 @@ export async function PATCH(
     .from('predictions')
     .update({ name, updated_at: new Date().toISOString() })
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .select()
     .single();
 

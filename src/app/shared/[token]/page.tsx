@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
 import { MatchResult, KnockoutResult } from '@/types';
 import { notFound } from 'next/navigation';
 import SharedPredictionView from '@/components/SharedPredictionView';
@@ -9,7 +9,7 @@ interface Props {
 
 export default async function SharedBracketPage({ params }: Props) {
   const { token } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data, error } = await supabase
     .from('predictions')

@@ -1,13 +1,15 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+
+export interface AppUser {
+  id: string;
+  email: string;
+  display_name: string;
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AppUser | null;
   loading: boolean;
   signIn: (email: string, displayName: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
@@ -17,87 +19,72 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function getSupabase(ref: React.RefObject<SupabaseClient | null>): SupabaseClient | null {
-  if (!isSupabaseConfigured()) return null;
-  if (!ref.current) {
-    ref.current = createClient();
-  }
-  return ref.current;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabaseRef = useRef<SupabaseClient | null>(null);
 
   useEffect(() => {
-    const supabase = getSupabase(supabaseRef);
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => setUser(data.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
   const signIn = useCallback(async (email: string, displayName: string) => {
-    const supabase = getSupabase(supabaseRef);
-    if (!supabase) return { error: 'Supabase not configured' };
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        data: { display_name: displayName },
-      },
-    });
-    return { error: error?.message ?? null };
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, displayName }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || 'Failed to send code' };
+      return { error: null };
+    } catch {
+      return { error: 'Network error' };
+    }
   }, []);
 
-  const verifyOtp = useCallback(async (email: string, token: string) => {
-    const supabase = getSupabase(supabaseRef);
-    if (!supabase) return { error: 'Supabase not configured' };
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email',
-    });
-    return { error: error?.message ?? null };
+  const verifyOtp = useCallback(async (email: string, code: string) => {
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || 'Verification failed' };
+      setUser(data.user);
+      return { error: null };
+    } catch {
+      return { error: 'Network error' };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    const supabase = getSupabase(supabaseRef);
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    await fetch('/api/auth/sign-out', { method: 'POST' });
+    setUser(null);
   }, []);
 
   const updateDisplayName = useCallback(async (name: string) => {
-    const supabase = getSupabase(supabaseRef);
-    if (!supabase) return { error: 'Supabase not configured' };
-    const { data, error } = await supabase.auth.updateUser({
-      data: { display_name: name },
-    });
-    if (error) return { error: error.message };
-    // Also update profiles table
-    if (data.user) {
-      await supabase.from('profiles').update({ display_name: name }).eq('id', data.user.id);
+    try {
+      const res = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: name }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || 'Failed to update' };
       setUser(data.user);
+      return { error: null };
+    } catch {
+      return { error: 'Network error' };
     }
-    return { error: null };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, verifyOtp, signOut, updateDisplayName }}>
+    <AuthContext.Provider value={{ user, loading, signIn, verifyOtp, signOut, updateDisplayName }}>
       {children}
     </AuthContext.Provider>
   );

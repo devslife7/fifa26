@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 import { sendPredictionEmail } from '@/lib/email';
 import { resolveTeam } from '@/lib/email-helpers';
 
 const MAX_PREDICTIONS = 10;
 
 export async function GET() {
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const { data, error } = await supabase
     .from('predictions')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -95,11 +96,12 @@ export async function POST(request: Request) {
   }
 
   // Authenticated flow
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   if (predictionId) {
     // --- UPDATE existing prediction ---
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
       .from('predictions')
       .select('id, share_token')
       .eq('id', predictionId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.sub)
       .single();
 
     if (!existing) {
@@ -134,7 +136,7 @@ export async function POST(request: Request) {
         ...(name ? { name } : {}),
       })
       .eq('id', predictionId)
-      .eq('user_id', user.id)
+      .eq('user_id', user.sub)
       .select()
       .single();
 
@@ -153,7 +155,7 @@ export async function POST(request: Request) {
     const { count } = await supabase
       .from('predictions')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.sub);
 
     if (count !== null && count >= MAX_PREDICTIONS) {
       return NextResponse.json({ error: `Maximum of ${MAX_PREDICTIONS} predictions reached` }, { status: 400 });
@@ -166,7 +168,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('predictions')
       .insert({
-        user_id: user.id,
+        user_id: user.sub,
         name,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},

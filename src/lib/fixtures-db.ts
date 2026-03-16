@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import type { LiveMatch } from '@/types';
 
@@ -53,7 +52,7 @@ function matchToRow(m: LiveMatch) {
 }
 
 export async function getFixturesFromDb(): Promise<LiveMatch[]> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase.from('fixtures').select('*').order('utc_date');
   if (error || !data) return [];
   return data.map(rowToMatch);

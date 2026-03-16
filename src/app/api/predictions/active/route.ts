@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   const { predictionId } = await request.json();
   if (!predictionId) {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     .from('predictions')
     .select('id, is_complete')
     .eq('id', predictionId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .single();
 
   if (!prediction) {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   await supabase
     .from('predictions')
     .update({ is_active: false })
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .eq('is_active', true);
 
   // Activate the specified prediction
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     .from('predictions')
     .update({ is_active: true })
     .eq('id', predictionId)
-    .eq('user_id', user.id)
+    .eq('user_id', user.sub)
     .select()
     .single();
 

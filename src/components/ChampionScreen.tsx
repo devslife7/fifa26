@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import { useState, useRef } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
 import { generateBracket, getChampion, getTopThree } from '@/lib/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { loadPredictions, getEditingPredictionId, getEditingPredictionName, resetAllPredictions } from '@/lib/storage';
-import AuthModal from '@/components/AuthModal';
+import { copyImageToClipboard } from '@/lib/clipboard';
 
 interface Props {
   groupPredictions: Record<string, MatchResult>;
@@ -170,12 +168,15 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
 }
 
 export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onComplete, onSaved }: Props) {
-  const { user } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
   const [saving, setSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [takingScreenshot, setTakingScreenshot] = useState(false);
+  const [copyingImage, setCopyingImage] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [submitterName, setSubmitterName] = useState('');
+  const [submitterEmail, setSubmitterEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [validatingEmail, setValidatingEmail] = useState(false);
   const captureRef = useRef<HTMLDivElement>(null);
 
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -185,10 +186,45 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const thirdTeam = topThree.third ? teamsByCode[topThree.third] : null;
 
   const handleSave = async () => {
-    if (!user) {
-      setShowAuth(true);
+    setError(null);
+    setEmailError(null);
+
+    if (!submitterName.trim()) {
+      setError('Please enter your name');
       return;
     }
+
+    if (!submitterEmail.trim()) {
+      setEmailError('Please enter your email');
+      return;
+    }
+
+    // Client-side email format check
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(submitterEmail)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
+    // Server-side MX validation
+    setValidatingEmail(true);
+    try {
+      const validateRes = await fetch('/api/validate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: submitterEmail }),
+      });
+      const validateData = await validateRes.json();
+      if (!validateData.valid) {
+        setEmailError(validateData.reason || 'Invalid email');
+        setValidatingEmail(false);
+        return;
+      }
+    } catch {
+      // If validation endpoint fails, proceed anyway
+    }
+    setValidatingEmail(false);
+
     await savePredictions();
   };
 
@@ -206,12 +242,14 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           predictionId: predictionId || undefined,
-          name: predictionName || 'My Predictions',
+          name: predictionName || `${submitterName.trim()}'s Predictions`,
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
+          submitterName: submitterName.trim(),
+          submitterEmail: submitterEmail.trim(),
         }),
       });
 
@@ -223,15 +261,6 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
 
       // Clear all local prediction data since prediction is now complete
       resetAllPredictions();
-
-      // Auto-activate if this is the first complete prediction
-      if (data.predictions?.id && !data.predictions?.is_active) {
-        fetch('/api/predictions/active', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ predictionId: data.predictions.id }),
-        }).catch(() => {});
-      }
 
       if (data.predictions?.share_token) {
         setShareUrl(`${window.location.origin}/shared/${data.predictions.share_token}`);
@@ -251,88 +280,22 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
     }
   };
 
-  const handleScreenshot = async () => {
+  const handleCopyImage = async () => {
     if (!captureRef.current) return;
-    setTakingScreenshot(true);
-    try {
-      const canvas = await html2canvas(captureRef.current, {
-        backgroundColor: '#f8fafc',
-        scale: 2, // higher res
-        logging: false,
-        useCORS: true,
-        windowWidth: 1600,
-        onclone: (clonedDoc) => {
-          // html2canvas doesn't support oklch/lab colors yet, so we need to
-          // convert any tailwind v4 oklch colors to hex/rgb in the cloned document
-          // before rendering
-          const elements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i] as HTMLElement;
-            const style = window.getComputedStyle(el);
-            
-            // Fix text color
-            if (style.color && (style.color.includes('oklch') || style.color.includes('lab'))) {
-              // Fallback to a safe dark slate color for text
-              el.style.color = '#1e293b';
-            }
-            
-            // Fix background color
-            if (style.backgroundColor && (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('lab'))) {
-              // Fallback to white or transparent depending on context
-              if (el.classList.contains('bg-white')) {
-                el.style.backgroundColor = '#ffffff';
-              } else if (el.classList.contains('bg-neutral-50')) {
-                el.style.backgroundColor = '#f8fafc';
-              } else {
-                el.style.backgroundColor = 'transparent';
-              }
-            }
-            
-            // Fix border color
-            if (style.borderColor && (style.borderColor.includes('oklch') || style.borderColor.includes('lab'))) {
-              el.style.borderColor = '#e2e8f0'; // neutral-200
-            }
-          }
-        }
-      });
-      
-      const image = canvas.toDataURL('image/png', 1.0);
-      
-      // Try to use the native share API if available (works well on mobile)
-      if (navigator.share && navigator.canShare) {
-        try {
-          const blob = await (await fetch(image)).blob();
-          const file = new File([blob], `fifa26-predictions-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`, { type: 'image/png' });
-          if (navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              title: 'My FIFA 26 Predictions',
-              files: [file]
-            });
-            return; // If share succeeds, we're done
-          }
-        } catch (shareErr) {
-          console.log('Share API failed or was cancelled, falling back to download', shareErr);
-        }
-      }
-      
-      // Fallback to standard download
-      const link = document.createElement('a');
-      link.download = `fifa26-predictions-${champion?.name.toLowerCase().replace(/\s+/g, '-')}.png`;
-      link.href = image;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error('Failed to take screenshot:', err);
-    } finally {
-      setTakingScreenshot(false);
+    setCopyingImage(true);
+    setCopySuccess(false);
+    const result = await copyImageToClipboard(captureRef.current);
+    setCopyingImage(false);
+    if (result === 'copied') {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
     }
   };
 
   if (!champion) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="text-7xl mb-6 animate-trophy-glow">🏆</div>
+        <div className="text-7xl mb-6">🏆</div>
         <h2 className="text-3xl font-bold mb-3">Your Champion</h2>
         <p className="text-neutral-400 max-w-md">
           Complete all match predictions to reveal your predicted FIFA World Cup 2026 champion
@@ -342,7 +305,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   }
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex flex-col items-center pt-4 pb-8 text-center">
       {/* Hidden container for the full bracket screenshot */}
       <div className="overflow-hidden h-0 w-0 absolute left-[-9999px]">
         <div ref={captureRef} style={{ backgroundColor: '#f8fafc', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 1600 }}>
@@ -380,74 +343,90 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center w-full p-8">
-        <div className="relative mb-8">
-          <div className="text-8xl animate-trophy-glow">🏆</div>
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-24 h-3 bg-primary/20 rounded-full blur-xl" />
+      {/* Trophy Hero */}
+      <div>
+        <div className="relative mb-2">
+          <div className="text-[80px] leading-none">🏆</div>
+          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-32 h-6 bg-primary/20 blur-2xl rounded-full" />
         </div>
-
-        <div className="mb-6">
-          <span className="text-7xl">{champion.flag}</span>
+        <div className="mb-3">
+          <span className="text-6xl">{champion.flag}</span>
         </div>
-
-        <h2 className="text-4xl font-black mb-2 text-primary font-body">
-          {champion.name}
+        <h2 className="text-3xl font-black mb-1 font-body">
+          <span className="champion-shimmer">{champion.name}</span>
         </h2>
-
-        <p className="text-neutral-400 text-sm uppercase tracking-[0.2em] font-medium mb-8">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-white/25 font-semibold">
           Your Predicted Champion
         </p>
-
-        {/* Podium: 1st, 2nd, 3rd */}
-        <div className="flex items-end justify-center gap-3 mb-8 w-full max-w-sm">
-          {/* 2nd Place */}
-          {secondTeam && (
-            <div className="flex-1 flex flex-col items-center">
-              <span className="text-3xl mb-2">{secondTeam.flag}</span>
-              <div className="w-full rounded-t-xl bg-white/5 border border-white/10 border-b-0 pt-4 pb-3 flex flex-col items-center">
-                <span className="text-medal-silver text-xs font-bold uppercase tracking-wider">2nd</span>
-                <p className="text-white/70 text-xs font-bold mt-1 font-body">{secondTeam.name}</p>
-              </div>
-              <div className="w-full h-16 bg-white/5 border border-white/10 border-t-0 rounded-b-none" />
-            </div>
-          )}
-          {/* 1st Place */}
-          <div className="flex-1 flex flex-col items-center">
-            <span className="text-4xl mb-2">{champion.flag}</span>
-            <div className="w-full rounded-t-xl bg-primary/10 border border-primary/20 border-b-0 pt-4 pb-3 flex flex-col items-center">
-              <span className="text-medal-gold text-xs font-bold uppercase tracking-wider">1st</span>
-              <p className="text-primary text-xs font-bold mt-1 font-body">{champion.name}</p>
-            </div>
-            <div className="w-full h-24 bg-primary/10 border border-primary/20 border-t-0 rounded-b-none" />
-          </div>
-          {/* 3rd Place */}
-          {thirdTeam && (
-            <div className="flex-1 flex flex-col items-center">
-              <span className="text-3xl mb-2">{thirdTeam.flag}</span>
-              <div className="w-full rounded-t-xl bg-white/5 border border-white/10 border-b-0 pt-4 pb-3 flex flex-col items-center">
-                <span className="text-medal-bronze text-xs font-bold uppercase tracking-wider">3rd</span>
-                <p className="text-white/70 text-xs font-bold mt-1 font-body">{thirdTeam.name}</p>
-              </div>
-              <div className="w-full h-10 bg-white/5 border border-white/10 border-t-0 rounded-b-none" />
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Save & Share Section */}
-      <div className="mt-8 w-full max-w-sm">
-        <div className="flex gap-3 mb-6">
-          <button
-            onClick={handleScreenshot}
-            disabled={takingScreenshot}
-            className="flex-1 py-3 bg-white/10 border border-white/10 text-white font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              {takingScreenshot ? 'hourglass_empty' : 'photo_camera'}
-            </span>
-            {takingScreenshot ? 'Saving...' : 'Save Image'}
-          </button>
+      {/* Podium — ceremony order: 3rd, 2nd, 1st */}
+      {secondTeam && thirdTeam && (
+        <div className="mt-8 w-full max-w-[300px] mx-auto">
+          <div className="flex items-end justify-center gap-1.5">
+            {/* 2nd Place */}
+            <div className="flex-1 flex flex-col items-center">
+              <div className="mb-2">
+                <span className="text-[28px] block mb-0.5">{secondTeam.flag}</span>
+                <p className="text-[10px] font-bold text-medal-silver/80 font-body truncate w-full text-center">{secondTeam.name}</p>
+              </div>
+              <div className="w-full">
+                <div className="h-[72px] rounded-t-lg bg-gradient-to-t from-medal-silver/25 to-medal-silver/8 border border-medal-silver/15 border-b-0 flex items-center justify-center">
+                  <span className="text-medal-silver/50 text-[28px] font-black">2</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 1st Place */}
+            <div className="flex-1 flex flex-col items-center">
+              <div className="mb-2">
+                <span className="text-[34px] block mb-0.5">{champion.flag}</span>
+                <p className="text-[10px] font-bold text-primary/80 font-body truncate w-full text-center">{champion.name}</p>
+              </div>
+              <div className="w-full">
+                <div className="h-[100px] rounded-t-lg bg-gradient-to-t from-primary/25 to-primary/8 border border-primary/20 border-b-0 flex items-center justify-center">
+                  <span className="text-primary/50 text-[32px] font-black">1</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3rd Place */}
+            <div className="flex-1 flex flex-col items-center">
+              <div className="mb-2">
+                <span className="text-[28px] block mb-0.5">{thirdTeam.flag}</span>
+                <p className="text-[10px] font-bold text-medal-bronze/80 font-body truncate w-full text-center">{thirdTeam.name}</p>
+              </div>
+              <div className="w-full">
+                <div className="h-[52px] rounded-t-lg bg-gradient-to-t from-medal-bronze/25 to-medal-bronze/8 border border-medal-bronze/15 border-b-0 flex items-center justify-center">
+                  <span className="text-medal-bronze/50 text-[24px] font-black">3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Podium base line */}
+          <div>
+            <div className="h-[2px] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          </div>
         </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="mt-10 w-full max-w-sm">
+        <button
+          onClick={handleCopyImage}
+          disabled={copyingImage}
+          className={`w-full py-3 mb-3 border font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ${
+            copySuccess
+              ? 'border-wc-green/30 text-wc-green bg-wc-green/10'
+              : 'border-white/10 text-white/70 hover:bg-white/5'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[20px]">
+            {copyingImage ? 'hourglass_empty' : copySuccess ? 'check' : 'content_copy'}
+          </span>
+          {copyingImage ? 'Copying...' : copySuccess ? 'Copied!' : 'Copy Image'}
+        </button>
 
         {shareUrl ? (
           <div className="space-y-3">
@@ -480,13 +459,37 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
                 {error}
               </div>
             )}
+            <div className="space-y-3 mb-4">
+              <input
+                type="text"
+                placeholder="Your name"
+                value={submitterName}
+                onChange={(e) => setSubmitterName(e.target.value)}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+              />
+              <div>
+                <input
+                  type="email"
+                  placeholder="Your email"
+                  value={submitterEmail}
+                  onChange={(e) => { setSubmitterEmail(e.target.value); setEmailError(null); }}
+                  className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                    emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                  }`}
+                />
+                {emailError && (
+                  <p className="text-xs text-wc-red mt-1.5 ml-1">{emailError}</p>
+                )}
+              </div>
+              <p className="text-[11px] text-white/30 text-center">We&apos;ll email you a link to your predictions</p>
+            </div>
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || validatingEmail}
               className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
             >
-              {saving ? (
-                'Saving...'
+              {saving || validatingEmail ? (
+                validatingEmail ? 'Validating...' : 'Saving...'
               ) : (
                 <>
                   <span className="material-symbols-outlined font-variation-fill">share</span>
@@ -494,23 +497,9 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
                 </>
               )}
             </button>
-            {!user && (
-              <p className="text-xs text-neutral-400 mt-2">You&apos;ll need to sign in to save</p>
-            )}
           </>
         )}
       </div>
-
-      {/* Auth Modal */}
-      {showAuth && (
-        <AuthModal
-          onClose={() => setShowAuth(false)}
-          onAuthenticated={() => {
-            setShowAuth(false);
-            savePredictions();
-          }}
-        />
-      )}
     </div>
   );
 }

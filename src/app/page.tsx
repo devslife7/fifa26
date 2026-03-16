@@ -20,7 +20,7 @@ export default function Home() {
   const { user } = useAuth();
   const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('groups');
+  const [activeTab, setActiveTab] = useState<TabId>('profile');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});

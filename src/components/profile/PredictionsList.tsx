@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { SavedPrediction, TabId, LeaderboardPrediction } from '@/types';
+import { useState, useRef, useCallback } from 'react';
+import { SavedPrediction, TabId } from '@/types';
 import PredictionRow from './PredictionRow';
 import UserPredictionsModal from '@/components/UserPredictionsModal';
 import PredictionCapture from '@/components/PredictionCapture';
+import { copyImageToClipboard } from '@/lib/clipboard';
 
 interface PredictionsListProps {
   predictions: SavedPrediction[];
@@ -26,8 +27,22 @@ export default function PredictionsList({
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingPrediction, setViewingPrediction] = useState<SavedPrediction | null>(null);
-  const [capturingPrediction, setCapturingPrediction] = useState<SavedPrediction | null>(null);
-  const handleCaptureDone = useCallback(() => setCapturingPrediction(null), []);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+  const [copySuccessId, setCopySuccessId] = useState<string | null>(null);
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyImage = useCallback(async (predictionId: string) => {
+    if (!captureRef.current) return;
+    setCopyingId(predictionId);
+    const result = await copyImageToClipboard(captureRef.current);
+    setCopyingId(null);
+    if (result === 'copied') {
+      setCopySuccessId(predictionId);
+      setTimeout(() => setCopySuccessId(null), 2000);
+    }
+  }, []);
+
+  const expandedPrediction = predictions.find(p => p.id === expandedId) ?? null;
 
   return (
     <div className="space-y-3">
@@ -102,8 +117,9 @@ export default function PredictionsList({
                 }
               }}
               onDelete={() => onDelete(p.id)}
-              onSaveImage={() => setCapturingPrediction(p)}
-              isSavingImage={capturingPrediction?.id === p.id}
+              onCopyImage={() => handleCopyImage(p.id)}
+              isCopyingImage={copyingId === p.id}
+              copySuccess={copySuccessId === p.id}
             />
           ))}
         </div>
@@ -121,8 +137,8 @@ export default function PredictionsList({
           onClose={() => setViewingPrediction(null)}
         />
       )}
-      {capturingPrediction && (
-        <PredictionCapture prediction={capturingPrediction} onDone={handleCaptureDone} />
+      {expandedPrediction && (
+        <PredictionCapture ref={captureRef} prediction={expandedPrediction} />
       )}
     </div>
   );

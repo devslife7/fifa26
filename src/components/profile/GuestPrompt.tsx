@@ -57,8 +57,8 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
               d ? 'bg-white/10 text-white/80 hover:bg-white/15' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">play_arrow</span>
-            Continue Predicting
+            <span className="material-symbols-outlined text-[18px]">{groupCount >= 72 && knockoutCount >= 32 ? 'edit' : 'play_arrow'}</span>
+            {groupCount >= 72 && knockoutCount >= 32 ? 'Edit Predictions' : 'Continue Predicting'}
           </button>
           <p className={`text-[11px] text-center mt-2 ${d ? 'text-white/25' : 'text-neutral-400'}`}>Sign in to save your progress</p>
         </div>

@@ -248,26 +248,97 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
           <div
             key={round}
             ref={(el) => setRoundRef(round, el)}
-            className="flex-shrink-0 w-64"
+            className={`flex-shrink-0 ${['R32', 'R16', 'QF', 'SF'].includes(round) ? 'w-[320px]' : 'w-64'}`}
           >
             <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest text-center mb-4">
               {roundLabels[round]}
             </h3>
-            <div className="flex flex-col gap-4">
-              {matchesByRound[round].map(match => (
-                <KnockoutMatchCard
-                  key={match.id}
-                  matchId={match.id}
-                  homeCode={match.home}
-                  awayCode={match.away}
-                  result={match.result}
-                  onPredict={onPredict}
-                  liveMatch={liveMatches?.[match.id]}
-                  teamFlagsByCode={teamFlagsByCode}
-                  readOnly={readOnly}
-                  venue={KNOCKOUT_VENUES[match.id]}
-                />
-              ))}
+            <div className="flex flex-col">
+              {(() => {
+                const matches = matchesByRound[round];
+                const nextRoundMap: Partial<Record<KnockoutRound, string>> = {
+                  R32: 'R16',
+                  R16: 'QF',
+                  QF: 'SF',
+                  SF: 'FIN',
+                };
+                const nextRoundPrefix = nextRoundMap[round];
+
+                if (!nextRoundPrefix || matches.length < 2) {
+                  return matches.map((match, i) => (
+                    <div key={match.id} className={i > 0 ? 'mt-4' : ''}>
+                      <KnockoutMatchCard
+                        matchId={match.id}
+                        homeCode={match.home}
+                        awayCode={match.away}
+                        result={match.result}
+                        onPredict={onPredict}
+                        liveMatch={liveMatches?.[match.id]}
+                        teamFlagsByCode={teamFlagsByCode}
+                        readOnly={readOnly}
+                        venue={KNOCKOUT_VENUES[match.id]}
+                      />
+                    </div>
+                  ));
+                }
+
+                const pairs: { first: typeof matches[0]; second: typeof matches[0]; feedsId: string }[] = [];
+                for (let i = 0; i < matches.length; i += 2) {
+                  pairs.push({
+                    first: matches[i],
+                    second: matches[i + 1],
+                    feedsId: `${nextRoundPrefix}-${i / 2 + 1}`,
+                  });
+                }
+
+                return pairs.map((pair, pairIdx) => (
+                  <div key={pair.feedsId} className={pairIdx > 0 ? 'mt-6' : ''}>
+                    <div className="flex items-stretch">
+                      {/* Match cards */}
+                      <div className="flex-1 flex flex-col gap-3">
+                        <KnockoutMatchCard
+                          matchId={pair.first.id}
+                          homeCode={pair.first.home}
+                          awayCode={pair.first.away}
+                          result={pair.first.result}
+                          onPredict={onPredict}
+                          liveMatch={liveMatches?.[pair.first.id]}
+                          teamFlagsByCode={teamFlagsByCode}
+                          readOnly={readOnly}
+                          venue={KNOCKOUT_VENUES[pair.first.id]}
+                        />
+                        <KnockoutMatchCard
+                          matchId={pair.second.id}
+                          homeCode={pair.second.home}
+                          awayCode={pair.second.away}
+                          result={pair.second.result}
+                          onPredict={onPredict}
+                          liveMatch={liveMatches?.[pair.second.id]}
+                          teamFlagsByCode={teamFlagsByCode}
+                          readOnly={readOnly}
+                          venue={KNOCKOUT_VENUES[pair.second.id]}
+                        />
+                      </div>
+                      {/* Bracket connector lines + feeds badge */}
+                      <div className="relative w-16 flex-shrink-0">
+                        {/* Top horizontal line */}
+                        <div className="absolute left-0 top-1/4 w-3 h-px bg-neutral-700 -translate-y-1/2" />
+                        {/* Vertical line */}
+                        <div className="absolute left-3 top-1/4 bottom-1/4 w-px bg-neutral-700" />
+                        {/* Bottom horizontal line */}
+                        <div className="absolute left-0 bottom-1/4 w-3 h-px bg-neutral-700 translate-y-1/2" />
+                        {/* Middle connector to badge */}
+                        <div className="absolute left-3 top-1/2 w-2 h-px bg-neutral-700 -translate-y-1/2" />
+                        {/* Feeds badge */}
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 text-center">
+                          <div className="text-[8px] text-neutral-600 leading-tight">Feeds</div>
+                          <div className="text-[10px] font-semibold text-neutral-500 leading-tight">{pair.feedsId}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         ))}

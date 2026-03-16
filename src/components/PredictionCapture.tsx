@@ -1,7 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import { forwardRef } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, SavedPrediction } from '@/types';
 import { generateBracket } from '@/lib/bracket';
 import { teamsByCode, groups } from '@/data/teams';
@@ -155,82 +154,16 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
 
 interface Props {
   prediction: SavedPrediction;
-  onDone: () => void;
 }
 
-export default function PredictionCapture({ prediction, onDone }: Props) {
-  const captureRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (!captureRef.current) { onDone(); return; }
-      try {
-        const canvas = await html2canvas(captureRef.current, {
-          backgroundColor: '#f8fafc',
-          scale: 2,
-          logging: false,
-          useCORS: true,
-          windowWidth: 1600,
-          onclone: (clonedDoc) => {
-            const elements = clonedDoc.getElementsByTagName('*');
-            for (let i = 0; i < elements.length; i++) {
-              const el = elements[i] as HTMLElement;
-              const style = window.getComputedStyle(el);
-              if (style.color && (style.color.includes('oklch') || style.color.includes('lab'))) {
-                el.style.color = '#1e293b';
-              }
-              if (style.backgroundColor && (style.backgroundColor.includes('oklch') || style.backgroundColor.includes('lab'))) {
-                if (el.classList.contains('bg-white')) el.style.backgroundColor = '#ffffff';
-                else if (el.classList.contains('bg-neutral-50')) el.style.backgroundColor = '#f8fafc';
-                else el.style.backgroundColor = 'transparent';
-              }
-              if (style.borderColor && (style.borderColor.includes('oklch') || style.borderColor.includes('lab'))) {
-                el.style.borderColor = '#e2e8f0';
-              }
-            }
-          }
-        });
-
-        const image = canvas.toDataURL('image/png', 1.0);
-        const championName = prediction.champion_code ? (teamsByCode[prediction.champion_code]?.name ?? 'predictions') : 'predictions';
-        const filename = `fifa26-${prediction.name.toLowerCase().replace(/\s+/g, '-')}-${championName.toLowerCase().replace(/\s+/g, '-')}.png`;
-
-        if (navigator.share && navigator.canShare) {
-          try {
-            const blob = await (await fetch(image)).blob();
-            const file = new File([blob], filename, { type: 'image/png' });
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({ title: `${prediction.name} - FIFA 26 Predictions`, files: [file] });
-              onDone();
-              return;
-            }
-          } catch (e) {
-            console.log('Share failed, falling back to download', e);
-          }
-        }
-
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = image;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } catch (err) {
-        console.error('Failed to capture prediction image:', err);
-      }
-      onDone();
-    }, 200);
-
-    return () => clearTimeout(timer);
-  }, [prediction, onDone]);
-
+const PredictionCapture = forwardRef<HTMLDivElement, Props>(function PredictionCapture({ prediction }, ref) {
   const groupPredictions = prediction.group_matches ?? {};
   const knockoutPredictions = prediction.knockout_matches ?? {};
   const champion = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
 
   return (
     <div style={{ position: 'fixed', left: -9999, top: 0, width: 1600, overflow: 'hidden', zIndex: -1 }}>
-      <div ref={captureRef} style={{ backgroundColor: '#f8fafc', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 1600 }}>
+      <div ref={ref} style={{ backgroundColor: '#f8fafc', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 1600 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 32 }}>
           <div style={{ fontSize: 60 }}>🏆</div>
@@ -271,4 +204,6 @@ export default function PredictionCapture({ prediction, onDone }: Props) {
       </div>
     </div>
   );
-}
+});
+
+export default PredictionCapture;

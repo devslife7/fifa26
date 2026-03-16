@@ -165,7 +165,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   )}
 
                   <div className="space-y-2">
-                    {predictions.map(pred => {
+                    {predictions.map((pred, idx) => {
                       const groupCount = Object.keys(pred.group_matches).length;
                       const knockoutCount = Object.keys(pred.knockout_matches).length;
 
@@ -176,7 +176,10 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
                         >
                           <div className="flex-grow min-w-0">
-                            <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{pred.display_name}</div>
+                            <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
+                              <span className="text-neutral-500 font-mono mr-1.5">#{100 + idx}</span>
+                              {pred.display_name}
+                            </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-neutral-400 truncate font-body">
                                 {getChampionLabel(pred.champion_code) ?? 'No champion pick'}

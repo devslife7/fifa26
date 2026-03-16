@@ -17,13 +17,14 @@ interface PredictionRowProps {
   onSetActive: () => void;
   onCopyLink: () => void;
   onDelete: () => void;
-  onSaveImage: () => void;
-  isSavingImage: boolean;
+  onCopyImage: () => void;
+  isCopyingImage: boolean;
+  copySuccess: boolean;
 }
 
 export default function PredictionRow({
   prediction: p, isCurrentlyEditing, isExpanded, darkMode: d,
-  onToggleExpand, onView, onEdit, onRename, onSetActive, onCopyLink, onDelete, onSaveImage, isSavingImage,
+  onToggleExpand, onView, onEdit, onRename, onSetActive, onCopyLink, onDelete, onCopyImage, isCopyingImage, copySuccess,
 }: PredictionRowProps) {
   const [deleting, setDeleting] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -214,14 +215,16 @@ export default function PredictionRow({
               View
             </button>
             <button
-              onClick={onSaveImage}
-              disabled={isSavingImage}
+              onClick={onCopyImage}
+              disabled={isCopyingImage}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
-                d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                copySuccess
+                  ? 'bg-wc-green/15 text-wc-green'
+                  : d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
               }`}
             >
-              <span className="material-symbols-outlined text-[14px]">{isSavingImage ? 'hourglass_empty' : 'photo_camera'}</span>
-              {isSavingImage ? 'Saving...' : 'Image'}
+              <span className="material-symbols-outlined text-[14px]">{isCopyingImage ? 'hourglass_empty' : copySuccess ? 'check' : 'content_copy'}</span>
+              {isCopyingImage ? 'Copying...' : copySuccess ? 'Copied!' : 'Copy'}
             </button>
             <button
               onClick={onEdit}

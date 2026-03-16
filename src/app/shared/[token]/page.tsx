@@ -23,7 +23,7 @@ export default async function SharedBracketPage({ params }: Props) {
   }
 
   const profile = data.profiles as unknown as { display_name: string } | null;
-  const displayName = profile?.display_name ?? 'Someone';
+  const displayName = profile?.display_name ?? data.submitter_name ?? 'Someone';
 
   return (
     <SharedPredictionView

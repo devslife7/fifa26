@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { sendPredictionEmail } from '@/lib/email';
+import { resolveTeam } from '@/lib/email-helpers';
 
 const MAX_PREDICTIONS = 10;
 
@@ -25,15 +27,79 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const body = await request.json();
+  const {
+    predictionId,
+    name,
+    groupMatches,
+    knockoutMatches,
+    thirdPlaceTiebreaker,
+    championCode,
+    isComplete,
+    submitterName,
+    submitterEmail,
+  } = body;
 
+  // Anonymous submission (no predictionId, has submitterEmail)
+  if (!predictionId && submitterEmail) {
+    if (!submitterName || !submitterEmail) {
+      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    }
+
+    const serviceClient = createServiceClient();
+
+    const shareToken = isComplete
+      ? Math.random().toString(36).substring(2, 10) + Date.now().toString(36)
+      : undefined;
+
+    const { data, error } = await serviceClient
+      .from('predictions')
+      .insert({
+        user_id: null,
+        name: name || `${submitterName}'s Predictions`,
+        submitter_name: submitterName,
+        submitter_email: submitterEmail,
+        group_matches: groupMatches ?? {},
+        knockout_matches: knockoutMatches ?? {},
+        third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
+        champion_code: championCode,
+        is_complete: isComplete ?? false,
+        completed_at: isComplete ? new Date().toISOString() : null,
+        share_token: shareToken,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Send email asynchronously (don't block response)
+    if (data?.share_token && championCode) {
+      const origin = request.headers.get('origin') || 'https://fifa26.app';
+      const shareUrl = `${origin}/shared/${data.share_token}`;
+      const champion = resolveTeam(championCode);
+
+      sendPredictionEmail({
+        to: submitterEmail,
+        name: submitterName,
+        championName: champion.name,
+        championFlag: champion.flag,
+        shareUrl,
+      }).catch((err) => {
+        console.error('Failed to send prediction email:', err);
+      });
+    }
+
+    return NextResponse.json({ predictions: data });
+  }
+
+  // Authenticated flow
+  const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const body = await request.json();
-  const { predictionId, name, groupMatches, knockoutMatches, thirdPlaceTiebreaker, championCode, isComplete } = body;
 
   if (predictionId) {
     // --- UPDATE existing prediction ---
@@ -78,7 +144,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ predictions: data });
   } else {
-    // --- CREATE new prediction ---
+    // --- CREATE new prediction (authenticated) ---
     if (!name) {
       return NextResponse.json({ error: 'Name is required for new predictions' }, { status: 400 });
     }

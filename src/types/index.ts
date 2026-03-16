@@ -88,11 +88,14 @@ export interface SavedPrediction {
   knockout_matches: Record<string, KnockoutResult>;
   third_place_tiebreaker: string[] | null;
   is_approved?: boolean;
+  submitter_name?: string;
+  submitter_email?: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface LeaderboardPrediction {
+  id?: string;
   user_id: string;
   display_name: string;
   champion_code: string | null;

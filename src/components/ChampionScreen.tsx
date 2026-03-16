@@ -239,7 +239,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          predictionId: predictionId || undefined,
+          predictionId: user ? (predictionId || undefined) : undefined,
           name: predictionName || predictionNameInput.trim() || 'My Predictions',
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,

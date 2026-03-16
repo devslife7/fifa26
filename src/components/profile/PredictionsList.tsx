@@ -90,15 +90,6 @@ export default function PredictionsList({
         </div>
       ) : (
         <div className="space-y-2">
-          {/* No-active banner */}
-          {!predictions.some(p => p.is_active) && (
-            <div className={`flex items-center gap-2 rounded-xl px-3 py-2 ${d ? 'bg-primary/10 border border-primary/15' : 'bg-primary/5 border border-primary/10'}`}>
-              <span className="material-symbols-outlined text-[16px] text-primary">info</span>
-              <p className={`text-xs ${d ? 'text-white/50' : 'text-neutral-500'}`}>
-                Set a completed prediction as active to appear on the leaderboard
-              </p>
-            </div>
-          )}
           {[...predictions].sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1)).map(p => (
             <PredictionRow
               key={p.id}

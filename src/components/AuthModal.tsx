@@ -12,7 +12,6 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
   const { signIn, verifyOtp } = useAuth();
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,12 +25,12 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !displayName) return;
+    if (!email) return;
 
     setLoading(true);
     setError(null);
 
-    const { error } = await signIn(email, displayName);
+    const { error } = await signIn(email);
     if (error) {
       setError(error);
       setLoading(false);
@@ -87,18 +86,6 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
           {step === 'email' ? (
             <form onSubmit={handleSendOtp} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-400 mb-1">Display Name</label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-base"
-                  required
-                  autoFocus
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-neutral-400 mb-1">Email</label>
                 <input
                   type="email"
@@ -107,6 +94,7 @@ export default function AuthModal({ onClose, onAuthenticated }: Props) {
                   placeholder="you@example.com"
                   className="w-full px-4 py-3 rounded-xl border border-white/15 bg-white/5 text-white placeholder-neutral-500 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-base"
                   required
+                  autoFocus
                 />
               </div>
               <button

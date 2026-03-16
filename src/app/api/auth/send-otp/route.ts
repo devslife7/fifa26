@@ -6,8 +6,8 @@ import { sendOtpEmail } from '@/lib/email';
 export async function POST(request: Request) {
   const { email, displayName } = await request.json();
 
-  if (!email || !displayName) {
-    return NextResponse.json({ error: 'Email and display name are required' }, { status: 400 });
+  if (!email) {
+    return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
   const code = generateOtp();
@@ -18,11 +18,12 @@ export async function POST(request: Request) {
   const { error } = await supabase.from('otp_codes').insert({
     email: email.toLowerCase(),
     code,
-    display_name: displayName,
+    display_name: displayName || email.split('@')[0],
     expires_at: expiresAt,
   });
 
   if (error) {
+    console.error('OTP insert error:', error);
     return NextResponse.json({ error: 'Failed to create OTP' }, { status: 500 });
   }
 

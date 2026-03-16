@@ -106,10 +106,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       } : null;
 
       if (preds.length === 0) {
-        const placeholder = generatePlaceholderPredictions();
-        // Prepend the user's real prediction to placeholder data
-        setPredictions(myLeaderboardPred ? [myLeaderboardPred, ...placeholder] : placeholder);
-        setTotalUsers(PLACEHOLDER_USERS.length + (myLeaderboardPred ? 1 : 0));
+        // Only show the user's own prediction if available, no placeholders
+        setPredictions(myLeaderboardPred ? [myLeaderboardPred] : []);
+        setTotalUsers(myLeaderboardPred ? 1 : 0);
       } else {
         // Ensure the user's prediction is included in real data
         const alreadyIncluded = myLeaderboardPred && preds.some((p: LeaderboardPrediction) => p.user_id === user?.id);
@@ -136,13 +135,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   return (
     <div className="flex-grow pb-24">
       {/* Header */}
-      <header className="p-6 sticky top-0 bg-background-dark/80 backdrop-blur-md z-30">
+      <header className="py-6 sticky top-0 bg-background-dark/80 backdrop-blur-md z-30">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
         </div>
       </header>
 
-      <div className="px-6 md:grid md:grid-cols-[1fr,300px] md:gap-8">
+      <div className="md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
           {loading ? (
             <div className="flex items-center justify-center py-20">
@@ -182,13 +181,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
                     const renderCard = (pred: LeaderboardPrediction, idx: number) => (
                       <button
-                        key={pred.user_id}
+                        key={`${pred.user_id}-${pred.prediction_number ?? idx}`}
                         onClick={() => setSelectedPrediction(pred)}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
                       >
                         <div className="flex-grow min-w-0">
                           <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                            {pred.display_name}
+                            {pred.name || pred.display_name}
                             <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -373,18 +372,20 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
             <div className="px-4 pb-4 pt-2">
               {[
-                { round: 'Groups', pts: 1 },
-                { round: 'R32', pts: 2 },
-                { round: 'R16', pts: 3 },
-                { round: 'QF', pts: 4 },
-                { round: 'SF', pts: 5 },
+                { round: 'Group Stage', pts: 1 },
+                { round: 'Round of 32', pts: 2 },
+                { round: 'Round of 16', pts: 3 },
+                { round: 'Quarterfinals', pts: 4 },
+                { round: 'Semifinals', pts: 5 },
+                { round: 'Third Place', pts: 3 },
                 { round: 'Final', pts: 6 },
+                { round: 'Champion', pts: 10 },
               ].map((row, i) => (
                 <div key={row.round} className="flex items-center justify-between py-[7px] border-b border-white/[0.04] last:border-0">
                   <span className="text-[13px] font-medium text-neutral-400 font-body">{row.round}</span>
                   <div className="flex items-center gap-1.5">
                     <div className="flex gap-px">
-                      {Array.from({ length: i + 1 }).map((_, j) => (
+                      {Array.from({ length: row.pts }).map((_, j) => (
                         <div key={j} className="w-[3px] h-[10px] rounded-full bg-primary/30" />
                       ))}
                     </div>
@@ -392,18 +393,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                   </div>
                 </div>
               ))}
-
-              {/* Champion row — special */}
-              <div className="mt-2 relative">
-                <div className="absolute inset-0 rounded-lg bg-primary/[0.07]" />
-                <div className="relative flex items-center justify-between px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[16px] font-variation-fill">emoji_events</span>
-                    <span className="text-[13px] font-bold text-primary">Champion</span>
-                  </div>
-                  <span className="text-base font-black tabular-nums text-primary">+10</span>
-                </div>
-              </div>
             </div>
           </div>
         </section>

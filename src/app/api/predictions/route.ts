@@ -15,6 +15,13 @@ export async function GET() {
 
   const supabase = createServiceClient();
 
+  // Claim any unclaimed predictions that match the user's email
+  await supabase
+    .from('predictions')
+    .update({ user_id: user.sub })
+    .is('user_id', null)
+    .eq('submitter_email', user.email);
+
   const { data, error } = await supabase
     .from('predictions')
     .select('*')

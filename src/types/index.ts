@@ -98,6 +98,7 @@ export interface SavedPrediction {
 export interface LeaderboardPrediction {
   prediction_number?: number;
   user_id: string;
+  name?: string | null;
   display_name: string;
   champion_code: string | null;
   group_matches: Record<string, MatchResult>;

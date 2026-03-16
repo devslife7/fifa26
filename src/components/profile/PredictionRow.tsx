@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { SavedPrediction, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { getTopThree } from '@/lib/bracket';
+import PredictionDetailCard from './PredictionDetailCard';
 
 interface PredictionRowProps {
   prediction: SavedPrediction;
@@ -145,7 +146,12 @@ export default function PredictionRow({
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className={`text-sm font-bold truncate ${d ? 'text-white' : 'text-neutral-800'}`}>{p.name}</p>
+            <p className={`text-sm font-bold truncate ${d ? 'text-white' : 'text-neutral-800'}`}>
+              {p.name}
+              {p.prediction_number != null && (
+                <span className={`font-mono ml-1.5 ${d ? 'text-white/30' : 'text-neutral-400'}`}>#{p.prediction_number}</span>
+              )}
+            </p>
             {p.is_active && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold flex-shrink-0">
                 <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
@@ -159,22 +165,14 @@ export default function PredictionRow({
             )}
           </div>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {p.is_complete ? (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-wc-green-light text-wc-green text-[10px] font-bold border border-wc-green-border">
-                <span className="material-symbols-outlined text-[11px] font-variation-fill">check_circle</span>
-                Complete
-              </span>
-            ) : (
+            {!p.is_complete && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-wc-amber-light text-wc-amber text-[10px] font-bold border border-wc-amber-border">
                 <span className="material-symbols-outlined text-[11px]">pending</span>
                 In Progress
               </span>
             )}
-            <span className={`text-[10px] ${d ? 'text-white/30' : 'text-neutral-400'}`}>
-              {groupCount}/72 groups · {knockoutCount}/32 knockout
-            </span>
             <span className={`text-[10px] ${d ? 'text-white/20' : 'text-neutral-300'}`}>
-              · {new Date(p.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              {new Date(p.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
             </span>
           </div>
           {/* Podium: 1st, 2nd, 3rd */}
@@ -201,8 +199,10 @@ export default function PredictionRow({
         </span>
       </button>
 
-      {/* Expanded actions */}
+      {/* Expanded detail + actions */}
       {isExpanded && (
+        <>
+        <PredictionDetailCard prediction={p} darkMode={d} />
         <div className={`px-4 pb-3 pt-0 flex items-center gap-2 flex-wrap border-t ${d ? 'border-white/5' : 'border-neutral-50'}`}>
           <div className="w-full pt-2.5 flex items-center gap-2 flex-wrap">
             <button
@@ -273,6 +273,7 @@ export default function PredictionRow({
             </button>
           </div>
         </div>
+        </>
       )}
     </div>
   );

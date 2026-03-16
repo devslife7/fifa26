@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
@@ -40,9 +40,20 @@ export default function ProfileView({
   const [showNameModal, setShowNameModal] = useState(false);
   const [newPredName, setNewPredName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const predictionsSnapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
+
   const [submitted, setSubmitted] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return localStorage.getItem('prediction_submitted') === 'true';
+    const wasSubmitted = localStorage.getItem('prediction_submitted') === 'true';
+    if (!wasSubmitted) return false;
+    // Check if predictions changed since submission
+    const savedSnapshot = localStorage.getItem('prediction_submitted_snapshot');
+    if (!savedSnapshot || savedSnapshot !== predictionsSnapshot) {
+      localStorage.removeItem('prediction_submitted');
+      localStorage.removeItem('prediction_submitted_snapshot');
+      return false;
+    }
+    return true;
   });
 
   const currentEditingId = getEditingPredictionId();
@@ -52,16 +63,14 @@ export default function ProfileView({
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
 
-  // Reset submitted flag when predictions change (user edited something)
-  const predictionsSnapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions);
-  const prevSnapshot = useRef(predictionsSnapshot);
+  // Also check at runtime when predictions change via props
   useEffect(() => {
-    if (prevSnapshot.current !== predictionsSnapshot) {
-      prevSnapshot.current = predictionsSnapshot;
-      if (submitted) {
-        setSubmitted(false);
-        localStorage.removeItem('prediction_submitted');
-      }
+    if (!submitted) return;
+    const savedSnapshot = localStorage.getItem('prediction_submitted_snapshot');
+    if (!savedSnapshot || savedSnapshot !== predictionsSnapshot) {
+      setSubmitted(false);
+      localStorage.removeItem('prediction_submitted');
+      localStorage.removeItem('prediction_submitted_snapshot');
     }
   }, [predictionsSnapshot, submitted]);
 
@@ -194,7 +203,7 @@ export default function ProfileView({
         />
       )}
 
-      {/* Champion Section — only show if not yet saved */}
+      {/* Champion Section — show if champion is picked and not yet submitted/saved */}
       {championCode && !submitted && !loadingSaved && !savedPredictions.some(p => p.id === currentEditingId && p.is_complete) && (
         <ChampionScreen
           groupPredictions={groupPredictions}
@@ -202,9 +211,8 @@ export default function ProfileView({
           thirdPlaceTiebreaker={thirdPlaceTiebreaker}
           onSaved={() => {
             setSubmitted(true);
-            if (!user) {
-              localStorage.setItem('prediction_submitted', 'true');
-            }
+            localStorage.setItem('prediction_submitted', 'true');
+            localStorage.setItem('prediction_submitted_snapshot', predictionsSnapshot);
             fetchSaved();
           }}
           user={user}
@@ -338,7 +346,7 @@ export default function ProfileView({
       {showAuth && (
         <AuthModal
           onClose={() => setShowAuth(false)}
-          onAuthenticated={() => { setShowAuth(false); setSubmitted(false); localStorage.removeItem('prediction_submitted'); fetchSaved(); }}
+          onAuthenticated={() => { setShowAuth(false); fetchSaved(); }}
         />
       )}
     </div>

@@ -43,21 +43,22 @@ export async function POST(request: Request) {
 
   if (existingProfile) {
     userId = existingProfile.id;
-    displayName = existingProfile.display_name || otp.display_name;
+    displayName = existingProfile.display_name || otp.display_name || normalizedEmail.split('@')[0];
     // Update display_name if it was empty
-    if (!existingProfile.display_name && otp.display_name) {
-      await supabase.from('profiles').update({ display_name: otp.display_name }).eq('id', userId);
+    if (!existingProfile.display_name) {
+      await supabase.from('profiles').update({ display_name: displayName }).eq('id', userId);
     }
   } else {
     // Create new profile
     userId = crypto.randomUUID();
-    displayName = otp.display_name;
+    displayName = otp.display_name || normalizedEmail.split('@')[0];
     const { error: insertError } = await supabase.from('profiles').insert({
       id: userId,
       email: normalizedEmail,
       display_name: displayName,
     });
     if (insertError) {
+      console.error('Profile insert error:', insertError);
       return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
     }
   }

@@ -17,6 +17,7 @@ export const KNOCKOUT_POINTS: Record<string, number> = {
   R16: 3,
   QF: 4,
   SF: 5,
+  '3RD': 3,
   F: 6,
   FIN: 6,
 };

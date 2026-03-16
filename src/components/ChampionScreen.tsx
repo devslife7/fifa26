@@ -182,6 +182,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const [emailError, setEmailError] = useState<string | null>(null);
   const [validatingEmail, setValidatingEmail] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [predictionNameInput, setPredictionNameInput] = useState('');
   const captureRef = useRef<HTMLDivElement>(null);
 
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -247,14 +248,16 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           predictionId: predictionId || undefined,
-          name: predictionName || `${submitterName.trim()}'s Predictions`,
+          name: predictionName || predictionNameInput.trim() || (user ? `${user.display_name}'s Predictions` : `${submitterName.trim()}'s Predictions`),
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
-          submitterName: submitterName.trim(),
-          submitterEmail: submitterEmail.trim(),
+          ...(!user && {
+            submitterName: submitterName.trim(),
+            submitterEmail: submitterEmail.trim(),
+          }),
         }),
       });
 
@@ -447,7 +450,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 text-lg"
             >
               <span className="material-symbols-outlined font-variation-fill">send</span>
-              Submit Predictions
+              Submit Prediction
             </button>
             {onEdit && (
               <button
@@ -466,7 +469,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 text-lg"
             >
               <span className="material-symbols-outlined font-variation-fill">send</span>
-              Submit Predictions
+              Submit Prediction
             </button>
             {onSignIn && (
               <button
@@ -494,7 +497,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !saving && !validatingEmail && setShowSubmitModal(false)}>
           <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold">Submit Predictions</h3>
+              <h3 className="text-lg font-bold">Submit Prediction</h3>
               <button onClick={() => !saving && !validatingEmail && setShowSubmitModal(false)} className="text-neutral-400 hover:text-white transition-colors">
                 <span className="material-symbols-outlined">close</span>
               </button>
@@ -506,50 +509,79 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               </div>
             )}
 
-            <div className="space-y-3 mb-5">
-              <input
-                type="text"
-                placeholder="Your name"
-                value={submitterName}
-                onChange={(e) => setSubmitterName(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
-              />
-              <div>
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  value={submitterEmail}
-                  onChange={(e) => { setSubmitterEmail(e.target.value); setEmailError(null); }}
-                  className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
-                    emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
-                  }`}
-                />
-                {emailError && (
-                  <p className="text-xs text-wc-red mt-1.5 ml-1">{emailError}</p>
-                )}
-              </div>
-            </div>
+            {user ? (
+              <>
+                <div className="space-y-3 mb-5">
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={predictionNameInput}
+                    onChange={(e) => setPredictionNameInput(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
 
-            <div className="mb-5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl">
-              <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-                Your predictions will be sent to your email. Your submission will be reviewed for approval.
-              </p>
-            </div>
+                <button
+                  onClick={() => savePredictions()}
+                  disabled={saving}
+                  className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
+                >
+                  {saving ? 'Submitting...' : (
+                    <>
+                      <span className="material-symbols-outlined font-variation-fill">send</span>
+                      Submit
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3 mb-5">
+                  <input
+                    type="text"
+                    placeholder="Your name"
+                    value={submitterName}
+                    onChange={(e) => setSubmitterName(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                  <div>
+                    <input
+                      type="email"
+                      placeholder="Your email"
+                      value={submitterEmail}
+                      onChange={(e) => { setSubmitterEmail(e.target.value); setEmailError(null); }}
+                      className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                        emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                      }`}
+                    />
+                    {emailError && (
+                      <p className="text-xs text-wc-red mt-1.5 ml-1">{emailError}</p>
+                    )}
+                  </div>
+                </div>
 
-            <button
-              onClick={handleSave}
-              disabled={saving || validatingEmail}
-              className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
-            >
-              {saving || validatingEmail ? (
-                validatingEmail ? 'Validating...' : 'Submitting...'
-              ) : (
-                <>
-                  <span className="material-symbols-outlined font-variation-fill">send</span>
-                  Submit
-                </>
-              )}
-            </button>
+                <div className="mb-5 px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl">
+                  <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
+                    Your predictions will be sent to your email. Your submission will be reviewed for approval.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSave}
+                  disabled={saving || validatingEmail}
+                  className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
+                >
+                  {saving || validatingEmail ? (
+                    validatingEmail ? 'Validating...' : 'Submitting...'
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined font-variation-fill">send</span>
+                      Submit
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

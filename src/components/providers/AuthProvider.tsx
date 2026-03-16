@@ -11,7 +11,7 @@ export interface AppUser {
 interface AuthContextType {
   user: AppUser | null;
   loading: boolean;
-  signIn: (email: string, displayName: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, displayName?: string) => Promise<{ error: string | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateDisplayName: (name: string) => Promise<{ error: string | null }>;
@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const signIn = useCallback(async (email: string, displayName: string) => {
+  const signIn = useCallback(async (email: string, displayName?: string) => {
     try {
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',

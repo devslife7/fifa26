@@ -424,6 +424,30 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               Copy Share Link
             </button>
             <p className="text-xs text-neutral-400 break-all">{shareUrl}</p>
+            {!user && onSignIn && (
+              <div className="p-4 rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/[0.05] to-transparent">
+                <p className="text-sm font-bold text-white mb-3 text-center">Sign in to unlock</p>
+                <div className="space-y-2 mb-4">
+                  {[
+                    { icon: 'trending_up', text: 'Track your live score' },
+                    { icon: 'leaderboard', text: 'Compete on the leaderboard' },
+                    { icon: 'library_add', text: 'Create up to 10 predictions' },
+                    { icon: 'edit', text: 'Edit anytime' },
+                  ].map((benefit) => (
+                    <div key={benefit.text} className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-[16px]">{benefit.icon}</span>
+                      <span className="text-xs text-neutral-300">{benefit.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={onSignIn}
+                  className="w-full py-3 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
+                >
+                  Sign In
+                </button>
+              </div>
+            )}
             {onComplete && (
               <button
                 onClick={onComplete}

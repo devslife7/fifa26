@@ -3,6 +3,7 @@
 import { KnockoutResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { KNOCKOUT_POINTS } from '@/lib/scoring';
+import { isPlaceholder, placeholderLabel } from '@/lib/bracket';
 
 interface Props {
   matchId: string;
@@ -62,9 +63,11 @@ export default function KnockoutMatchCard({
   readOnly = false,
   venue,
 }: Props) {
-  const home = homeCode ? teamsByCode[homeCode] : null;
-  const away = awayCode ? teamsByCode[awayCode] : null;
-  const canPredict = home && away;
+  const homePH = isPlaceholder(homeCode);
+  const awayPH = isPlaceholder(awayCode);
+  const home = homeCode && !homePH ? teamsByCode[homeCode] : null;
+  const away = awayCode && !awayPH ? teamsByCode[awayCode] : null;
+  const canPredict = home && away && !homePH && !awayPH;
 
   const isFinished = liveMatch?.status === 'FINISHED';
   const predictionCorrect = isFinished && result && liveMatch?.actualResult
@@ -82,6 +85,17 @@ export default function KnockoutMatchCard({
     side: KnockoutResult;
     isSelected: boolean;
   }) => {
+    // Placeholder team from incomplete group
+    if (code && isPlaceholder(code)) {
+      return (
+        <div className="w-full flex items-center px-3 py-3 rounded-full">
+          <span className="font-body font-semibold text-sm text-neutral-500 italic">
+            {placeholderLabel(code)}
+          </span>
+        </div>
+      );
+    }
+
     if (!team) {
       return (
         <div className="w-full flex items-center justify-between p-2 rounded-lg bg-white/10 animate-pulse">

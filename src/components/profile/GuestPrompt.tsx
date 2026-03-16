@@ -54,6 +54,25 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
         ))}
       </div>
 
+      {/* How it works */}
+      <div className="w-full max-w-xs mb-8">
+        <div className="space-y-3">
+          {[
+            { step: '1', icon: 'sports_soccer', text: 'Predict all group matches' },
+            { step: '2', icon: 'account_tree', text: 'Build your knockout bracket' },
+            { step: '3', icon: 'emoji_events', text: 'Pick your champion' },
+            { step: '4', icon: 'send', text: 'Submit & compete' },
+          ].map((item) => (
+            <div key={item.step} className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-[10px] font-black text-primary">{item.step}</span>
+              </div>
+              <span className="text-sm text-neutral-300 font-body">{item.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* CTA */}
       <div className="w-full max-w-xs space-y-3">
         <button
@@ -68,10 +87,10 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
 
         <button
           onClick={onSignIn}
-          className="w-full py-3 rounded-xl font-semibold text-sm text-neutral-400 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+          className="w-full py-3 rounded-xl font-semibold text-sm text-neutral-300 border border-white/10 bg-white/[0.06] hover:bg-white/[0.10] hover:border-white/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
         >
-          <span className="material-symbols-outlined text-[16px]">person</span>
-          Already have an account? Sign In
+          <span className="material-symbols-outlined text-[16px] flex-shrink-0">person</span>
+          <span className="whitespace-nowrap">Sign In with a one-time password</span>
         </button>
       </div>
     </div>

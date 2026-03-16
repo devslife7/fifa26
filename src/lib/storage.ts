@@ -19,6 +19,7 @@ export function loadPredictions(): Predictions {
 export function savePredictions(predictions: Predictions): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(predictions));
+  window.dispatchEvent(new CustomEvent('predictions-saved'));
 }
 
 export function setGroupPrediction(matchId: string, result: MatchResult): Predictions {
@@ -35,20 +36,26 @@ export function setKnockoutPrediction(matchId: string, result: KnockoutResult): 
   return predictions;
 }
 
-export function clearKnockoutDownstream(matchId: string): void {
+export function clearKnockoutDownstream(matchId: string, matchIdsToClear?: string[]): void {
   const predictions = loadPredictions();
-  // Clear all downstream knockout matches when an upstream result changes
-  const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
-  const [round] = matchId.split('-');
-  const roundIdx = roundOrder.indexOf(round);
 
-  // Clear all subsequent rounds
-  for (let i = roundIdx + 1; i < roundOrder.length; i++) {
-    Object.keys(predictions.knockoutMatches).forEach(key => {
-      if (key.startsWith(roundOrder[i])) {
-        delete predictions.knockoutMatches[key];
-      }
-    });
+  if (matchIdsToClear) {
+    // Clear specific match IDs
+    for (const id of matchIdsToClear) {
+      delete predictions.knockoutMatches[id];
+    }
+  } else {
+    // Fallback: clear all subsequent rounds
+    const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
+    const [round] = matchId.split('-');
+    const roundIdx = roundOrder.indexOf(round);
+    for (let i = roundIdx + 1; i < roundOrder.length; i++) {
+      Object.keys(predictions.knockoutMatches).forEach(key => {
+        if (key.startsWith(roundOrder[i])) {
+          delete predictions.knockoutMatches[key];
+        }
+      });
+    }
   }
 
   savePredictions(predictions);

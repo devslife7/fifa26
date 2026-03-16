@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket } from '@/lib/bracket';
-import { areAllGroupsComplete } from '@/lib/standings';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
 
@@ -31,7 +30,6 @@ const roundLabels: Record<KnockoutRound, string> = {
 
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
-  const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -192,18 +190,6 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     setTimeout(() => { isScrollingFromClick.current = false; }, 400);
   };
 
-  if (!allGroupsDone) {
-    return (
-      <div className="max-w-lg mx-auto text-center py-16">
-        <div className="text-6xl mb-6 animate-pulse-gold">🏟️</div>
-        <h2 className="text-2xl font-bold mb-3">Knockout Stage Locked</h2>
-        <p className="text-neutral-500">
-          Complete all 48 group stage predictions to unlock the knockout bracket
-        </p>
-      </div>
-    );
-  }
-
   // Group matches by round
   const matchesByRound: Record<KnockoutRound, typeof bracket> = {} as Record<KnockoutRound, typeof bracket>;
   for (const round of rounds) {
@@ -213,7 +199,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   return (
     <div>
       {/* Sticky Round Tabs */}
-      <div className="sticky top-0 z-20 bg-background-dark">
+      <div className="sticky top-[52px] z-20 bg-background-dark">
         <div className="flex items-center border-b border-white/10">
           <div
             ref={tabsContainerRef}

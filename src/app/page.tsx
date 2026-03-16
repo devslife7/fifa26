@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
-import { areAllGroupsComplete, areThirdPlaceTiesResolved } from '@/lib/standings';
-import { generateRandomKnockoutPredictions } from '@/lib/bracket';
-import { loadPredictions, savePredictions, clearKnockoutDownstream, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
+import { areThirdPlaceTiesResolved } from '@/lib/standings';
+import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/bracket';
+import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/GroupMatchCard';
 import ThirdPlaceTable from '@/components/ThirdPlaceTable';
 import BracketView from '@/components/BracketView';
-import ProgressBar from '@/components/ProgressBar';
 import BottomNav from '@/components/BottomNav';
+import StepperBar from '@/components/StepperBar';
+import SaveIndicator from '@/components/SaveIndicator';
 import RankingView from '@/components/RankingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import ProfileView from '@/components/ProfileView';
@@ -65,14 +66,33 @@ export default function Home() {
 
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {
-      if (prev[matchId] === result) return prev; // already selected, do nothing
+      if (prev[matchId] === result) return prev;
       const next = { ...prev, [matchId]: result };
-      const predictions = loadPredictions();
-      predictions.groupMatches = next;
-      predictions.knockoutMatches = {};
-      predictions.thirdPlaceTiebreaker = [];
-      savePredictions(predictions);
-      setKnockoutPredictions({});
+
+      // Smart clearing: only clear affected knockout predictions
+      const groupLetter = matchId.split('-')[0] as import('@/types').GroupLetter;
+      const affectedR32 = getAffectedR32Matches(groupLetter);
+      const idsToClear = new Set<string>();
+      for (const r32Id of affectedR32) {
+        idsToClear.add(r32Id);
+        for (const downId of getDownstreamMatchIds(r32Id)) {
+          idsToClear.add(downId);
+        }
+      }
+
+      setKnockoutPredictions(prevKO => {
+        const nextKO = { ...prevKO };
+        for (const id of idsToClear) {
+          delete nextKO[id];
+        }
+        const predictions = loadPredictions();
+        predictions.groupMatches = next;
+        predictions.knockoutMatches = nextKO;
+        predictions.thirdPlaceTiebreaker = [];
+        savePredictions(predictions);
+        return nextKO;
+      });
+
       setThirdPlaceTiebreaker([]);
       return next;
     });
@@ -80,11 +100,28 @@ export default function Home() {
 
   const handleTiebreakerChange = useCallback((picks: string[]) => {
     setThirdPlaceTiebreaker(picks);
-    setKnockoutPredictions({});
-    const predictions = loadPredictions();
-    predictions.thirdPlaceTiebreaker = picks;
-    predictions.knockoutMatches = {};
-    savePredictions(predictions);
+
+    // Only clear R32-13 through R32-16 + their downstream chains
+    const thirdPlaceR32 = ['R32-13', 'R32-14', 'R32-15', 'R32-16'];
+    const idsToClear = new Set<string>();
+    for (const r32Id of thirdPlaceR32) {
+      idsToClear.add(r32Id);
+      for (const downId of getDownstreamMatchIds(r32Id)) {
+        idsToClear.add(downId);
+      }
+    }
+
+    setKnockoutPredictions(prevKO => {
+      const nextKO = { ...prevKO };
+      for (const id of idsToClear) {
+        delete nextKO[id];
+      }
+      const predictions = loadPredictions();
+      predictions.thirdPlaceTiebreaker = picks;
+      predictions.knockoutMatches = nextKO;
+      savePredictions(predictions);
+      return nextKO;
+    });
   }, []);
 
   const handleRandomizeGroups = useCallback(() => {
@@ -124,40 +161,28 @@ export default function Home() {
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
     setKnockoutPredictions(prev => {
+      const downstream = getDownstreamMatchIds(matchId);
+
       if (prev[matchId] === result) {
-        // Deselect: remove this match and all downstream
+        // Deselect: remove this match and its downstream chain
         const next = { ...prev };
         delete next[matchId];
-        const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
-        const [round] = matchId.split('-');
-        const roundIdx = roundOrder.indexOf(round);
-        for (let i = roundIdx + 1; i < roundOrder.length; i++) {
-          Object.keys(next).forEach(key => {
-            if (key.startsWith(roundOrder[i])) delete next[key];
-          });
+        for (const id of downstream) {
+          delete next[id];
         }
         const predictions = loadPredictions();
         predictions.knockoutMatches = next;
         savePredictions(predictions);
         return next;
       }
+
       const next = { ...prev, [matchId]: result };
-      // Clear downstream
-      clearKnockoutDownstream(matchId);
-      // Remove downstream from state too
-      const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
-      const [round] = matchId.split('-');
-      const roundIdx = roundOrder.indexOf(round);
-      const cleaned = { ...next };
-      for (let i = roundIdx + 1; i < roundOrder.length; i++) {
-        Object.keys(cleaned).forEach(key => {
-          if (key.startsWith(roundOrder[i])) {
-            delete cleaned[key];
-          }
-        });
+      // Clear downstream chain
+      for (const id of downstream) {
+        delete next[id];
       }
       const predictions = loadPredictions();
-      predictions.knockoutMatches = cleaned;
+      predictions.knockoutMatches = next;
       savePredictions(predictions);
 
       // Navigate to profile after picking the final
@@ -168,7 +193,7 @@ export default function Home() {
         }, 600);
       }
 
-      return cleaned;
+      return next;
     });
   }, []);
 
@@ -179,11 +204,51 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [rateLimited]);
 
+  const thirdPlaceRef = useRef<HTMLDivElement>(null);
+  const prevGroupCountRef = useRef<number>(-1);
+  const prevTiesResolvedRef = useRef<boolean | null>(null);
+
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
-  const groupsComplete = areAllGroupsComplete(groupPredictions);
   const tiesResolved = areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
-  const canContinueToBracket = groupsComplete && tiesResolved;
+  const champion = useMemo(
+    () => getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
+    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
+  );
+
+  // Auto-advance when user completes the 72nd group prediction
+  useEffect(() => {
+    if (!mounted) return;
+    const prev = prevGroupCountRef.current;
+    prevGroupCountRef.current = groupCount;
+    if (prev === -1) return; // skip initial load
+    if (prev < 72 && groupCount === 72 && activeTab === 'groups') {
+      if (tiesResolved) {
+        setTimeout(() => {
+          setActiveTab('bracket');
+          setTimeout(() => window.scrollTo({ top: 0 }), 0);
+        }, 400);
+      } else {
+        setTimeout(() => {
+          thirdPlaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
+    }
+  }, [groupCount, mounted, activeTab, tiesResolved]);
+
+  // Auto-navigate to bracket when ties are resolved after completing all group matches
+  useEffect(() => {
+    if (!mounted) return;
+    const prev = prevTiesResolvedRef.current;
+    prevTiesResolvedRef.current = tiesResolved;
+    if (prev === null) return; // skip initial load
+    if (!prev && tiesResolved && groupCount >= 72 && activeTab === 'groups') {
+      setTimeout(() => {
+        setActiveTab('bracket');
+        setTimeout(() => window.scrollTo({ top: 0 }), 0);
+      }, 400);
+    }
+  }, [tiesResolved, mounted, groupCount, activeTab]);
 
   const matchesByDate = useMemo(() => {
     const sorted = [...allGroupMatches].sort((a, b) => {
@@ -223,6 +288,23 @@ export default function Home() {
       {liveError && (
         <LiveBanner message={liveError} />
       )}
+      <SaveIndicator />
+      {(activeTab === 'groups' || activeTab === 'bracket') && (
+        <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
+          <div className="max-w-2xl mx-auto px-3 sm:px-4">
+            <StepperBar
+            groupCount={groupCount}
+            knockoutCount={knockoutCount}
+            tiesResolved={tiesResolved}
+            hasChampion={!!champion}
+            isSubmitted={false}
+            activeTab={activeTab}
+            onNavigate={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
+            onScrollToThirdPlace={() => thirdPlaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            />
+          </div>
+        </div>
+      )}
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' ? 'max-w-2xl px-3 sm:px-4' :
@@ -242,8 +324,6 @@ export default function Home() {
 
         {activeTab === 'groups' && (
           <div>
-            <ProgressBar groupCount={groupCount} knockoutCount={knockoutCount} groupsComplete={groupsComplete} tiesResolved={tiesResolved} onContinueToBracket={() => { setActiveTab('bracket'); setTimeout(() => window.scrollTo({ top: 0, left: 0 }), 0); }} />
-
             <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex gap-2 w-full sm:w-auto">
                 <button
@@ -290,12 +370,14 @@ export default function Home() {
               ))}
             </div>
 
-            <ThirdPlaceTable
-              predictions={groupPredictions}
-              tiebreakerPicks={thirdPlaceTiebreaker}
-              onTiebreakerChange={handleTiebreakerChange}
-              teamFlagsByCode={teamFlagsByCode}
-            />
+            <div ref={thirdPlaceRef}>
+              <ThirdPlaceTable
+                predictions={groupPredictions}
+                tiebreakerPicks={thirdPlaceTiebreaker}
+                onTiebreakerChange={handleTiebreakerChange}
+                teamFlagsByCode={teamFlagsByCode}
+              />
+            </div>
 
           </div>
         )}
@@ -351,7 +433,6 @@ export default function Home() {
       <BottomNav
         activeTab={activeTab}
         onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
-        groupsComplete={canContinueToBracket}
       />
 
       {/* Rate limit toast */}

@@ -17,7 +17,7 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
       {/* FIFA logo hero */}
       <div className="relative mb-6">
         <div className="absolute inset-0 -m-8 rounded-full bg-primary/[0.04] blur-3xl" />
-        <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="relative w-28 h-28 animate-trophy-glow" />
+        <img src="/images/fifa_logov2_transparent.png" alt="FIFA World Cup 2026" className="relative w-28 h-28 animate-trophy-glow" />
       </div>
 
       {/* Title block */}

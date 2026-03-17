@@ -7,11 +7,11 @@ interface Props {
   onTabChange: (tab: TabId) => void;
 }
 
-const PREDICTION_TABS: TabId[] = ['groups', 'bracket', 'thirdplace'];
+const PREDICTION_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 
 const navItems = [
   { label: 'Home', icon: 'home', navigateTo: 'home' as TabId, activeTabs: ['home'] as TabId[] },
-  { label: 'Predictions', icon: 'sports_soccer', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
+  { label: 'My Picks', icon: 'emoji_events', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
   { label: 'Ranking', icon: 'leaderboard', navigateTo: 'ranking' as TabId, activeTabs: ['ranking'] as TabId[] },
   { label: 'News', icon: 'newspaper', navigateTo: 'news' as TabId, activeTabs: ['news'] as TabId[] },
 ];

@@ -17,12 +17,14 @@ import SaveIndicator from '@/components/ui/SaveIndicator';
 import RankingView from '@/components/ranking/RankingView';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ChampionOverlay from '@/components/champion/ChampionOverlay';
+import HomeView from '@/components/HomeView';
+import NewsView from '@/components/news/NewsView';
 
 export default function Home() {
   const { user } = useAuth();
   const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('ranking');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
@@ -318,6 +320,17 @@ export default function Home() {
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
       }`}>
+        {activeTab === 'home' && (
+          <HomeView
+            groupCount={groupCount}
+            knockoutCount={knockoutCount}
+            champion={champion ?? null}
+            teamFlagsByCode={teamFlagsByCode ?? {}}
+            onNavigate={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
+            onClear={handleClearGroups}
+          />
+        )}
+
         {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
           const editName = getEditingPredictionName();
           return editName ? (
@@ -407,9 +420,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'news' && (
-          <div className="pt-12 text-center text-neutral-500">Coming soon</div>
-        )}
+        {activeTab === 'news' && <NewsView />}
 
         {activeTab === 'submit' && (
           <ChampionOverlay

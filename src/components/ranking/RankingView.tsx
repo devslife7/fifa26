@@ -93,28 +93,33 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         setLeaderboard(entries);
       }
 
-      // Build the user's active prediction as a LeaderboardPrediction
-      const myActive = myPreds.find((p: SavedPrediction) => p.is_active && p.is_complete);
-      const myLeaderboardPred: LeaderboardPrediction | null = myActive && user ? {
-        prediction_number: myActive.prediction_number,
-        name: myActive.name,
-        user_id: user.id,
-        display_name: user.display_name ?? 'You',
-        champion_code: myActive.champion_code,
-        group_matches: myActive.group_matches ?? {},
-        knockout_matches: myActive.knockout_matches ?? {},
-        third_place_tiebreaker: myActive.third_place_tiebreaker,
-        is_approved: myActive.is_approved ?? false,
-      } : null;
+      // Build all of the user's completed predictions as LeaderboardPredictions
+      const myLeaderboardPreds: LeaderboardPrediction[] = user
+        ? myPreds
+            .filter((p: SavedPrediction) => p.is_complete)
+            .map((p: SavedPrediction) => ({
+              prediction_number: p.prediction_number,
+              name: p.name,
+              user_id: user.id,
+              display_name: user.display_name ?? 'You',
+              champion_code: p.champion_code,
+              group_matches: p.group_matches ?? {},
+              knockout_matches: p.knockout_matches ?? {},
+              third_place_tiebreaker: p.third_place_tiebreaker,
+              is_approved: p.is_approved ?? false,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+            }))
+        : [];
 
       if (preds.length === 0) {
-        // Only show the user's own prediction if available, no placeholders
-        setPredictions(myLeaderboardPred ? [myLeaderboardPred] : []);
-        setTotalUsers(myLeaderboardPred ? 1 : 0);
+        setPredictions(myLeaderboardPreds);
+        setTotalUsers(myLeaderboardPreds.length);
       } else {
-        // Ensure the user's prediction is included in real data
-        const alreadyIncluded = myLeaderboardPred && preds.some((p: LeaderboardPrediction) => p.user_id === user?.id);
-        setPredictions(myLeaderboardPred && !alreadyIncluded ? [myLeaderboardPred, ...preds] : preds);
+        // Merge user's predictions that aren't already in the leaderboard data
+        const existing = new Set(preds.filter((p: LeaderboardPrediction) => p.user_id === user?.id).map((p: LeaderboardPrediction) => p.prediction_number));
+        const missing = myLeaderboardPreds.filter(p => !existing.has(p.prediction_number));
+        setPredictions([...missing, ...preds]);
         setTotalUsers(total || preds.length);
       }
       setLoading(false);

@@ -85,7 +85,11 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, th
             <button
               onClick={() => handleStepClick(step, status)}
               disabled={isFuture}
-              className={`flex flex-col items-center gap-0.5 min-w-[40px] ${isFuture ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`flex flex-col items-center gap-0.5 min-w-[40px] rounded-lg px-1.5 py-1 transition-all ${
+                isFuture
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'cursor-pointer hover:bg-white/5 active:scale-95 transition-transform'
+              }`}
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 isCompleted
@@ -98,7 +102,7 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, th
                   {isCompleted ? 'check' : step.icon}
                 </span>
               </div>
-              <span className={`text-[8px] font-bold uppercase tracking-wider leading-tight text-center ${
+              <span className={`text-[9px] font-bold uppercase tracking-wider leading-tight text-center ${
                 isCompleted ? 'text-primary/80' : isActive ? 'text-neutral-300' : 'text-neutral-600'
               }`}>
                 {step.label}

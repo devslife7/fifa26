@@ -379,6 +379,20 @@ export default function ChampionOverlay({
                 <div className="space-y-2">
                   {otpStep === 'idle' || otpStep === 'sending' ? (
                     <>
+                      {/* Benefits of signing in */}
+                      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 mb-1 space-y-2">
+                        <p className="text-[11px] font-semibold text-neutral-300 text-center uppercase tracking-wider">Why sign in?</p>
+                        {[
+                          { icon: 'cloud_done', text: 'Save predictions to your account' },
+                          { icon: 'devices', text: 'Access from any device' },
+                          { icon: 'leaderboard', text: 'Compete on the leaderboard' },
+                        ].map((b) => (
+                          <div key={b.icon} className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary/70 text-[14px]">{b.icon}</span>
+                            <span className="text-[11px] text-neutral-400">{b.text}</span>
+                          </div>
+                        ))}
+                      </div>
                       <button
                         onClick={async () => {
                           const targetEmail = signInEmail || email;
@@ -670,6 +684,20 @@ export default function ChampionOverlay({
                 <div className="space-y-2">
                   {otpStep === 'idle' || otpStep === 'sending' ? (
                     <>
+                      {/* Benefits of signing in */}
+                      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 mb-1 space-y-2">
+                        <p className="text-[11px] font-semibold text-neutral-300 text-center uppercase tracking-wider">Why sign in?</p>
+                        {[
+                          { icon: 'cloud_done', text: 'Save predictions to your account' },
+                          { icon: 'devices', text: 'Access from any device' },
+                          { icon: 'leaderboard', text: 'Compete on the leaderboard' },
+                        ].map((b) => (
+                          <div key={b.icon} className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-primary/70 text-[14px]">{b.icon}</span>
+                            <span className="text-[11px] text-neutral-400">{b.text}</span>
+                          </div>
+                        ))}
+                      </div>
                       <button
                         onClick={async () => {
                           const targetEmail = signInEmail || email;

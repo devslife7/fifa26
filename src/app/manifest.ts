@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
     return {
         name: 'FIFA World Cup 2026 Predictor',
-        short_name: 'FIFA 26 Predictor',
+        short_name: 'FIFA World Cup',
         description: 'Predict every match of the FIFA World Cup 2026',
         start_url: '/',
         display: 'standalone',

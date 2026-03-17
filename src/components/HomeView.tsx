@@ -139,7 +139,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
           src="/images/fifa_logov2_transparent.png"
           alt="FIFA World Cup 2026"
           className="animate-trophy-glow"
-          style={{ width: '400px', height: '400px', margin: '32px auto 40px' }}
+          style={{ width: '400px', height: '440px', margin: '32px auto 40px' }}
         />
 
         {/* Divider */}

@@ -317,14 +317,6 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '34px', height: '34px', borderRadius: '9px',
-              background: 'rgba(249,212,6,0.08)',
-              border: '1px solid rgba(249,212,6,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '18px' }}>sports_soccer</span>
-            </div>
             <span style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9' }}>Your Predictions</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -348,27 +340,22 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
 
         {/* Champion section — inlined below progress bars */}
         {champion && (
-          <div style={{
-            marginTop: '18px',
-            paddingTop: '16px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}>
-            <p style={{ fontSize: '10px', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.16em', flexShrink: 0 }}>
-              ★ Champion
-            </p>
-            <div style={{ width: '28px', height: '28px', flexShrink: 0, filter: 'drop-shadow(0 1px 4px rgba(0,0,0,0.4))' }}>
+          <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '240px', height: '160px', borderRadius: '8px', overflow: 'hidden', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))' }}>
               {teamFlagsByCode[champion] ? (
-                <img src={teamFlagsByCode[champion]} alt={champion} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={teamFlagsByCode[champion]} alt={champion} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{teamsByCode[champion]?.flag ?? '🏳️'}</span>
+                <span style={{ fontSize: '5rem', lineHeight: 1 }}>{teamsByCode[champion]?.flag ?? '🏳️'}</span>
               )}
             </div>
-            <span style={{ fontSize: '16px', fontWeight: 800, color: '#f0fdf4', letterSpacing: '-0.02em', flex: 1 }}>
-              {teamsByCode[champion]?.name ?? champion}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.09em' }}>
+                Champion
+              </span>
+              <span style={{ fontSize: '16px', fontWeight: 800, color: '#f9d406' }}>
+                {teamsByCode[champion]?.name ?? champion}
+              </span>
+            </div>
           </div>
         )}
       </button>
@@ -423,7 +410,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '24px' }} />
 
           <p style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: '16px', textAlign: 'center' }}>
-            Why create an account?
+            Why sign in to your account using one time password?
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
@@ -463,7 +450,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
             }}
           >
             <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '20px' }}>login</span>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#e2e8f0' }}>Sign In</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#e2e8f0' }}>Sign In OTP</span>
           </button>
 
           <p style={{ fontSize: '11px', color: '#334155', textAlign: 'center', marginTop: '10px' }}>

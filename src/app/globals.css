@@ -171,6 +171,9 @@ body {
 
 @utility pb-nav-safe {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  @media (pointer: coarse) {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 @utility pb-page-safe {

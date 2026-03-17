@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { createSessionToken, SESSION_COOKIE, COOKIE_OPTIONS } from '@/lib/auth';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { createSessionToken, SESSION_COOKIE, COOKIE_OPTIONS } from '@/lib/services/auth';
 
 export async function POST(request: Request) {
   const { email, code } = await request.json();

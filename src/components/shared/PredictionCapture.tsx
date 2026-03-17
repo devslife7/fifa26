@@ -2,7 +2,7 @@
 
 import { forwardRef } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, SavedPrediction } from '@/types';
-import { generateBracket } from '@/lib/bracket';
+import { generateBracket } from '@/lib/logic/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveMatches } from '@/lib/football-api';
-import { upsertFixturesToDb } from '@/lib/fixtures-db';
-import { createServiceClient } from '@/lib/supabase/server';
+import { fetchLiveMatches } from '@/lib/services/football-api';
+import { upsertFixturesToDb } from '@/lib/services/fixtures-db';
+import { createServiceClient } from '@/lib/services/supabase/server';
 
 export async function POST(request: Request) {
   if (request.headers.get('x-admin-secret') !== process.env.ADMIN_SECRET) {

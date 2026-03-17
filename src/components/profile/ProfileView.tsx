@@ -6,14 +6,14 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import {
   loadPredictions, getEditingPredictionId, getEditingPredictionName,
   setEditingPrediction,
-} from '@/lib/storage';
-import { getChampion } from '@/lib/bracket';
-import AuthModal from '@/components/AuthModal';
-import ProfileHeader from '@/components/profile/ProfileHeader';
-import WorkingDraftCard from '@/components/profile/WorkingDraftCard';
-import PredictionsList from '@/components/profile/PredictionsList';
-import GuestPrompt from '@/components/profile/GuestPrompt';
-import ChampionScreen from '@/components/ChampionScreen';
+} from '@/lib/client/storage';
+import { getChampion } from '@/lib/logic/bracket';
+import AuthModal from '@/components/auth/AuthModal';
+import ProfileHeader from './ProfileHeader';
+import WorkingDraftCard from './WorkingDraftCard';
+import PredictionsList from './PredictionsList';
+import GuestPrompt from './GuestPrompt';
+import ChampionScreen from '@/components/champion/ChampionScreen';
 
 interface ProfileViewProps {
   groupPredictions: Record<string, MatchResult>;

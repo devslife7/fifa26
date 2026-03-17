@@ -2,8 +2,8 @@
 
 import { KnockoutResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
-import { KNOCKOUT_POINTS } from '@/lib/scoring';
-import { isPlaceholder, placeholderLabel } from '@/lib/bracket';
+import { KNOCKOUT_POINTS } from '@/lib/logic/scoring';
+import { isPlaceholder, placeholderLabel } from '@/lib/logic/bracket';
 
 interface Props {
   matchId: string;

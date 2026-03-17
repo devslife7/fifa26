@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { calculateScore } from '@/lib/scoring';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { calculateScore } from '@/lib/logic/scoring';
 
 export async function POST(request: Request) {
   const adminSecret = request.headers.get('x-admin-secret');

@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { buildGroupMatchesHtml, buildKnockoutHtml } from '@/lib/email-helpers';
+import { buildGroupMatchesHtml, buildKnockoutHtml } from '@/lib/services/email-helpers';
 import type { MatchResult, KnockoutResult } from '@/types';
 
 function getResend() {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { generateOtp } from '@/lib/auth';
-import { sendOtpEmail } from '@/lib/email';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { generateOtp } from '@/lib/services/auth';
+import { sendOtpEmail } from '@/lib/services/email';
 
 export async function POST(request: Request) {
   const { email, displayName } = await request.json();

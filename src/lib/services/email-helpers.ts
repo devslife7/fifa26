@@ -1,6 +1,6 @@
 import { teamsByCode, groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { generateBracket } from '@/lib/bracket';
+import { generateBracket } from '@/lib/logic/bracket';
 import type { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
 
 // Short names for compact email rendering

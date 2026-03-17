@@ -1,7 +1,7 @@
 'use client';
 
 import { MatchResult } from '@/types';
-import { getThirdPlaceRanking, detectThirdPlaceTie, ThirdPlaceEntry } from '@/lib/standings';
+import { getThirdPlaceRanking, detectThirdPlaceTie, ThirdPlaceEntry } from '@/lib/logic/standings';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {

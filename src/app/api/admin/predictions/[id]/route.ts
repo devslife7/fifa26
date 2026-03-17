@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/services/supabase/server';
 
 export async function PATCH(
   request: Request,

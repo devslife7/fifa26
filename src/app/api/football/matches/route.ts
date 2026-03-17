@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchLiveMatches } from '@/lib/football-api';
-import { getFixturesFromDb } from '@/lib/fixtures-db';
+import { fetchLiveMatches } from '@/lib/services/football-api';
+import { getFixturesFromDb } from '@/lib/services/fixtures-db';
 
 const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' };
 

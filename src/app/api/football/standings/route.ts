@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveStandings } from '@/lib/football-api';
+import { fetchLiveStandings } from '@/lib/services/football-api';
 
 export async function GET() {
   const data = await fetchLiveStandings();

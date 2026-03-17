@@ -3,21 +3,20 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
-import { areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/standings';
-import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/bracket';
-import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
+import { areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/logic/standings';
+import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/logic/bracket';
+import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer } from '@/lib/client/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
-import GroupMatchCard from '@/components/GroupMatchCard';
-import ThirdPlaceTable from '@/components/ThirdPlaceTable';
-import BracketView from '@/components/BracketView';
-import BottomNav from '@/components/BottomNav';
-import StepperBar from '@/components/StepperBar';
-import SaveIndicator from '@/components/SaveIndicator';
-import RankingView from '@/components/RankingView';
-import PullToRefresh from '@/components/PullToRefresh';
-import ProfileView from '@/components/ProfileView';
-import ChampionOverlay from '@/components/ChampionOverlay';
+import GroupMatchCard from '@/components/groups/GroupMatchCard';
+import ThirdPlaceTable from '@/components/groups/ThirdPlaceTable';
+import BracketView from '@/components/bracket/BracketView';
+import BottomNav from '@/components/layout/BottomNav';
+import StepperBar from '@/components/layout/StepperBar';
+import SaveIndicator from '@/components/ui/SaveIndicator';
+import RankingView from '@/components/ranking/RankingView';
+import PullToRefresh from '@/components/ui/PullToRefresh';
+import ChampionOverlay from '@/components/champion/ChampionOverlay';
 
 export default function Home() {
   const { user } = useAuth();
@@ -29,7 +28,6 @@ export default function Home() {
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [showChampionOverlay, setShowChampionOverlay] = useState(false);
 
   // Load local predictions on mount
   useEffect(() => {
@@ -143,6 +141,10 @@ export default function Home() {
   }, []);
 
   const handleClearGroups = useCallback(() => {
+    if (autoNavTimerRef.current) {
+      clearTimeout(autoNavTimerRef.current);
+      autoNavTimerRef.current = null;
+    }
     const predictions = loadPredictions();
     predictions.groupMatches = {};
     predictions.knockoutMatches = {};
@@ -187,9 +189,9 @@ export default function Home() {
       predictions.knockoutMatches = next;
       savePredictions(predictions);
 
-      // Show champion overlay after picking the final
+      // Auto-navigate to submit tab after picking the final
       if (matchId === 'FIN-1') {
-        setShowChampionOverlay(true);
+        setTimeout(() => setActiveTab('submit'), 400);
       }
 
       return next;
@@ -205,6 +207,7 @@ export default function Home() {
 
   const prevGroupCountRef = useRef<number>(-1);
   const prevTiesResolvedRef = useRef<boolean | null>(null);
+  const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
@@ -224,17 +227,16 @@ export default function Home() {
     prevGroupCountRef.current = groupCount;
     if (prev === -1) return; // skip initial load
     if (prev < 72 && groupCount === 72 && activeTab === 'groups') {
-      if (tiesResolved) {
-        setTimeout(() => {
+      if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+      autoNavTimerRef.current = setTimeout(() => {
+        autoNavTimerRef.current = null;
+        if (tiesResolved) {
           setActiveTab('bracket');
-          setTimeout(() => window.scrollTo({ top: 0 }), 0);
-        }, 400);
-      } else {
-        setTimeout(() => {
+        } else {
           setActiveTab('thirdplace');
-          setTimeout(() => window.scrollTo({ top: 0 }), 0);
-        }, 300);
-      }
+        }
+        setTimeout(() => window.scrollTo({ top: 0 }), 0);
+      }, tiesResolved ? 400 : 300);
     }
   }, [groupCount, mounted, activeTab, tiesResolved]);
 
@@ -245,7 +247,9 @@ export default function Home() {
     prevTiesResolvedRef.current = tiesResolved;
     if (prev === null) return; // skip initial load
     if (!prev && tiesResolved && groupCount >= 72 && (activeTab === 'groups' || activeTab === 'thirdplace')) {
-      setTimeout(() => {
+      if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
+      autoNavTimerRef.current = setTimeout(() => {
+        autoNavTimerRef.current = null;
         setActiveTab('bracket');
         setTimeout(() => window.scrollTo({ top: 0 }), 0);
       }, 400);
@@ -291,7 +295,7 @@ export default function Home() {
         <LiveBanner message={liveError} />
       )}
       <SaveIndicator />
-      {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (
+      {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace' || activeTab === 'submit') && (
         <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
           <div className="max-w-2xl mx-auto px-3 sm:px-4">
             <StepperBar
@@ -310,9 +314,8 @@ export default function Home() {
       )}
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
-        activeTab === 'groups' || activeTab === 'thirdplace' ? 'max-w-2xl px-3 sm:px-4' :
+        activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
-        activeTab === 'home' ? 'max-w-2xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
       }`}>
         {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
@@ -404,63 +407,30 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'home' && (
-          <ProfileView
-            groupPredictions={groupPredictions}
-            knockoutPredictions={knockoutPredictions}
-            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-            onNavigate={setActiveTab}
-            onNavigateToPredictions={(view) => {
-              setActiveTab(view);
-              setTimeout(() => window.scrollTo({ top: 0 }), 0);
-            }}
-            onLoadPrediction={(prediction: SavedPrediction) => {
-              loadFromServer(prediction);
-              setGroupPredictions(prediction.group_matches ?? {});
-              setKnockoutPredictions(prediction.knockout_matches ?? {});
-              setThirdPlaceTiebreaker(prediction.third_place_tiebreaker ?? []);
-            }}
-            onNewPrediction={() => {
-              resetAllPredictions();
-              setGroupPredictions({});
-              setKnockoutPredictions({});
-              setThirdPlaceTiebreaker([]);
-              setActiveTab('groups');
-              setTimeout(() => window.scrollTo({ top: 0 }), 0);
-            }}
-            onClearPredictions={() => {
-              setGroupPredictions({});
-              setKnockoutPredictions({});
-              setThirdPlaceTiebreaker([]);
-            }}
-          />
-        )}
-
         {activeTab === 'news' && (
           <div className="pt-12 text-center text-neutral-500">Coming soon</div>
         )}
-      </main>
 
-      {/* Champion Overlay */}
-      {showChampionOverlay && (
-        <ChampionOverlay
-          groupPredictions={groupPredictions}
-          knockoutPredictions={knockoutPredictions}
-          thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-          user={user ?? null}
-          onDismiss={() => setShowChampionOverlay(false)}
-          onSubmitted={() => {
-            localStorage.setItem('prediction_submitted', 'true');
-            const snapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
-            localStorage.setItem('prediction_submitted_snapshot', snapshot);
-          }}
-          onNavigateToRanking={() => {
-            setShowChampionOverlay(false);
-            setActiveTab('ranking');
-            setTimeout(() => window.scrollTo({ top: 0 }), 0);
-          }}
-        />
-      )}
+        {activeTab === 'submit' && (
+          <ChampionOverlay
+            isPage
+            groupPredictions={groupPredictions}
+            knockoutPredictions={knockoutPredictions}
+            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+            user={user ?? null}
+            onDismiss={() => setActiveTab('bracket')}
+            onSubmitted={() => {
+              localStorage.setItem('prediction_submitted', 'true');
+              const snapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
+              localStorage.setItem('prediction_submitted_snapshot', snapshot);
+            }}
+            onNavigateToRanking={() => {
+              setActiveTab('ranking');
+              setTimeout(() => window.scrollTo({ top: 0 }), 0);
+            }}
+          />
+        )}
+      </main>
 
       {/* Bottom Nav */}
       <BottomNav

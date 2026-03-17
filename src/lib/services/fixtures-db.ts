@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/services/supabase/server';
 import type { LiveMatch } from '@/types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

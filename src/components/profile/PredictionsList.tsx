@@ -3,9 +3,9 @@
 import { useState, useRef, useCallback } from 'react';
 import { SavedPrediction } from '@/types';
 import PredictionRow from './PredictionRow';
-import UserPredictionsModal from '@/components/UserPredictionsModal';
-import PredictionCapture from '@/components/PredictionCapture';
-import { copyImageToClipboard } from '@/lib/clipboard';
+import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
+import PredictionCapture from '@/components/shared/PredictionCapture';
+import { copyImageToClipboard } from '@/lib/client/clipboard';
 
 interface PredictionsListProps {
   predictions: SavedPrediction[];

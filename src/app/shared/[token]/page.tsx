@@ -1,7 +1,7 @@
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/services/supabase/server';
 import { MatchResult, KnockoutResult } from '@/types';
 import { notFound } from 'next/navigation';
-import SharedPredictionView from '@/components/SharedPredictionView';
+import SharedPredictionView from '@/components/shared/SharedPredictionView';
 
 interface Props {
   params: Promise<{ token: string }>;

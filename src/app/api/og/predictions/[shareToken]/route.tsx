@@ -1,8 +1,8 @@
 import { ImageResponse } from 'next/og';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/services/supabase/server';
 import { teamsByCode } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
-import { generateBracket, getTopThree } from '@/lib/bracket';
+import { generateBracket, getTopThree } from '@/lib/logic/bracket';
 import type { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
 
 const GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];

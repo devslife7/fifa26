@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
-import { generateBracket } from '@/lib/bracket';
+import { generateBracket } from '@/lib/logic/bracket';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
 

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { MatchResult, KnockoutResult } from '@/types';
 import { groups, teamsByCode } from '@/data/teams';
-import GroupSection from './GroupSection';
-import BracketView from './BracketView';
+import GroupSection from '@/components/groups/GroupSection';
+import BracketView from '@/components/bracket/BracketView';
 
 interface Props {
   displayName: string;

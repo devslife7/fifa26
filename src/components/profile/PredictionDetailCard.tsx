@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import { SavedPrediction, GroupLetter, KnockoutRound } from '@/types';
 import { teamsByCode, groups } from '@/data/teams';
-import { getGroupQualifiers, isGroupComplete } from '@/lib/standings';
-import { generateBracket } from '@/lib/bracket';
+import { getGroupQualifiers, isGroupComplete } from '@/lib/logic/standings';
+import { generateBracket } from '@/lib/logic/bracket';
 
 interface Props {
   prediction: SavedPrediction;

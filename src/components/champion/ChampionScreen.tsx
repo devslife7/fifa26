@@ -2,13 +2,13 @@
 
 import { useState, useRef } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
-import { generateBracket, getChampion, getTopThree } from '@/lib/bracket';
+import { generateBracket, getChampion, getTopThree } from '@/lib/logic/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
-import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/storage';
-import { copyImageToClipboard } from '@/lib/clipboard';
+import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/client/storage';
+import { copyImageToClipboard } from '@/lib/client/clipboard';
 import type { AppUser } from '@/components/providers/AuthProvider';
-import Podium from '@/components/Podium';
+import Podium from '@/components/champion/Podium';
 
 interface Props {
   groupPredictions: Record<string, MatchResult>;

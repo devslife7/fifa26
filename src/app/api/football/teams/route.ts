@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveTeams } from '@/lib/football-api';
+import { fetchLiveTeams } from '@/lib/services/football-api';
 
 export async function GET() {
   const data = await fetchLiveTeams();

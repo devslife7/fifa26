@@ -39,14 +39,14 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, th
     }
     // 3rd Place
     if (idx === 1) {
-      if (tiesResolved) return 'completed';
+      if (groupsDone && tiesResolved) return 'completed';
       if (groupsDone) return 'active';
       return 'future';
     }
     // Bracket
     if (idx === 2) {
       if (hasChampion) return 'completed';
-      if (tiesResolved && (activeTab === 'bracket' || knockoutCount > 0)) return 'active';
+      if (groupsDone && tiesResolved && (activeTab === 'bracket' || knockoutCount > 0)) return 'active';
       return 'future';
     }
     // Submit

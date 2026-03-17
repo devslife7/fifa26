@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, MatchResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { detectThirdPlaceTie } from '@/lib/standings';
+import { detectThirdPlaceTie } from '@/lib/logic/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from './UserPredictionsModal';
 

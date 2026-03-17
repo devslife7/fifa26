@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { SavedPrediction, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
-import { getTopThree } from '@/lib/bracket';
+import { getTopThree } from '@/lib/logic/bracket';
 import PredictionDetailCard from './PredictionDetailCard';
 
 interface PredictionRowProps {

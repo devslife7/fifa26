@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { getAuthUser } from '@/lib/auth-server';
-import { sendPredictionEmail } from '@/lib/email';
-import { resolveTeam } from '@/lib/email-helpers';
-import { getTopThree } from '@/lib/bracket';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { getAuthUser } from '@/lib/services/auth-server';
+import { sendPredictionEmail } from '@/lib/services/email';
+import { resolveTeam } from '@/lib/services/email-helpers';
+import { getTopThree } from '@/lib/logic/bracket';
 
 const MAX_PREDICTIONS = 10;
 

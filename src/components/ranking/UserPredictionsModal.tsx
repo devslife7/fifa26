@@ -4,8 +4,8 @@ import { useMemo } from 'react';
 import { LeaderboardPrediction, LiveMatch, GroupLetter } from '@/types';
 import { teamsByCode, groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { generateBracket } from '@/lib/bracket';
-import { KNOCKOUT_POINTS, GROUP_POINTS, CHAMPION_POINTS } from '@/lib/scoring';
+import { generateBracket } from '@/lib/logic/bracket';
+import { KNOCKOUT_POINTS, GROUP_POINTS, CHAMPION_POINTS } from '@/lib/logic/scoring';
 import type { KnockoutRound } from '@/types';
 
 interface Props {

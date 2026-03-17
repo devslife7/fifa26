@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/auth-server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { createSessionToken, SESSION_COOKIE, COOKIE_OPTIONS } from '@/lib/auth';
+import { getAuthUser } from '@/lib/services/auth-server';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { createSessionToken, SESSION_COOKIE, COOKIE_OPTIONS } from '@/lib/services/auth';
 
 export async function POST(request: Request) {
   const user = await getAuthUser();

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { getAuthUser } from '@/lib/auth-server';
+import { createServiceClient } from '@/lib/services/supabase/server';
+import { getAuthUser } from '@/lib/services/auth-server';
 
 export async function DELETE(
   _request: Request,

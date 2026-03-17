@@ -17,6 +17,7 @@ import SaveIndicator from '@/components/SaveIndicator';
 import RankingView from '@/components/RankingView';
 import PullToRefresh from '@/components/PullToRefresh';
 import ProfileView from '@/components/ProfileView';
+import ChampionOverlay from '@/components/ChampionOverlay';
 
 export default function Home() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function Home() {
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [showChampionOverlay, setShowChampionOverlay] = useState(false);
 
   // Load local predictions on mount
   useEffect(() => {
@@ -185,12 +187,9 @@ export default function Home() {
       predictions.knockoutMatches = next;
       savePredictions(predictions);
 
-      // Navigate to profile after picking the final
+      // Show champion overlay after picking the final
       if (matchId === 'FIN-1') {
-        setTimeout(() => {
-          setActiveTab('profile');
-          setTimeout(() => window.scrollTo({ top: 0 }), 0);
-        }, 600);
+        setShowChampionOverlay(true);
       }
 
       return next;
@@ -428,6 +427,27 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* Champion Overlay */}
+      {showChampionOverlay && (
+        <ChampionOverlay
+          groupPredictions={groupPredictions}
+          knockoutPredictions={knockoutPredictions}
+          thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+          user={user ?? null}
+          onDismiss={() => setShowChampionOverlay(false)}
+          onSubmitted={() => {
+            localStorage.setItem('prediction_submitted', 'true');
+            const snapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
+            localStorage.setItem('prediction_submitted_snapshot', snapshot);
+          }}
+          onNavigateToRanking={() => {
+            setShowChampionOverlay(false);
+            setActiveTab('ranking');
+            setTimeout(() => window.scrollTo({ top: 0 }), 0);
+          }}
+        />
+      )}
 
       {/* Bottom Nav */}
       <BottomNav

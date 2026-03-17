@@ -6,12 +6,13 @@ import { useAuth } from '@/components/providers/AuthProvider';
 interface Props {
   onClose: () => void;
   onAuthenticated: () => void;
+  initialEmail?: string;
 }
 
-export default function AuthModal({ onClose, onAuthenticated }: Props) {
+export default function AuthModal({ onClose, onAuthenticated, initialEmail }: Props) {
   const { signIn, verifyOtp } = useAuth();
   const [step, setStep] = useState<'email' | 'otp'>('email');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail || '');
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

@@ -87,10 +87,10 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
 
         <button
           onClick={onSignIn}
-          className="w-full py-3 rounded-xl font-semibold text-sm text-neutral-300 border border-white/10 bg-white/[0.06] hover:bg-white/[0.10] hover:border-white/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+          className="w-full py-3 px-4 rounded-2xl font-semibold text-xs text-neutral-300 border border-white/10 bg-white/[0.06] hover:bg-white/[0.10] hover:border-white/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 overflow-hidden"
         >
           <span className="material-symbols-outlined text-[16px] flex-shrink-0">person</span>
-          <span className="whitespace-nowrap">Sign In with a one-time password</span>
+          Sign In with a one-time password
         </button>
       </div>
     </div>

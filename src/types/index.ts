@@ -59,7 +59,7 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'bracket' | 'ranking' | 'profile';
+export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'news' | 'submit';
 
 export interface LeaderboardEntry {
   user_id: string;
@@ -68,13 +68,6 @@ export interface LeaderboardEntry {
   champion_code: string | null;
   calculated_at: string;
   position_change?: number;
-}
-
-export interface UserScore {
-  total_points: number;
-  group_correct: number;
-  knockout_correct: number;
-  champion_correct: boolean;
 }
 
 export interface SavedPrediction {

@@ -1,16 +1,14 @@
 'use client';
 
-import { TabId } from '@/types';
-
 interface GuestPromptProps {
   darkMode: boolean;
   groupCount: number;
   knockoutCount: number;
   onSignIn: () => void;
-  onNavigate: (tab: TabId) => void;
+  onStartPredicting: (view: 'groups' | 'bracket') => void;
 }
 
-export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, onSignIn, onNavigate }: GuestPromptProps) {
+export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, onSignIn, onStartPredicting }: GuestPromptProps) {
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
 
   return (
@@ -76,7 +74,7 @@ export default function GuestPrompt({ darkMode: d, groupCount, knockoutCount, on
       {/* CTA */}
       <div className="w-full max-w-xs space-y-3">
         <button
-          onClick={() => onNavigate(hasPredictions && groupCount >= 72 ? 'bracket' : 'groups')}
+          onClick={() => onStartPredicting(hasPredictions && groupCount >= 72 ? 'bracket' : 'groups')}
           className="group w-full py-4 rounded-2xl bg-primary text-black font-bold text-base hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_0_32px_rgba(249,212,6,0.15)]"
         >
           {hasPredictions ? 'Continue Predicting' : 'Start Predicting'}

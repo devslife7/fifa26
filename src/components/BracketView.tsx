@@ -199,7 +199,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   return (
     <div>
       {/* Sticky Round Tabs */}
-      <div className="sticky top-[52px] z-20 bg-background-dark">
+      <div className="sticky top-[77px] z-20 bg-background-dark">
         <div className="flex items-center border-b border-white/10">
           <div
             ref={tabsContainerRef}

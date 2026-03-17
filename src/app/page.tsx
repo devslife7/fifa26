@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
-import { areThirdPlaceTiesResolved } from '@/lib/standings';
+import { areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/standings';
 import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/bracket';
 import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions } from '@/lib/storage';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -203,13 +203,15 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [rateLimited]);
 
-  const thirdPlaceRef = useRef<HTMLDivElement>(null);
   const prevGroupCountRef = useRef<number>(-1);
   const prevTiesResolvedRef = useRef<boolean | null>(null);
 
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const tiesResolved = areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
+  const thirdPlaceTieInfo = groupCount >= 72 ? detectThirdPlaceTie(groupPredictions) : null;
+  const thirdPlaceSlotsToFill = thirdPlaceTieInfo?.slotsToFill ?? 0;
+  const thirdPlacePickCount = thirdPlaceTiebreaker.length;
   const champion = useMemo(
     () => getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
     [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
@@ -229,7 +231,8 @@ export default function Home() {
         }, 400);
       } else {
         setTimeout(() => {
-          thirdPlaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setActiveTab('thirdplace');
+          setTimeout(() => window.scrollTo({ top: 0 }), 0);
         }, 300);
       }
     }
@@ -241,7 +244,7 @@ export default function Home() {
     const prev = prevTiesResolvedRef.current;
     prevTiesResolvedRef.current = tiesResolved;
     if (prev === null) return; // skip initial load
-    if (!prev && tiesResolved && groupCount >= 72 && activeTab === 'groups') {
+    if (!prev && tiesResolved && groupCount >= 72 && (activeTab === 'groups' || activeTab === 'thirdplace')) {
       setTimeout(() => {
         setActiveTab('bracket');
         setTimeout(() => window.scrollTo({ top: 0 }), 0);
@@ -288,30 +291,31 @@ export default function Home() {
         <LiveBanner message={liveError} />
       )}
       <SaveIndicator />
-      {(activeTab === 'groups' || activeTab === 'bracket') && (
+      {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (
         <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
           <div className="max-w-2xl mx-auto px-3 sm:px-4">
             <StepperBar
             groupCount={groupCount}
             knockoutCount={knockoutCount}
             tiesResolved={tiesResolved}
+            thirdPlacePickCount={thirdPlacePickCount}
+            thirdPlaceSlotsToFill={thirdPlaceSlotsToFill}
             hasChampion={!!champion}
             isSubmitted={false}
             activeTab={activeTab}
             onNavigate={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
-            onScrollToThirdPlace={() => thirdPlaceRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             />
           </div>
         </div>
       )}
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
-        activeTab === 'groups' ? 'max-w-2xl px-3 sm:px-4' :
+        activeTab === 'groups' || activeTab === 'thirdplace' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
-        activeTab === 'profile' ? 'max-w-2xl px-3 sm:px-4' :
+        activeTab === 'home' ? 'max-w-2xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
       }`}>
-        {(activeTab === 'groups' || activeTab === 'bracket') && (() => {
+        {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
           const editName = getEditingPredictionName();
           return editName ? (
             <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
@@ -369,16 +373,16 @@ export default function Home() {
               ))}
             </div>
 
-            <div ref={thirdPlaceRef}>
-              <ThirdPlaceTable
-                predictions={groupPredictions}
-                tiebreakerPicks={thirdPlaceTiebreaker}
-                onTiebreakerChange={handleTiebreakerChange}
-                teamFlagsByCode={teamFlagsByCode}
-              />
-            </div>
-
           </div>
+        )}
+
+        {activeTab === 'thirdplace' && (
+          <ThirdPlaceTable
+            predictions={groupPredictions}
+            tiebreakerPicks={thirdPlaceTiebreaker}
+            onTiebreakerChange={handleTiebreakerChange}
+            teamFlagsByCode={teamFlagsByCode}
+          />
         )}
 
         {activeTab === 'bracket' && (
@@ -400,12 +404,16 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'profile' && (
+        {activeTab === 'home' && (
           <ProfileView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onNavigate={setActiveTab}
+            onNavigateToPredictions={(view) => {
+              setActiveTab(view);
+              setTimeout(() => window.scrollTo({ top: 0 }), 0);
+            }}
             onLoadPrediction={(prediction: SavedPrediction) => {
               loadFromServer(prediction);
               setGroupPredictions(prediction.group_matches ?? {});
@@ -418,6 +426,7 @@ export default function Home() {
               setKnockoutPredictions({});
               setThirdPlaceTiebreaker([]);
               setActiveTab('groups');
+              setTimeout(() => window.scrollTo({ top: 0 }), 0);
             }}
             onClearPredictions={() => {
               setGroupPredictions({});
@@ -425,6 +434,10 @@ export default function Home() {
               setThirdPlaceTiebreaker([]);
             }}
           />
+        )}
+
+        {activeTab === 'news' && (
+          <div className="pt-12 text-center text-neutral-500">Coming soon</div>
         )}
       </main>
 

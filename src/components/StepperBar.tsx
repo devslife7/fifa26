@@ -6,28 +6,28 @@ interface StepperBarProps {
   groupCount: number;
   knockoutCount: number;
   tiesResolved: boolean;
+  thirdPlacePickCount: number;
+  thirdPlaceSlotsToFill: number;
   hasChampion: boolean;
   isSubmitted: boolean;
   activeTab: TabId;
   onNavigate: (tab: TabId) => void;
-  onScrollToThirdPlace: () => void;
 }
 
 interface Step {
   label: string;
   icon: string;
-  action: 'groups' | 'thirdPlace' | 'bracket' | 'profile';
+  action: 'groups' | 'thirdplace' | 'bracket' | 'submit';
 }
 
 const steps: Step[] = [
   { label: 'Groups', icon: 'grid_view', action: 'groups' },
-  { label: '3rd Place', icon: 'swap_vert', action: 'thirdPlace' },
+  { label: '3rd Place', icon: 'swap_vert', action: 'thirdplace' },
   { label: 'Bracket', icon: 'account_tree', action: 'bracket' },
-  { label: 'Champion', icon: 'emoji_events', action: 'profile' },
-  { label: 'Submit', icon: 'send', action: 'profile' },
+  { label: 'Submit', icon: 'send', action: 'submit' },
 ];
 
-export default function StepperBar({ groupCount, knockoutCount, tiesResolved, hasChampion, isSubmitted, activeTab, onNavigate, onScrollToThirdPlace }: StepperBarProps) {
+export default function StepperBar({ groupCount, knockoutCount, tiesResolved, thirdPlacePickCount, thirdPlaceSlotsToFill, hasChampion, isSubmitted, activeTab, onNavigate }: StepperBarProps) {
   const groupsDone = groupCount >= 72;
 
   const getStepStatus = (idx: number): 'completed' | 'active' | 'future' => {
@@ -45,18 +45,14 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, ha
     }
     // Bracket
     if (idx === 2) {
-      if (knockoutCount >= 32) return 'completed';
-      if (activeTab === 'bracket' || knockoutCount > 0) return 'active';
-      return 'future';
-    }
-    // Champion
-    if (idx === 3) {
       if (hasChampion) return 'completed';
+      if (tiesResolved && (activeTab === 'bracket' || knockoutCount > 0)) return 'active';
       return 'future';
     }
     // Submit
-    if (idx === 4) {
+    if (idx === 3) {
       if (isSubmitted) return 'completed';
+      if (hasChampion) return 'active';
       return 'future';
     }
     return 'future';
@@ -64,20 +60,14 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, ha
 
   const getProgress = (idx: number): string => {
     if (idx === 0) return `${groupCount}/72`;
+    if (idx === 1 && thirdPlaceSlotsToFill > 0) return `${thirdPlacePickCount}/${thirdPlaceSlotsToFill}`;
     if (idx === 2) return `${knockoutCount}/32`;
     return '';
   };
 
-  const handleStepClick = (step: Step) => {
-    if (step.action === 'thirdPlace') {
-      if (activeTab !== 'groups') {
-        onNavigate('groups');
-      }
-      // Small delay to let navigation complete before scrolling
-      setTimeout(() => onScrollToThirdPlace(), activeTab === 'groups' ? 0 : 100);
-    } else {
-      onNavigate(step.action as TabId);
-    }
+  const handleStepClick = (step: Step, status: 'completed' | 'active' | 'future') => {
+    if (status === 'future') return;
+    onNavigate(step.action as TabId);
   };
 
   return (
@@ -86,14 +76,16 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, ha
         const status = getStepStatus(i);
         const isCompleted = status === 'completed';
         const isActive = status === 'active';
+        const isFuture = status === 'future';
         const progress = getProgress(i);
 
         return (
           <div key={step.label} className="flex items-center flex-1 last:flex-none">
             {/* Step */}
             <button
-              onClick={() => handleStepClick(step)}
-              className="flex flex-col items-center gap-0.5 min-w-[40px]"
+              onClick={() => handleStepClick(step, status)}
+              disabled={isFuture}
+              className={`flex flex-col items-center gap-0.5 min-w-[40px] ${isFuture ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 isCompleted
@@ -111,13 +103,11 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, ha
               }`}>
                 {step.label}
               </span>
-              {progress && (
-                <span className={`text-[8px] font-semibold tabular-nums leading-tight ${
-                  isCompleted ? 'text-primary/50' : isActive ? 'text-neutral-500' : 'text-neutral-700'
-                }`}>
-                  {progress}
-                </span>
-              )}
+              <span className={`text-[8px] font-semibold tabular-nums leading-tight h-[10px] ${
+                isCompleted ? 'text-primary/50' : isActive ? 'text-neutral-500' : 'text-neutral-700'
+              }`}>
+                {progress}
+              </span>
             </button>
             {/* Connector line */}
             {i < steps.length - 1 && (

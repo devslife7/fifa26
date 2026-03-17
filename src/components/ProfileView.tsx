@@ -5,7 +5,7 @@ import { MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
   loadPredictions, getEditingPredictionId, getEditingPredictionName,
-  setEditingPrediction, getDarkMode, setDarkMode as persistDarkMode,
+  setEditingPrediction,
 } from '@/lib/storage';
 import { getChampion } from '@/lib/bracket';
 import AuthModal from '@/components/AuthModal';
@@ -20,6 +20,7 @@ interface ProfileViewProps {
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onNavigate: (tab: TabId) => void;
+  onNavigateToPredictions: (view: 'groups' | 'bracket') => void;
   onLoadPrediction: (prediction: SavedPrediction) => void;
   onNewPrediction: () => void;
   onClearPredictions: () => void;
@@ -27,7 +28,7 @@ interface ProfileViewProps {
 
 export default function ProfileView({
   groupPredictions, knockoutPredictions, thirdPlaceTiebreaker,
-  onNavigate, onLoadPrediction, onNewPrediction, onClearPredictions,
+  onNavigate, onNavigateToPredictions, onLoadPrediction, onNewPrediction, onClearPredictions,
 }: ProfileViewProps) {
   const { user } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
@@ -218,7 +219,7 @@ export default function ProfileView({
           }}
           user={user}
           onSignIn={() => setShowAuth(true)}
-          onEdit={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}
+          onEdit={() => onNavigateToPredictions(groupCount < 72 ? 'groups' : 'bracket')}
         />
       )}
 
@@ -241,7 +242,7 @@ export default function ProfileView({
                   setShowNameModal(true);
                 }
               }}
-              onNavigate={onNavigate}
+              onNavigateToPredictions={onNavigateToPredictions}
             />
           )}
 
@@ -253,7 +254,7 @@ export default function ProfileView({
             darkMode={d}
             hasPredictions={hasPredictions}
             onLoadPrediction={onLoadPrediction}
-            onNavigate={onNavigate}
+            onNavigateToPredictions={onNavigateToPredictions}
             onNewPrediction={onNewPrediction}
             onRename={handleRename}
             onSetActive={handleSetActive}
@@ -301,7 +302,7 @@ export default function ProfileView({
           groupCount={groupCount}
           knockoutCount={knockoutCount}
           onSignIn={() => setShowAuth(true)}
-          onNavigate={onNavigate}
+          onStartPredicting={onNavigateToPredictions}
         />
       ) : null}
 

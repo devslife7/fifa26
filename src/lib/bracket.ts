@@ -5,15 +5,6 @@ import { getGroupQualifiers, getBestThirdPlaceTeams, areAllGroupsComplete } from
 // 32 teams: 12 group winners + 12 runners-up + 8 best third-place teams
 // The R32 pairings follow the official FIFA structure
 
-export interface BracketSlot {
-  id: string;
-  round: KnockoutRound;
-  position: number;
-  home?: string;
-  away?: string;
-  label: string;
-}
-
 // --- R32 Source Mapping ---
 
 type TeamSource =

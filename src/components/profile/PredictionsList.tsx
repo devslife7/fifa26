@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { SavedPrediction, TabId } from '@/types';
+import { SavedPrediction } from '@/types';
 import PredictionRow from './PredictionRow';
 import UserPredictionsModal from '@/components/UserPredictionsModal';
 import PredictionCapture from '@/components/PredictionCapture';
@@ -14,7 +14,7 @@ interface PredictionsListProps {
   darkMode: boolean;
   hasPredictions: boolean;
   onLoadPrediction: (prediction: SavedPrediction) => void;
-  onNavigate: (tab: TabId) => void;
+  onNavigateToPredictions: (view: 'groups' | 'bracket') => void;
   onNewPrediction: () => void;
   onRename: (id: string, name: string) => void;
   onSetActive: (id: string) => void;
@@ -23,7 +23,7 @@ interface PredictionsListProps {
 
 export default function PredictionsList({
   predictions, loading, currentEditingId, darkMode: d, hasPredictions,
-  onLoadPrediction, onNavigate, onNewPrediction, onRename, onSetActive, onDelete,
+  onLoadPrediction, onNavigateToPredictions, onNewPrediction, onRename, onSetActive, onDelete,
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingPrediction, setViewingPrediction] = useState<SavedPrediction | null>(null);
@@ -99,7 +99,7 @@ export default function PredictionsList({
               darkMode={d}
               onToggleExpand={() => setExpandedId(expandedId === p.id ? null : p.id)}
               onView={() => setViewingPrediction(p)}
-              onEdit={() => { onLoadPrediction(p); onNavigate('groups'); }}
+              onEdit={() => { onLoadPrediction(p); onNavigateToPredictions('groups'); }}
               onRename={(name) => onRename(p.id, name)}
               onSetActive={() => onSetActive(p.id)}
               onCopyLink={() => {

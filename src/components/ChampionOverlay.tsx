@@ -16,6 +16,7 @@ interface ChampionOverlayProps {
   onDismiss: () => void;
   onSubmitted: () => void;
   onNavigateToRanking: () => void;
+  isPage?: boolean;
 }
 
 export default function ChampionOverlay({
@@ -26,6 +27,7 @@ export default function ChampionOverlay({
   onDismiss,
   onSubmitted,
   onNavigateToRanking,
+  isPage,
 }: ChampionOverlayProps) {
   const { signIn, verifyOtp } = useAuth();
   const [phase, setPhase] = useState<'form' | 'confirmation'>('form');
@@ -58,11 +60,12 @@ export default function ChampionOverlay({
   const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const champion = championCode ? teamsByCode[championCode] : null;
 
-  // Lock body scroll
+  // Lock body scroll (only in overlay/modal mode)
   useEffect(() => {
+    if (isPage) return;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
-  }, []);
+  }, [isPage]);
 
   const handleSubmit = async () => {
     setError(null);

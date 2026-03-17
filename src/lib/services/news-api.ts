@@ -41,9 +41,12 @@ function parseArticles(data: any[]): NewsArticle[] {
   }));
 }
 
-async function fetchPage(search: string, page: number): Promise<{ articles: NewsArticle[]; nextPage: string | null }> {
+// Free tier caps at 3 results per request, so we fetch multiple pages in parallel
+const TOTAL_PAGES = 2; // 2 pages × 3 articles = 6 articles
+
+async function fetchPage(search: string, page: number): Promise<NewsArticle[]> {
   const apiKey = getApiKey();
-  if (!apiKey) return { articles: [], nextPage: null };
+  if (!apiKey) return [];
 
   const params = new URLSearchParams({
     api_token: apiKey,
@@ -55,24 +58,16 @@ async function fetchPage(search: string, page: number): Promise<{ articles: News
   });
 
   const res = await fetch(`${BASE_URL}?${params}`, { cache: 'no-store' });
-  if (!res.ok) return { articles: [], nextPage: null };
+  if (!res.ok) return [];
 
   const json = await res.json();
-  const articles = parseArticles(json.data ?? []);
-  const nextPage: string | null = json.meta?.found > page * 3 ? String(page + 1) : null;
-  return { articles, nextPage };
+  return parseArticles(json.data ?? []);
 }
 
-const TOTAL_PAGES = 3; // 3 pages × 3 articles = up to 9 articles per cache cycle
-
 async function fetchFromApi(search: string): Promise<NewsArticle[]> {
-  const all: NewsArticle[] = [];
-  for (let page = 1; page <= TOTAL_PAGES; page++) {
-    const { articles, nextPage } = await fetchPage(search, page);
-    all.push(...articles);
-    if (!nextPage) break;
-  }
-  return all;
+  const pages = Array.from({ length: TOTAL_PAGES }, (_, i) => i + 1);
+  const results = await Promise.all(pages.map(p => fetchPage(search, p)));
+  return results.flat();
 }
 
 export async function fetchNewsArticles(force = false): Promise<NewsArticle[]> {

@@ -70,10 +70,8 @@ export function useNews(): UseNewsResult {
       setLastUpdated(cached.fetchedAt);
       setLoading(false);
 
-      // Only fetch if stale
-      if (Date.now() - cached.fetchedAt > STALE_MS) {
-        fetchData(false);
-      }
+      // Always fetch in background to pick up fresh data
+      fetchData(false);
     } else {
       fetchData(false);
     }

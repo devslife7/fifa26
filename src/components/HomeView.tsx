@@ -88,7 +88,7 @@ function ProgressRow({ label, current, total }: { label: string; current: number
 }
 
 export default function HomeView({ groupCount, knockoutCount, champion, teamFlagsByCode, onNavigate, onClear }: HomeViewProps) {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -108,7 +108,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
       {/* ── Hero: Title + Countdown ── */}
       <div style={{
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
         padding: '32px 20px 28px',
         textAlign: 'center',
       }}>
@@ -118,9 +118,9 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
           top: 0,
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '320px',
-          height: '280px',
-          background: 'radial-gradient(ellipse at 50% 20%, rgba(249,212,6,0.09) 0%, transparent 65%)',
+          width: '600px',
+          height: '600px',
+          background: 'radial-gradient(ellipse at 50% 40%, rgba(249,212,6,0.09) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -139,7 +139,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
           src="/images/fifa_logo.svg"
           alt="FIFA World Cup 2026"
           className="animate-trophy-glow"
-          style={{ width: '160px', height: '160px', margin: '0 auto 20px' }}
+          style={{ width: '400px', height: '400px', margin: '32px auto 40px' }}
         />
 
         {/* Divider */}
@@ -373,8 +373,52 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
         )}
       </button>
 
-      {/* ── Sign In Benefits ── */}
-      {!user && (
+      {/* ── Account Section ── */}
+      {user ? (
+        <div style={{ padding: '8px 20px 0' }}>
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '24px' }} />
+
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px',
+          }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(249,212,6,0.10)', border: '1px solid rgba(249,212,6,0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '24px' }}>person</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '15px', fontWeight: 700, color: '#f1f5f9', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.display_name || 'Player'}
+              </p>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.email}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => signOut()}
+            style={{
+              width: '100%',
+              padding: '14px 20px',
+              borderRadius: '14px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ color: '#ef4444', fontSize: '20px' }}>logout</span>
+            <span style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>Sign Out</span>
+          </button>
+        </div>
+      ) : (
         <div style={{ padding: '8px 20px 0' }}>
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '24px' }} />
 

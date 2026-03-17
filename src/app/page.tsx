@@ -343,28 +343,35 @@ export default function Home() {
 
         {activeTab === 'groups' && (
           <div>
-            <div className="mt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex gap-2 w-full sm:w-auto">
-                <button
-                  onClick={handleRandomizeGroups}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-white/10 text-neutral-300 font-semibold text-xs hover:bg-white/5 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[16px]">casino</span>
-                  Randomize
-                </button>
-                <button
-                  onClick={handleClearGroups}
-                  disabled={groupCount === 0}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg border border-white/10 text-neutral-400 font-semibold text-xs hover:bg-white/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <span className="material-symbols-outlined text-[16px]">backspace</span>
-                  Clear
-                </button>
+            <div className="mt-4">
+              <div className="flex items-start justify-between gap-2 mb-0">
+                <div>
+                  <h2 className="text-[21px] font-black text-white">Group Stage</h2>
+                  {groupCount < 72 && (
+                    <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mt-0.5">Tap a team or TIE to predict each match</p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <button
+                    onClick={handleRandomizeGroups}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/10 text-neutral-300 font-semibold text-[11px] hover:bg-white/5 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">casino</span>
+                    Randomize
+                  </button>
+                  <button
+                    onClick={handleClearGroups}
+                    disabled={groupCount === 0}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">backspace</span>
+                    Clear
+                  </button>
+                </div>
               </div>
-
             </div>
 
-            <div className="mt-6 space-y-5">
+            <div className="mt-3 space-y-5">
               {matchesByDate.map(section => (
                 <div key={section.label}>
                   <div className="py-2 mb-2">

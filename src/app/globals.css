@@ -136,6 +136,10 @@
   animation: shimmer-gold 4s ease-in-out infinite;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   background: var(--color-background-dark);
   color: #e2e8f0;

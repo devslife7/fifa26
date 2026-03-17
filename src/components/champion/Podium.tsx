@@ -19,7 +19,7 @@ export default function Podium({ championCode, secondCode, thirdCode }: PodiumPr
         {/* 2nd Place */}
         <div className="flex-1 flex flex-col items-center">
           <div className="mb-2">
-            <span className="text-[28px] block mb-0.5">{secondTeam.flag}</span>
+            <img src={`https://flagcdn.com/w320/${secondCode!.toLowerCase()}.png`} alt={secondTeam.name} className="w-12 h-8 object-cover rounded-sm block mb-0.5 mx-auto" />
             <p className="text-[10px] font-bold text-medal-silver/80 font-body truncate w-full text-center">{secondTeam.name}</p>
           </div>
           <div className="w-full">
@@ -32,7 +32,7 @@ export default function Podium({ championCode, secondCode, thirdCode }: PodiumPr
         {/* 1st Place */}
         <div className="flex-1 flex flex-col items-center">
           <div className="mb-2">
-            <span className="text-[34px] block mb-0.5">{champion.flag}</span>
+            <img src={`https://flagcdn.com/w320/${championCode.toLowerCase()}.png`} alt={champion.name} className="w-14 h-9 object-cover rounded-sm block mb-0.5 mx-auto" />
             <p className="text-[10px] font-bold text-primary/80 font-body truncate w-full text-center">{champion.name}</p>
           </div>
           <div className="w-full">
@@ -45,7 +45,7 @@ export default function Podium({ championCode, secondCode, thirdCode }: PodiumPr
         {/* 3rd Place */}
         <div className="flex-1 flex flex-col items-center">
           <div className="mb-2">
-            <span className="text-[28px] block mb-0.5">{thirdTeam.flag}</span>
+            <img src={`https://flagcdn.com/w320/${thirdCode!.toLowerCase()}.png`} alt={thirdTeam.name} className="w-12 h-8 object-cover rounded-sm block mb-0.5 mx-auto" />
             <p className="text-[10px] font-bold text-medal-bronze/80 font-body truncate w-full text-center">{thirdTeam.name}</p>
           </div>
           <div className="w-full">

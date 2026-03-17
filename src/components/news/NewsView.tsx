@@ -36,7 +36,7 @@ function HeroArticle({ article }: { article: NewsArticle }) {
   return (
     <button
       onClick={() => window.open(article.url, '_blank')}
-      className="w-full text-left rounded-2xl overflow-hidden border border-white/10 group animate-fade-in"
+      className="w-full text-left rounded-2xl overflow-hidden border border-white/10 hover:border-white/20 group animate-fade-in active:scale-[0.98] transition-all duration-150"
     >
       <div className="w-full aspect-[16/9]">
         {article.image_url && !imgError ? (
@@ -60,7 +60,7 @@ function HeroArticle({ article }: { article: NewsArticle }) {
           </span>
           <span className="text-[10px] text-neutral-400">{timeAgo(article.published_at)}</span>
         </div>
-        <h2 className="text-base font-bold text-white leading-snug">
+        <h2 className="text-base font-bold text-white leading-snug group-hover:text-primary transition-colors">
           {article.title}
         </h2>
         {article.description && (
@@ -73,17 +73,16 @@ function HeroArticle({ article }: { article: NewsArticle }) {
   );
 }
 
-function ArticleCard({ article, index }: { article: NewsArticle; index: number }) {
+function TwoColumnCard({ article, index }: { article: NewsArticle; index: number }) {
   const [imgError, setImgError] = useState(false);
 
   return (
     <button
       onClick={() => window.open(article.url, '_blank')}
-      className="w-full rounded-2xl border border-white/10 text-left group animate-fade-in overflow-hidden"
+      className="flex-1 min-w-0 rounded-2xl border border-white/10 hover:border-white/20 text-left group animate-fade-in overflow-hidden active:scale-[0.98] transition-all duration-150"
       style={{ animationDelay: `${(index + 1) * 80}ms`, animationFillMode: 'both' }}
     >
-      {/* Image banner */}
-      <div className="w-full aspect-[2/1] bg-neutral-800">
+      <div className="w-full aspect-square bg-neutral-800">
         {article.image_url && !imgError ? (
           <img
             src={article.image_url}
@@ -98,23 +97,75 @@ function ArticleCard({ article, index }: { article: NewsArticle; index: number }
           </div>
         )}
       </div>
-      {/* Content */}
-      <div className="p-3 flex flex-col gap-1.5">
-        <h3 className="text-sm font-semibold text-white leading-snug line-clamp-none">
+      <div className="p-3">
+        <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-primary transition-colors">
           {article.title}
         </h3>
         {article.description && (
-          <p className="text-xs text-neutral-400 leading-relaxed line-clamp-none">
+          <p className="text-xs text-neutral-400 leading-relaxed mt-1.5">
             {article.description}
           </p>
         )}
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-2">
           <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider">{article.source}</span>
-          <span className="text-[10px] text-neutral-600">·</span>
+          <span className="text-[10px] text-neutral-600">&middot;</span>
           <span className="text-[10px] text-neutral-500">{timeAgo(article.published_at)}</span>
         </div>
       </div>
     </button>
+  );
+}
+
+function CompactCard({ article, index }: { article: NewsArticle; index: number }) {
+  const [imgError, setImgError] = useState(false);
+
+  return (
+    <button
+      onClick={() => window.open(article.url, '_blank')}
+      className="w-full flex items-center gap-3 rounded-2xl border border-white/10 hover:border-white/20 text-left group animate-fade-in overflow-hidden p-3 active:scale-[0.98] transition-all duration-150"
+      style={{ animationDelay: `${(index + 1) * 80}ms`, animationFillMode: 'both' }}
+    >
+      <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-neutral-800">
+        {article.image_url && !imgError ? (
+          <img
+            src={article.image_url}
+            alt={article.title}
+            loading="lazy"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
+            <span className="material-symbols-outlined text-2xl text-neutral-600">newspaper</span>
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-sm font-semibold text-white leading-snug group-hover:text-primary transition-colors">
+          {article.title}
+        </h3>
+        {article.description && (
+          <p className="text-xs text-neutral-400 leading-relaxed mt-1">
+            {article.description}
+          </p>
+        )}
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider">{article.source}</span>
+          <span className="text-[10px] text-neutral-600">&middot;</span>
+          <span className="text-[10px] text-neutral-500">{timeAgo(article.published_at)}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 my-1">
+      <div className="flex-1 h-px bg-white/10" />
+      <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">{label}</span>
+      <div className="flex-1 h-px bg-white/10" />
+    </div>
   );
 }
 
@@ -144,16 +195,28 @@ export default function NewsView() {
 
   const isEmpty = !loading && !error && articles.length === 0;
   const hero = articles[0];
-  const rest = articles.slice(1);
+  const twoCol = articles.slice(1, 3);
+  const compact = articles.slice(3);
+  const isBackgroundRefreshing = loading && articles.length > 0;
 
   return (
     <div className="pt-3 pb-4">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 mb-3">
+      <div className="sticky top-0 z-20 bg-background-dark/80 backdrop-blur-md py-3 mb-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-white">News</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">News</h1>
           {lastUpdated && (
-            <span className="text-[10px] text-neutral-500">{updatedAgo(lastUpdated)}</span>
+            <button
+              onClick={refetch}
+              className="flex items-center gap-1.5 text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors active:scale-95"
+            >
+              <span
+                className={`material-symbols-outlined text-[14px] ${isBackgroundRefreshing ? 'animate-spin' : ''}`}
+              >
+                refresh
+              </span>
+              {updatedAgo(lastUpdated)}
+            </button>
           )}
         </div>
       </div>
@@ -192,9 +255,24 @@ export default function NewsView() {
       {/* Articles */}
       {articles.length > 0 && (
         <div className="space-y-3">
+          {/* Hero */}
           <HeroArticle article={hero} />
-          {rest.map((article, i) => (
-            <ArticleCard key={article.uuid} article={article} index={i} />
+
+          {/* Section divider */}
+          <SectionDivider label="Latest" />
+
+          {/* Two-column row */}
+          {twoCol.length > 0 && (
+            <div className="flex gap-3">
+              {twoCol.map((article, i) => (
+                <TwoColumnCard key={article.uuid} article={article} index={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Compact horizontal cards */}
+          {compact.map((article, i) => (
+            <CompactCard key={article.uuid} article={article} index={i + 2} />
           ))}
         </div>
       )}

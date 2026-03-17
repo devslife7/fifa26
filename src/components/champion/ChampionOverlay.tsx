@@ -178,11 +178,13 @@ export default function ChampionOverlay({
       <div className="w-full max-w-sm mx-auto p-4 pt-6">
         {phase === 'form' ? (
           <div className="flex flex-col items-center">
-            {/* Trophy */}
-            <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-16 h-16 mb-2" />
-            <div className="mb-1">
-              <span className="text-5xl">{champion.flag}</span>
-            </div>
+            {/* Champion Flag */}
+            <img
+              src={`https://flagcdn.com/w640/${championCode!.toLowerCase()}.png`}
+              alt={champion.name}
+              className="w-56 h-32 object-cover rounded-md mb-4"
+              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+            />
             <h2 className="text-2xl font-black mb-0.5 font-body">
               <span className="champion-shimmer">{champion.name}</span>
             </h2>
@@ -483,11 +485,13 @@ export default function ChampionOverlay({
       <div className="w-full max-w-sm mx-auto p-4 max-h-[100dvh] overflow-y-auto">
         {phase === 'form' ? (
           <div className="flex flex-col items-center" style={{ animation: 'overlay-enter 0.3s ease-out' }}>
-            {/* Trophy */}
-            <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-16 h-16 mb-2" />
-            <div className="mb-1">
-              <span className="text-5xl">{champion.flag}</span>
-            </div>
+            {/* Champion Flag */}
+            <img
+              src={`https://flagcdn.com/w640/${championCode!.toLowerCase()}.png`}
+              alt={champion.name}
+              className="w-56 h-32 object-cover rounded-md mb-4"
+              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
+            />
             <h2 className="text-2xl font-black mb-0.5 font-body">
               <span className="champion-shimmer">{champion.name}</span>
             </h2>

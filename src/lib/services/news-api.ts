@@ -48,11 +48,17 @@ async function fetchPage(search: string, page: number): Promise<NewsArticle[]> {
   const apiKey = getApiKey();
   if (!apiKey) return [];
 
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split('T')[0];
+
   const params = new URLSearchParams({
     api_token: apiKey,
     search,
     categories: 'sports',
     language: 'en',
+    sort: 'published_at',
+    published_after: sevenDaysAgo,
     limit: '3',
     page: String(page),
   });

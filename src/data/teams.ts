@@ -7,13 +7,13 @@ export const teams: Team[] = [
   { name: 'Mexico',       code: 'MX',     flag: '🇲🇽', fifaRanking: 16,  group: 'A' },
   { name: 'South Africa', code: 'ZA',     flag: '🇿🇦', fifaRanking: 65,  group: 'A' },
   { name: 'South Korea',  code: 'KR',     flag: '🇰🇷', fifaRanking: 23,  group: 'A' },
-  { name: 'SCE/DEN/IRL/MKD', code: 'TBD-A',  flag: '🏳️', fifaRanking: 999, group: 'A' },
+  { name: 'Czechia',       code: 'CZ',     flag: '🇨🇿', fifaRanking: 37,  group: 'A' },
 
   // Group B
   { name: 'Canada',      code: 'CA',    flag: '🇨🇦', fifaRanking: 40,  group: 'B' },
   { name: 'Qatar',       code: 'QA',    flag: '🇶🇦', fifaRanking: 42,  group: 'B' },
   { name: 'Switzerland', code: 'CH',    flag: '🇨🇭', fifaRanking: 18,  group: 'B' },
-  { name: 'BIH/ITA/NIR/WAL', code: 'TBD-B', flag: '🏳️', fifaRanking: 999, group: 'B' },
+  { name: 'Bosnia-Herzegovina', code: 'BA', flag: '🇧🇦', fifaRanking: 62, group: 'B' },
 
   // Group C
   { name: 'Brazil',   code: 'BR',     flag: '🇧🇷', fifaRanking: 4,  group: 'C' },
@@ -25,7 +25,7 @@ export const teams: Team[] = [
   { name: 'United States', code: 'US',    flag: '🇺🇸', fifaRanking: 11,  group: 'D' },
   { name: 'Paraguay',      code: 'PY',    flag: '🇵🇾', fifaRanking: 56,  group: 'D' },
   { name: 'Australia',     code: 'AU',    flag: '🇦🇺', fifaRanking: 24,  group: 'D' },
-  { name: 'KOS/ROU/SVK/TUR', code: 'TBD-D', flag: '🏳️', fifaRanking: 999, group: 'D' },
+  { name: 'Turkey',           code: 'TR',    flag: '🇹🇷', fifaRanking: 28,  group: 'D' },
 
   // Group E
   { name: 'Germany',     code: 'DE', flag: '🇩🇪', fifaRanking: 7,  group: 'E' },
@@ -37,7 +37,7 @@ export const teams: Team[] = [
   { name: 'Netherlands', code: 'NL',    flag: '🇳🇱', fifaRanking: 9,   group: 'F' },
   { name: 'Japan',       code: 'JP',    flag: '🇯🇵', fifaRanking: 15,  group: 'F' },
   { name: 'Tunisia',     code: 'TN',    flag: '🇹🇳', fifaRanking: 35,  group: 'F' },
-  { name: 'ALB/POL/SWE/UKR', code: 'TBD-F', flag: '🏳️', fifaRanking: 999, group: 'F' },
+  { name: 'Sweden',           code: 'SE',    flag: '🇸🇪', fifaRanking: 25,  group: 'F' },
 
   // Group G
   { name: 'Belgium',     code: 'BE', flag: '🇧🇪', fifaRanking: 17, group: 'G' },
@@ -55,7 +55,7 @@ export const teams: Team[] = [
   { name: 'France',  code: 'FR',    flag: '🇫🇷', fifaRanking: 2,   group: 'I' },
   { name: 'Senegal', code: 'SN',    flag: '🇸🇳', fifaRanking: 21,  group: 'I' },
   { name: 'Norway',  code: 'NO',    flag: '🇳🇴', fifaRanking: 30,  group: 'I' },
-  { name: 'BOL/IRQ/SUR', code: 'TBD-I', flag: '🏳️', fifaRanking: 999, group: 'I' },
+  { name: 'Iraq',        code: 'IQ',    flag: '🇮🇶', fifaRanking: 64,  group: 'I' },
 
   // Group J
   { name: 'Argentina', code: 'AR', flag: '🇦🇷', fifaRanking: 1,   group: 'J' },
@@ -67,7 +67,7 @@ export const teams: Team[] = [
   { name: 'Portugal',   code: 'PT',    flag: '🇵🇹', fifaRanking: 5,   group: 'K' },
   { name: 'Uzbekistan', code: 'UZ',    flag: '🇺🇿', fifaRanking: 63,  group: 'K' },
   { name: 'Colombia',   code: 'CO',    flag: '🇨🇴', fifaRanking: 12,  group: 'K' },
-  { name: 'COD/JAM/NCL', code: 'TBD-K', flag: '🏳️', fifaRanking: 999, group: 'K' },
+  { name: 'DR Congo',    code: 'CD',    flag: '🇨🇩', fifaRanking: 60,  group: 'K' },
 
   // Group L
   { name: 'England', code: 'GB-ENG', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', fifaRanking: 6,  group: 'L' },

@@ -129,11 +129,18 @@ const TLA_TO_APP_CODE: Record<string, string> = {
   POR: 'PT',
   UZB: 'UZ',
   COL: 'CO',
+  COD: 'CD', // Congo DR (TBD-K qualifier)
   // Group L
   ENG: 'GB-ENG',
   CRO: 'HR',
   GHA: 'GH',
   PAN: 'PA',
+  // Playoff qualifiers
+  CZE: 'CZ',  // Czechia (Group A)
+  BIH: 'BA',  // Bosnia-Herzegovina (Group B)
+  TUR: 'TR',  // Turkey (Group D)
+  SWE: 'SE',  // Sweden (Group F)
+  IRQ: 'IQ',  // Iraq (Group I)
 };
 
 function tlaToCode(tla: string): string | null {

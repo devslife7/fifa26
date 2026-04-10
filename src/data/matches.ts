@@ -6,19 +6,19 @@ import { GroupMatch, GroupLetter } from '@/types';
 export const allGroupMatches: GroupMatch[] = [
   // --- Group A ---
   { id: 'A-1', group: 'A', matchNumber: 1, home: 'MX',    away: 'ZA'    },
-  { id: 'A-2', group: 'A', matchNumber: 2, home: 'KR',    away: 'TBD-A' },
-  { id: 'A-3', group: 'A', matchNumber: 3, home: 'TBD-A', away: 'ZA'    },
+  { id: 'A-2', group: 'A', matchNumber: 2, home: 'KR',    away: 'CZ'    },
+  { id: 'A-3', group: 'A', matchNumber: 3, home: 'CZ',    away: 'ZA'    },
   { id: 'A-4', group: 'A', matchNumber: 4, home: 'MX',    away: 'KR'    },
-  { id: 'A-5', group: 'A', matchNumber: 5, home: 'TBD-A', away: 'MX'    },
+  { id: 'A-5', group: 'A', matchNumber: 5, home: 'CZ',    away: 'MX'    },
   { id: 'A-6', group: 'A', matchNumber: 6, home: 'ZA',    away: 'KR'    },
 
   // --- Group B ---
-  { id: 'B-1', group: 'B', matchNumber: 1, home: 'CA',    away: 'TBD-B' },
+  { id: 'B-1', group: 'B', matchNumber: 1, home: 'CA',    away: 'BA'    },
   { id: 'B-2', group: 'B', matchNumber: 2, home: 'QA',    away: 'CH'    },
-  { id: 'B-3', group: 'B', matchNumber: 3, home: 'CH',    away: 'TBD-B' },
+  { id: 'B-3', group: 'B', matchNumber: 3, home: 'CH',    away: 'BA'    },
   { id: 'B-4', group: 'B', matchNumber: 4, home: 'CA',    away: 'QA'    },
   { id: 'B-5', group: 'B', matchNumber: 5, home: 'CH',    away: 'CA'    },
-  { id: 'B-6', group: 'B', matchNumber: 6, home: 'TBD-B', away: 'QA'    },
+  { id: 'B-6', group: 'B', matchNumber: 6, home: 'BA',    away: 'QA'    },
 
   // --- Group C ---
   { id: 'C-1', group: 'C', matchNumber: 1, home: 'BR',     away: 'MA'     },
@@ -30,10 +30,10 @@ export const allGroupMatches: GroupMatch[] = [
 
   // --- Group D ---
   { id: 'D-1', group: 'D', matchNumber: 1, home: 'US',    away: 'PY'    },
-  { id: 'D-2', group: 'D', matchNumber: 2, home: 'AU',    away: 'TBD-D' },
-  { id: 'D-3', group: 'D', matchNumber: 3, home: 'TBD-D', away: 'PY'    },
+  { id: 'D-2', group: 'D', matchNumber: 2, home: 'AU',    away: 'TR'    },
+  { id: 'D-3', group: 'D', matchNumber: 3, home: 'TR',    away: 'PY'    },
   { id: 'D-4', group: 'D', matchNumber: 4, home: 'US',    away: 'AU'    },
-  { id: 'D-5', group: 'D', matchNumber: 5, home: 'TBD-D', away: 'US'    },
+  { id: 'D-5', group: 'D', matchNumber: 5, home: 'TR',    away: 'US'    },
   { id: 'D-6', group: 'D', matchNumber: 6, home: 'PY',    away: 'AU'    },
 
   // --- Group E ---
@@ -46,11 +46,11 @@ export const allGroupMatches: GroupMatch[] = [
 
   // --- Group F ---
   { id: 'F-1', group: 'F', matchNumber: 1, home: 'NL',    away: 'JP'    },
-  { id: 'F-2', group: 'F', matchNumber: 2, home: 'TBD-F', away: 'TN'    },
+  { id: 'F-2', group: 'F', matchNumber: 2, home: 'SE',    away: 'TN'    },
   { id: 'F-3', group: 'F', matchNumber: 3, home: 'TN',    away: 'JP'    },
-  { id: 'F-4', group: 'F', matchNumber: 4, home: 'NL',    away: 'TBD-F' },
+  { id: 'F-4', group: 'F', matchNumber: 4, home: 'NL',    away: 'SE'    },
   { id: 'F-5', group: 'F', matchNumber: 5, home: 'TN',    away: 'NL'    },
-  { id: 'F-6', group: 'F', matchNumber: 6, home: 'JP',    away: 'TBD-F' },
+  { id: 'F-6', group: 'F', matchNumber: 6, home: 'JP',    away: 'SE'    },
 
   // --- Group G ---
   { id: 'G-1', group: 'G', matchNumber: 1, home: 'BE', away: 'EG' },
@@ -70,11 +70,11 @@ export const allGroupMatches: GroupMatch[] = [
 
   // --- Group I ---
   { id: 'I-1', group: 'I', matchNumber: 1, home: 'FR',    away: 'SN'    },
-  { id: 'I-2', group: 'I', matchNumber: 2, home: 'TBD-I', away: 'NO'    },
-  { id: 'I-3', group: 'I', matchNumber: 3, home: 'FR',    away: 'TBD-I' },
+  { id: 'I-2', group: 'I', matchNumber: 2, home: 'IQ',    away: 'NO'    },
+  { id: 'I-3', group: 'I', matchNumber: 3, home: 'FR',    away: 'IQ'    },
   { id: 'I-4', group: 'I', matchNumber: 4, home: 'NO',    away: 'SN'    },
   { id: 'I-5', group: 'I', matchNumber: 5, home: 'NO',    away: 'FR'    },
-  { id: 'I-6', group: 'I', matchNumber: 6, home: 'SN',    away: 'TBD-I' },
+  { id: 'I-6', group: 'I', matchNumber: 6, home: 'SN',    away: 'IQ'    },
 
   // --- Group J ---
   { id: 'J-1', group: 'J', matchNumber: 1, home: 'AR', away: 'DZ' },
@@ -85,12 +85,12 @@ export const allGroupMatches: GroupMatch[] = [
   { id: 'J-6', group: 'J', matchNumber: 6, home: 'DZ', away: 'AT' },
 
   // --- Group K ---
-  { id: 'K-1', group: 'K', matchNumber: 1, home: 'PT',    away: 'TBD-K' },
+  { id: 'K-1', group: 'K', matchNumber: 1, home: 'PT',    away: 'CD'    },
   { id: 'K-2', group: 'K', matchNumber: 2, home: 'UZ',    away: 'CO'    },
   { id: 'K-3', group: 'K', matchNumber: 3, home: 'PT',    away: 'UZ'    },
-  { id: 'K-4', group: 'K', matchNumber: 4, home: 'CO',    away: 'TBD-K' },
+  { id: 'K-4', group: 'K', matchNumber: 4, home: 'CO',    away: 'CD'    },
   { id: 'K-5', group: 'K', matchNumber: 5, home: 'CO',    away: 'PT'    },
-  { id: 'K-6', group: 'K', matchNumber: 6, home: 'TBD-K', away: 'UZ'    },
+  { id: 'K-6', group: 'K', matchNumber: 6, home: 'CD',    away: 'UZ'    },
 
   // --- Group L ---
   { id: 'L-1', group: 'L', matchNumber: 1, home: 'GB-ENG', away: 'HR' },

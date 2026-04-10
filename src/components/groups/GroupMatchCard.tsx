@@ -78,14 +78,6 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
   const homeFlagUrl = liveMatch?.homeFlag ?? teamFlagsByCode?.[homeCode];
   const awayFlagUrl = liveMatch?.awayFlag ?? teamFlagsByCode?.[awayCode];
 
-  // Calculate the position of the sliding background pill
-  const getPillStyle = () => {
-    if (result === 'home') return { left: '4px', width: 'calc(50% - 32px)' };
-    if (result === 'draw') return { left: 'calc(50% - 28px)', width: '56px' };
-    if (result === 'away') return { left: 'calc(50% + 28px)', width: 'calc(50% - 32px)' };
-    return { opacity: 0 }; // Hidden when nothing is selected
-  };
-
   const handlePredict = (side: MatchResult) => {
     if (!readOnly) onPredict(matchId, side);
   };
@@ -115,18 +107,14 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           )}
         </div>
       )}
-      <div className="relative flex items-stretch px-1 py-1.5">
-
-        {/* Animated Background Pill */}
-        <div
-          className={`absolute top-0.5 bottom-0.5 bg-primary/15 rounded-full transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${result ? 'opacity-100 ring-1 ring-inset ring-primary/70' : 'opacity-0'}`}
-          style={getPillStyle()}
-        />
+      <div className="flex items-stretch gap-1.5 px-2 py-2">
 
         {/* Home */}
         <button
-          className={`relative z-10 flex-1 min-w-0 flex items-center gap-3 p-2 transition-colors duration-300 ${
-            selected('home') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-400`
+          className={`flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
+            selected('home')
+              ? 'bg-primary/20 ring-primary/50 text-white'
+              : `bg-white/5 ring-white/[0.08] text-neutral-400 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('home')}
           disabled={readOnly}
@@ -144,8 +132,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Draw / VS */}
         <button
-          className={`relative z-10 w-12 sm:w-14 flex-shrink-0 flex items-center justify-center transition-colors duration-300 ${
-            selected('draw') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-500`
+          className={`w-12 sm:w-14 flex-shrink-0 flex items-center justify-center rounded-xl ring-1 ring-inset transition-all duration-200 ${
+            selected('draw')
+              ? 'bg-primary/20 ring-primary/50 text-white'
+              : `bg-white/5 ring-white/[0.08] text-neutral-500 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('draw')}
           disabled={readOnly}
@@ -155,8 +145,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
 
         {/* Away */}
         <button
-          className={`relative z-10 flex-1 min-w-0 flex items-center justify-end gap-3 p-2 transition-colors duration-300 ${
-            selected('away') ? 'text-white' : `${readOnly ? '' : 'hover:text-white'} text-neutral-400`
+          className={`flex-1 min-w-0 flex items-center justify-end gap-3 px-3 py-2.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
+            selected('away')
+              ? 'bg-primary/20 ring-primary/50 text-white'
+              : `bg-white/5 ring-white/[0.08] text-neutral-400 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('away')}
           disabled={readOnly}

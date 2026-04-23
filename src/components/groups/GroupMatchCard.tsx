@@ -91,6 +91,10 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
             <>
               <span className="text-[10px] text-neutral-600">·</span>
               <span className="text-[10px] font-semibold text-neutral-500">
+                {new Date(liveMatch.utcDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </span>
+              <span className="text-[10px] text-neutral-600">·</span>
+              <span className="text-[10px] font-semibold text-neutral-500">
                 {new Date(liveMatch.utcDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
               </span>
             </>

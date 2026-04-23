@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
+import { groups } from '@/data/teams';
 import { areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/logic/standings';
 import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/logic/bracket';
 import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer } from '@/lib/client/storage';
@@ -258,28 +259,17 @@ export default function Home() {
     }
   }, [tiesResolved, mounted, groupCount, activeTab]);
 
-  const matchesByDate = useMemo(() => {
-    const sorted = [...allGroupMatches].sort((a, b) => {
-      const dateA = liveMatchesByLocalId?.[a.id]?.utcDate ?? '';
-      const dateB = liveMatchesByLocalId?.[b.id]?.utcDate ?? '';
-      if (dateA && dateB) return dateA.localeCompare(dateB);
-      return 0;
+  const matchesByGroup = useMemo(() => {
+    return groups.map(group => {
+      const matches = allGroupMatches
+        .filter(m => m.group === group)
+        .sort((a, b) => {
+          const dateA = liveMatchesByLocalId?.[a.id]?.utcDate ?? '';
+          const dateB = liveMatchesByLocalId?.[b.id]?.utcDate ?? '';
+          return dateA.localeCompare(dateB);
+        });
+      return { label: `Group ${group}`, matches };
     });
-
-    const sections: { label: string; matches: typeof sorted }[] = [];
-    for (const match of sorted) {
-      const utc = liveMatchesByLocalId?.[match.id]?.utcDate;
-      const label = utc
-        ? new Date(utc).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
-        : 'Schedule TBD';
-      const last = sections[sections.length - 1];
-      if (last && last.label === label) {
-        last.matches.push(match);
-      } else {
-        sections.push({ label, matches: [match] });
-      }
-    }
-    return sections;
   }, [liveMatchesByLocalId]);
 
   if (!mounted) {
@@ -372,7 +362,7 @@ export default function Home() {
             </div>
 
             <div className="mt-3 space-y-5">
-              {matchesByDate.map(section => (
+              {matchesByGroup.map(section => (
                 <div key={section.label}>
                   <div className="py-2 mb-2">
                     <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>

@@ -111,7 +111,7 @@ function assignThirdPlaceToSlots(
 
 // --- Match Winner/Loser Resolution ---
 
-function getMatchWinner(match: KnockoutMatch): string | undefined {
+export function getMatchWinner(match: KnockoutMatch): string | undefined {
   if (!match.home || !match.away) return undefined;
   if (isPlaceholder(match.home) || isPlaceholder(match.away)) return undefined;
   if (!match.result) return undefined;

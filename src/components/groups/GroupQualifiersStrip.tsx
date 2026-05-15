@@ -58,9 +58,6 @@ function TeamRow({
 }
 
 export default function GroupQualifiersStrip({ group, standings, expanded, onToggle, teamFlagsByCode, thirdPlaceRelevant }: Props) {
-  const top = standings.slice(0, 2);
-  const third = standings[2];
-
   return (
     <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
       <button
@@ -75,24 +72,16 @@ export default function GroupQualifiersStrip({ group, standings, expanded, onTog
         </span>
       </button>
       <div className="divide-y divide-white/5">
-        {top.map((s, i) => (
+        {standings.map((s, i) => (
           <TeamRow
             key={s.team}
             rank={i + 1}
             standing={s}
             flagUrl={teamFlagsByCode?.[s.team]}
-            qualified
+            qualified={i < 2}
+            thirdPlaceRelevant={i === 2 ? thirdPlaceRelevant : false}
           />
         ))}
-        {third && (
-          <TeamRow
-            rank={3}
-            standing={third}
-            flagUrl={teamFlagsByCode?.[third.team]}
-            qualified={false}
-            thirdPlaceRelevant={thirdPlaceRelevant}
-          />
-        )}
       </div>
     </div>
   );

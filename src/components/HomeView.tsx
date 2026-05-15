@@ -151,7 +151,7 @@ function ProgressRow({ label, current, total }: { label: string; current: number
 function HeroCountUnit({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex min-w-0 flex-col items-center">
-      <span className="font-display text-[34px] font-black leading-none tabular-nums text-neutral-50 drop-shadow-[0_2px_12px_rgba(249,212,6,0.22)] sm:text-[38px]">
+      <span className="font-display text-[34px] font-black leading-none tabular-nums text-cup-gold drop-shadow-[0_2px_12px_rgba(249,212,6,0.22)] sm:text-[38px]">
         {String(value).padStart(2, '0')}
       </span>
       <span className="mt-1.5 font-body text-[8px] font-black uppercase tracking-[0.24em] text-neutral-500">
@@ -184,13 +184,7 @@ function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"
           />
 
-          <div className="absolute inset-x-4 top-4 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 backdrop-blur-md">
-              <span className="size-1 rounded-full bg-primary" />
-              <span className="font-body text-[9px] font-black uppercase tracking-[0.22em] text-neutral-100">
-                FIFA 26 · Edition
-              </span>
-            </span>
+          <div className="absolute inset-x-4 top-4 flex items-center justify-end">
             {live && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
                 <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />

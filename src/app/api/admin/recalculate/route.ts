@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   // Fetch all complete predictions with profile data
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
-    .select('user_id, group_matches, knockout_matches, champion_code, profiles(display_name)')
+    .select('user_id, group_matches, knockout_matches, champion_code, third_place_tiebreaker, profiles(display_name)')
     .eq('is_complete', true)
     .eq('is_active', true);
 
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
         group_matches: pred.group_matches as Record<string, string>,
         knockout_matches: pred.knockout_matches as Record<string, string>,
         champion_code: pred.champion_code,
+        third_place_tiebreaker: (pred.third_place_tiebreaker as string[] | null) ?? null,
       },
       actualResults ?? [],
       actualChampion

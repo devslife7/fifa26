@@ -8,6 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.8",
     "@supabase/supabase-js": "^2.98.0",
     "html2canvas": "^1.4.1",
     "jose": "^6.2.1",

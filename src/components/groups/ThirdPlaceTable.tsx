@@ -80,14 +80,14 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
           )}
 
           <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
               <thead className="bg-white/5 text-neutral-400 font-bold border-b border-white/5">
                 <tr>
-                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-8 sm:w-12 text-xs sm:text-sm">#</th>
-                  <th className="text-left py-3 px-2 sm:py-4 sm:px-2 text-xs sm:text-sm">Team</th>
-                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-12 sm:w-20 text-xs sm:text-sm">Group</th>
-                  <th className="text-center py-3 px-1 sm:py-4 sm:px-3 w-10 sm:w-16 text-xs sm:text-sm">Pts</th>
-                  <th className="text-center py-3 px-2 sm:py-4 sm:px-4 w-24 sm:w-32 text-xs sm:text-sm">Status</th>
+                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-6 sm:w-10 text-[10px] sm:text-sm">#</th>
+                  <th className="text-left py-3 px-1 sm:py-4 sm:px-2 text-[10px] sm:text-sm">Team</th>
+                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-9 sm:w-14 text-[10px] sm:text-sm">Grp</th>
+                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-7 sm:w-12 text-[10px] sm:text-sm">Pts</th>
+                  <th className="text-center py-3 px-1 sm:py-4 sm:px-2 w-20 sm:w-28 text-[10px] sm:text-sm">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -112,57 +112,57 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                       `}
                       onClick={isTied ? () => handleToggle(entry.team) : undefined}
                     >
-                      <td className={`py-3 px-1 sm:py-4 sm:px-3 text-center font-bold text-xs sm:text-sm ${isTied && isSelected ? 'text-white' : 'text-neutral-400'}`}>{i + 1}</td>
-                      <td className="py-3 px-2 sm:py-4 sm:px-2">
-                        <div className="flex items-center gap-2 sm:gap-3">
+                      <td className={`py-3 px-0.5 sm:py-4 sm:px-2 text-center font-bold text-[11px] sm:text-sm ${isTied && isSelected ? 'text-white' : 'text-neutral-400'}`}>{i + 1}</td>
+                      <td className="py-3 px-1 sm:py-4 sm:px-2 min-w-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           {teamFlagsByCode?.[entry.team] ? (
                             <span className="flex-shrink-0 inline-flex">
                               <img
                                 src={teamFlagsByCode[entry.team]}
                                 alt=""
-                                className="w-5 h-3.5 sm:w-7 sm:h-5 object-cover rounded-sm"
+                                className="w-9 h-6 sm:w-11 sm:h-7 object-cover rounded-sm"
                                 onError={e => {
                                   e.currentTarget.style.display = 'none';
                                   (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
                                 }}
                               />
-                              <span className="text-lg sm:text-xl leading-none" hidden>{team.flag}</span>
+                              <span className="text-3xl sm:text-4xl leading-none" hidden>{team.flag}</span>
                             </span>
                           ) : (
-                            <span className="text-lg sm:text-xl leading-none">{team.flag}</span>
+                            <span className="text-3xl sm:text-4xl leading-none flex-shrink-0">{team.flag}</span>
                           )}
-                          <span className={`font-body font-bold text-xs sm:text-sm leading-tight ${isEliminated ? 'text-neutral-500' : 'text-white'}`}>
+                          <span className={`font-body font-semibold text-[13px] sm:text-[15px] leading-tight truncate min-w-0 ${isEliminated ? 'text-neutral-500' : 'text-white'}`}>
                             {team.name}
                           </span>
                         </div>
                       </td>
-                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3">
-                        <span className="bg-white/10 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-300">
+                      <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2">
+                        <span className="bg-white/10 px-1 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-300">
                           {entry.group}
                         </span>
                       </td>
-                      <td className="text-center py-3 px-1 sm:py-4 sm:px-3 font-black text-white text-sm sm:text-base">
+                      <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2 font-black text-white text-[13px] sm:text-base">
                         {entry.standing.points}
                       </td>
-                      <td className="text-center py-3 px-2 sm:py-4 sm:px-4">
+                      <td className="text-center py-3 px-1 sm:py-4 sm:px-2">
                         {isAdvances && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-green/15 text-wc-green w-full font-body">
+                          <span className="inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-wc-green/15 text-wc-green">
                             Advances
                           </span>
                         )}
                         {isTied && (
                           <button
-                            className={`w-full text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-bold transition-all duration-200 border font-body ${
+                            className={`inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md transition-all duration-200 ${
                               isSelected
-                                ? 'bg-primary text-black border-primary shadow-md scale-105'
-                                : 'bg-white/10 text-neutral-300 border-white/15 hover:border-primary hover:text-primary'
+                                ? 'bg-primary text-black'
+                                : 'bg-white/10 text-neutral-300 hover:bg-primary/15 hover:text-primary'
                             }`}
                           >
                             {isSelected ? '✓ Picked' : 'Tap to pick'}
                           </button>
                         )}
                         {isEliminated && (
-                          <span className="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold bg-wc-red/15 text-wc-red w-full font-body">
+                          <span className="inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-wc-red/15 text-wc-red">
                             Eliminated
                           </span>
                         )}

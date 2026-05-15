@@ -427,7 +427,9 @@ export default function Home() {
           ) : null;
         })()}
 
-        {activeTab === 'groups' && (
+        {activeTab === 'groups' && (() => {
+          const totalGroups = matchesByGroup.length;
+          return (
           <div>
             <div className="mt-4">
               <h2 className="text-[21px] font-black text-white">Group Stage</h2>
@@ -462,7 +464,7 @@ export default function Home() {
             </div>
 
             <div className="mt-3 space-y-5">
-              {matchesByGroup.map(section => {
+              {matchesByGroup.map((section, idx) => {
                 const groupLetter = section.matches[0].group;
                 const picked = section.matches.filter(match => groupPredictions[match.id]).length;
                 const complete = picked === section.matches.length;
@@ -470,9 +472,11 @@ export default function Home() {
                 return (
                   <div key={section.label}>
                     <div className="py-2 mb-2 flex items-center justify-between gap-3">
-                      <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
-                      <span className={`text-[10px] font-black tabular-nums ${complete ? 'text-wc-green' : 'text-neutral-500'}`}>
-                        {picked}/{section.matches.length}
+                      <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
+                        {section.label}
+                        <span className="ml-2 tabular-nums">
+                          ({idx + 1}/{totalGroups})
+                        </span>
                       </span>
                     </div>
                     {collapsed ? (
@@ -520,7 +524,8 @@ export default function Home() {
             </div>
 
           </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'thirdplace' && (
           <ThirdPlaceTable

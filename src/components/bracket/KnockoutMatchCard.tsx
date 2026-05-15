@@ -19,16 +19,6 @@ interface Props {
   focused?: boolean;
 }
 
-function formatMatchDate(utcDate: string): string {
-  const d = new Date(utcDate);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function formatMatchTime(utcDate: string): string {
-  const d = new Date(utcDate);
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
-
 function TeamFlag({ code, flagUrl, flagEmoji }: { code?: string; flagUrl?: string; flagEmoji: string }) {
   if (code?.startsWith('TBD') || flagEmoji === '🏳️') {
     return null;
@@ -117,10 +107,10 @@ export default function KnockoutMatchCard({
 
     return (
       <button
-        className={`w-full flex items-center justify-between px-4 py-4 rounded-full ring-1 ring-inset transition-colors ${isSelected
-            ? 'bg-primary/35 ring-primary text-white'
+        className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${isSelected
+            ? 'bg-primary/40 ring-primary text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
             : canPredictAction
-              ? 'bg-white/[0.09] ring-white/20 hover:bg-white/[0.14] hover:ring-white/30'
+              ? 'bg-white/[0.09] ring-white/20 text-neutral-100 hover:bg-white/[0.14] hover:ring-white/30 hover:text-white'
               : `bg-white/[0.04] ring-white/10 opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
           }`}
         onClick={() => canPredictAction && onPredict(matchId, side)}
@@ -142,54 +132,55 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className="relative group min-w-[240px]">
-      <div className={`bg-neutral-900 rounded-xl border border-white/10 overflow-hidden path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
-        <div className="bg-white/5 px-3 py-1.5 flex justify-between items-center border-b border-white/5">
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-neutral-500 uppercase">{matchId}</span>
-              {liveMatch && (
-                <>
-                  <span className="text-[10px] text-neutral-300">·</span>
-                  <span className="text-[10px] text-neutral-400 truncate">
-                    {formatMatchDate(liveMatch.utcDate)} {formatMatchTime(liveMatch.utcDate)}
-                  </span>
-                </>
-              )}
-            </div>
-            {(liveMatch?.venue || venue) && (
-              <span className="text-[9px] text-neutral-500 truncate">
-                {liveMatch?.venue ?? venue}
+    <div className={`relative group min-w-[240px] path-highlight ${!canPredict ? 'opacity-80' : ''}`}>
+      <div className="px-3 pt-1.5 flex items-center gap-1.5 flex-wrap">
+        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">{matchId}</span>
+        {liveMatch?.utcDate && (
+          <>
+            <span className="text-[10px] text-neutral-600">·</span>
+            <span className="text-[10px] font-semibold text-neutral-500">
+              {new Date(liveMatch.utcDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            </span>
+            <span className="text-[10px] text-neutral-600">·</span>
+            <span className="text-[10px] font-semibold text-neutral-500">
+              {new Date(liveMatch.utcDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </>
+        )}
+        {(liveMatch?.venue || venue) && (
+          <>
+            <span className="text-[10px] text-neutral-600">·</span>
+            <span className="text-[10px] font-semibold text-neutral-500 truncate">
+              {liveMatch?.venue ?? venue}
+            </span>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+          {isFinished && liveMatch?.score && (
+            <span className="text-[11px] font-bold tabular-nums text-neutral-300">
+              {liveMatch.score.home}–{liveMatch.score.away}
+            </span>
+          )}
+          {predictionCorrect !== null && (
+            <span className="inline-flex items-center gap-0.5">
+              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
+                {predictionCorrect ? 'check_circle' : 'cancel'}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {isFinished && liveMatch?.score && (
-              <span className="text-[10px] font-bold tabular-nums text-neutral-300">
-                {liveMatch.score.home}–{liveMatch.score.away}
-              </span>
-            )}
-            {predictionCorrect !== null && (
-              <span className="inline-flex items-center gap-0.5">
-                <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
-                  {predictionCorrect ? 'check_circle' : 'cancel'}
+              {predictionCorrect && (
+                <span className="text-[11px] font-bold text-wc-green font-body">
+                  +{KNOCKOUT_POINTS[matchId.split('-')[0]] ?? 0}
                 </span>
-                {predictionCorrect && (
-                  <span className="text-[11px] font-bold text-wc-green font-body">
-                    +{KNOCKOUT_POINTS[matchId.split('-')[0]] ?? 0}
-                  </span>
-                )}
-              </span>
-            )}
-            {!canPredict && !liveMatch && (
-              <span className="text-[10px] font-semibold text-neutral-400 italic">Make earlier picks</span>
-            )}
-          </div>
+              )}
+            </span>
+          )}
+          {!canPredict && !liveMatch && (
+            <span className="text-[10px] font-semibold text-neutral-400 italic">Make earlier picks</span>
+          )}
         </div>
-        <div className="px-1 py-1.5">
-          <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />
-          <TeamSlot team={away} code={awayCode} side="away" isSelected={result === 'away'} />
-        </div>
+      </div>
+      <div className="flex flex-col gap-2 px-2 py-2.5">
+        <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />
+        <TeamSlot team={away} code={awayCode} side="away" isSelected={result === 'away'} />
       </div>
     </div>
   );

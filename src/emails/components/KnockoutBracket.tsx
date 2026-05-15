@@ -61,7 +61,7 @@ function KoMatch({ homeCode, awayCode, result, variant }: KoMatchProps) {
   const homeLabel = homeCode ? tn(homeCode) : 'TBD';
   const awayLabel = awayCode ? tn(awayCode) : 'TBD';
 
-  const arrow = isHome ? '▶' : isAway ? '◀' : '·';
+  const arrow = isHome ? '◀' : isAway ? '▶' : '·';
 
   return (
     <table

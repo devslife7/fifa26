@@ -12,9 +12,15 @@ interface MatchRowProps {
 }
 
 const COLOR_WINNER = '#000000';
-const COLOR_DRAW = 'rgba(0,0,0,0.5)';
+const COLOR_DRAW = 'rgba(0,0,0,0.55)';
 const COLOR_LOSS = 'rgba(0,0,0,0.28)';
-const COLOR_VS = 'rgba(0,0,0,0.22)';
+const COLOR_ARROW_IDLE = 'rgba(0,0,0,0.25)';
+
+const MAX_NAME_LEN = 8;
+function truncate(s: string): string {
+  if (s.length <= MAX_NAME_LEN) return s;
+  return s.slice(0, MAX_NAME_LEN - 1) + '…';
+}
 
 function MatchRow({ homeCode, awayCode, result }: MatchRowProps) {
   const hw = result === 'home';
@@ -25,10 +31,9 @@ function MatchRow({ homeCode, awayCode, result }: MatchRowProps) {
   const aColor = aw ? COLOR_WINNER : dr ? COLOR_DRAW : COLOR_LOSS;
   const homeFlag = tf(homeCode);
   const awayFlag = tf(awayCode);
-  const vsText = dr ? '= TIE =' : 'vs';
-  const vsColor = dr ? '#b8860b' : COLOR_VS;
-  const vsWeight = dr ? 700 : 400;
-  const vsBg = dr ? t.tieTint : 'transparent';
+
+  const marker = dr ? '=' : hw ? '◀' : aw ? '▶' : '·';
+  const markerColor = dr ? '#b8860b' : hw || aw ? t.winGreen : COLOR_ARROW_IDLE;
 
   return (
     <tr>
@@ -44,23 +49,20 @@ function MatchRow({ homeCode, awayCode, result }: MatchRowProps) {
           borderRadius: hw ? '3px' : '0',
         }}
       >
-        {tn(homeCode)}
+        {truncate(tn(homeCode))}
         {homeFlag ? <>&nbsp;{homeFlag}</> : null}
       </td>
       <td
         align="center"
         style={{
           padding: '1px 2px',
-          fontSize: dr ? '8px' : '7px',
-          color: vsColor,
-          fontWeight: vsWeight,
-          width: dr ? '34px' : '18px',
-          backgroundColor: vsBg,
-          borderRadius: dr ? '3px' : '0',
-          letterSpacing: dr ? '0.05em' : '0',
+          fontSize: '10px',
+          color: markerColor,
+          fontWeight: 700,
+          width: '14px',
         }}
       >
-        {vsText}
+        {marker}
       </td>
       <td
         align="left"
@@ -75,7 +77,7 @@ function MatchRow({ homeCode, awayCode, result }: MatchRowProps) {
         }}
       >
         {awayFlag ? <>{awayFlag}&nbsp;</> : null}
-        {tn(awayCode)}
+        {truncate(tn(awayCode))}
       </td>
     </tr>
   );

@@ -15,9 +15,25 @@ interface HomeViewProps {
   onClear?: () => void;
 }
 
+type TimeRemaining = {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
+type HomeAction = {
+  label: string;
+  detail: string;
+  icon: string;
+  target: TabId;
+};
+
+const GROUP_TOTAL = 72;
+const BRACKET_TOTAL = 32;
 const TOURNAMENT_START = new Date('2026-06-11T00:00:00Z');
 
-function getTimeRemaining() {
+function getTimeRemaining(): TimeRemaining | null {
   const now = Date.now();
   const diff = TOURNAMENT_START.getTime() - now;
   if (diff <= 0) return null;
@@ -29,28 +45,58 @@ function getTimeRemaining() {
   };
 }
 
+function getHomeAction(groupCount: number, knockoutCount: number, champion: string | null): HomeAction {
+  if (champion) {
+    return {
+      label: 'Review & Submit',
+      detail: 'Review and submit your champion.',
+      icon: 'verified',
+      target: 'submit',
+    };
+  }
+
+  if (groupCount === 0) {
+    return {
+      label: 'Start My Picks',
+      detail: 'Start with group-stage picks.',
+      icon: 'emoji_events',
+      target: 'groups',
+    };
+  }
+
+  if (groupCount < GROUP_TOTAL) {
+    return {
+      label: 'Continue My Picks',
+      detail: 'Finish group-stage picks.',
+      icon: 'arrow_forward',
+      target: 'groups',
+    };
+  }
+
+  if (knockoutCount < BRACKET_TOTAL) {
+    return {
+      label: 'Continue My Picks',
+      detail: 'Build your knockout bracket.',
+      icon: 'account_tree',
+      target: 'bracket',
+    };
+  }
+
+  return {
+    label: 'Review & Submit',
+    detail: 'Prediction complete.',
+    icon: 'verified',
+    target: 'submit',
+  };
+}
+
 function CountdownTile({ value, label }: { value: number; label: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '56px' }}>
-      <span style={{
-        display: 'block',
-        fontSize: '3rem',
-        fontWeight: 900,
-        color: '#f9d406',
-        fontVariantNumeric: 'tabular-nums',
-        letterSpacing: '-0.04em',
-        lineHeight: 1,
-        fontFamily: 'var(--font-display)',
-      }}>
+    <div className="flex min-w-10 flex-col items-center gap-0.5">
+      <span className="font-display text-[26px] font-black leading-none text-primary tabular-nums">
         {String(value).padStart(2, '0')}
       </span>
-      <span style={{
-        fontSize: '9px',
-        fontWeight: 700,
-        color: '#475569',
-        textTransform: 'uppercase' as const,
-        letterSpacing: '0.18em',
-      }}>
+      <span className="font-body text-[8px] font-bold uppercase tracking-[0.14em] text-neutral-500">
         {label}
       </span>
     </div>
@@ -59,31 +105,256 @@ function CountdownTile({ value, label }: { value: number; label: string }) {
 
 function ProgressRow({ label, current, total }: { label: string; current: number; total: number }) {
   const complete = current === total;
-  const pct = (current / total) * 100;
+  const pct = Math.min((current / total) * 100, 100);
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.09em' }}>
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="font-body text-[11px] font-bold uppercase tracking-[0.12em] text-neutral-500">
           {label}
         </span>
-        <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: '13px', fontWeight: 700, color: complete ? '#f9d406' : '#cbd5e1' }}>
+        <span className={`text-sm font-black tabular-nums ${complete ? 'text-primary' : 'text-neutral-200'}`}>
           {current}
-          <span style={{ fontSize: '11px', fontWeight: 500, color: '#334155' }}>/{total}</span>
+          <span className="text-[11px] font-semibold text-neutral-600">/{total}</span>
         </span>
       </div>
-      <div style={{ height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          borderRadius: '3px',
-          width: `${pct}%`,
-          background: complete
-            ? 'linear-gradient(90deg, #15803d, #22c55e)'
-            : 'linear-gradient(90deg, #c9a800, #f9d406)',
-          transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
-          boxShadow: complete ? '0 0 10px rgba(34,197,94,0.5)' : '0 0 10px rgba(249,212,6,0.35)',
-        }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+        <div
+          className={`h-full rounded-full transition-[width] duration-500 ${
+            complete ? 'bg-gradient-to-r from-wc-green to-green-400' : 'bg-gradient-to-r from-primary-dark to-primary'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
+  );
+}
+
+function HomeHeader() {
+  return (
+    <section className="relative overflow-hidden rounded-[24px] border border-white/8 bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.16),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] px-5 pt-5 pb-4 text-center">
+      <div className="relative">
+        <p className="mb-2 font-body text-[10px] font-black uppercase tracking-[0.34em] text-primary">
+          FIFA
+        </p>
+        <h1 className="font-display text-[32px] font-black leading-none text-neutral-100">
+          World Cup <span className="text-primary">2026</span>
+        </h1>
+        <img
+          src="/images/fifa_logov2_transparent.png"
+          alt="FIFA World Cup 2026"
+          className="animate-trophy-glow mx-auto mt-4 h-[180px] max-h-[22vh] w-auto object-contain sm:h-[210px]"
+        />
+      </div>
+    </section>
+  );
+}
+
+function PrimaryAction({ action, onNavigate }: { action: HomeAction; onNavigate: (tab: TabId) => void }) {
+  return (
+    <button
+      onClick={() => onNavigate(action.target)}
+      className="group flex w-full items-center gap-4 rounded-[18px] border border-primary/30 bg-gradient-to-br from-primary to-primary-dark px-5 py-4 text-left shadow-[0_10px_34px_rgba(249,212,6,0.24)] transition-transform active:scale-[0.985]"
+    >
+      <span className="material-symbols-outlined flex size-11 shrink-0 items-center justify-center rounded-xl bg-black/10 text-[24px] text-black">
+        {action.icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-black leading-tight text-black">{action.label}</span>
+        <span className="mt-0.5 block font-body text-xs font-bold text-black/65">{action.detail}</span>
+      </span>
+      <span className="material-symbols-outlined text-[22px] text-black/60 transition-transform group-hover:translate-x-0.5">
+        arrow_forward
+      </span>
+    </button>
+  );
+}
+
+function PredictionDashboard({
+  groupCount,
+  knockoutCount,
+  champion,
+  teamFlagsByCode,
+  onNavigate,
+}: {
+  groupCount: number;
+  knockoutCount: number;
+  champion: string | null;
+  teamFlagsByCode: Record<string, string>;
+  onNavigate: (tab: TabId) => void;
+}) {
+  const target: TabId = champion ? 'submit' : groupCount < GROUP_TOTAL ? 'groups' : 'bracket';
+  const championName = champion ? teamsByCode[champion]?.name ?? champion : 'Not selected';
+  const championFlag = champion ? teamsByCode[champion]?.flag ?? '' : '';
+
+  return (
+    <button
+      onClick={() => onNavigate(target)}
+      className="w-full rounded-[20px] border border-white/10 bg-neutral-900/80 p-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.18)] transition-transform active:scale-[0.99]"
+    >
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[15px] font-black text-neutral-100">Your Predictions</p>
+          <p className="mt-0.5 font-body text-xs font-semibold text-neutral-500">
+            Groups, bracket, and champion status
+          </p>
+        </div>
+        {champion && groupCount === GROUP_TOTAL && knockoutCount === BRACKET_TOTAL && (
+          <span className="rounded-full border border-wc-green/25 bg-wc-green/10 px-3 py-1 font-body text-[9px] font-black uppercase tracking-[0.12em] text-green-400">
+            Complete
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <ProgressRow label="Groups" current={groupCount} total={GROUP_TOTAL} />
+        <ProgressRow label="Bracket" current={knockoutCount} total={BRACKET_TOTAL} />
+      </div>
+
+      <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.035] p-3">
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20">
+          {champion && teamFlagsByCode[champion] ? (
+            <img src={teamFlagsByCode[champion]} alt={championName} className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-2xl">{championFlag || '—'}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-body text-[10px] font-black uppercase tracking-[0.14em] text-neutral-500">Champion</p>
+          <p className={`truncate text-sm font-black ${champion ? 'text-primary' : 'text-neutral-300'}`}>
+            {championName}
+          </p>
+        </div>
+        <span className="material-symbols-outlined text-[20px] text-neutral-700">chevron_right</span>
+      </div>
+    </button>
+  );
+}
+
+function EventStrip({ timeLeft }: { timeLeft: TimeRemaining | null }) {
+  return (
+    <section className="rounded-[18px] border border-white/8 bg-white/[0.035] px-4 py-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="font-body text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Kickoff</p>
+          <p className="mt-0.5 text-sm font-bold text-neutral-200">June 11, 2026 · Mexico City</p>
+        </div>
+        <span className="material-symbols-outlined text-[22px] text-primary">stadium</span>
+      </div>
+      {timeLeft ? (
+        <div className="flex items-start justify-between gap-1">
+          <CountdownTile value={timeLeft.days} label="days" />
+          <CountdownTile value={timeLeft.hours} label="hrs" />
+          <CountdownTile value={timeLeft.minutes} label="min" />
+          <CountdownTile value={timeLeft.seconds} label="sec" />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 py-1">
+          <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+          <span className="font-body text-sm font-bold text-neutral-200">Tournament in progress</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ClearPredictionsAction({
+  confirmingClear,
+  onClear,
+  onConfirmingChange,
+}: {
+  confirmingClear: boolean;
+  onClear: () => void;
+  onConfirmingChange: (value: boolean) => void;
+}) {
+  return (
+    <button
+      onClick={() => {
+        if (confirmingClear) {
+          onClear();
+          onConfirmingChange(false);
+          return;
+        }
+        onConfirmingChange(true);
+        setTimeout(() => onConfirmingChange(false), 3000);
+      }}
+      className={`flex w-full items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition-transform active:scale-[0.99] ${
+        confirmingClear
+          ? 'border-wc-red/35 bg-wc-red/10'
+          : 'border-white/8 bg-white/[0.025]'
+      }`}
+    >
+      <span
+        className={`material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-xl border text-[22px] ${
+          confirmingClear
+            ? 'border-wc-red/30 bg-wc-red/10 text-wc-red'
+            : 'border-white/8 bg-white/[0.035] text-neutral-500'
+        }`}
+      >
+        {confirmingClear ? 'warning' : 'restart_alt'}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-sm font-black ${confirmingClear ? 'text-wc-red' : 'text-neutral-100'}`}>
+          {confirmingClear ? 'Tap again to confirm' : 'Start New Predictions'}
+        </span>
+        <span className="mt-0.5 block font-body text-xs font-semibold text-neutral-500">
+          {confirmingClear ? 'Your current picks will be cleared' : 'Clear your picks and begin fresh'}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function AccountPanel({
+  user,
+  onSignIn,
+  onSignOut,
+}: {
+  user: { display_name?: string | null; email?: string | null } | null;
+  onSignIn: () => void;
+  onSignOut: () => void;
+}) {
+  if (user) {
+    return (
+      <section className="rounded-[18px] border border-white/8 bg-white/[0.025] p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
+            <span className="material-symbols-outlined text-[23px] text-primary">person</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-black text-neutral-100">{user.display_name || 'Player'}</p>
+            <p className="truncate font-body text-xs font-semibold text-neutral-500">{user.email}</p>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="flex items-center gap-1.5 rounded-xl border border-wc-red/20 bg-wc-red/10 px-3 py-2 font-body text-xs font-black text-wc-red transition-colors hover:bg-wc-red/15"
+          >
+            <span className="material-symbols-outlined text-[16px]">logout</span>
+            Sign Out
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-[18px] border border-white/8 bg-white/[0.025] p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/8">
+          <span className="material-symbols-outlined text-[22px] text-primary">cloud_done</span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black text-neutral-100">Save picks across devices</p>
+          <p className="mt-0.5 font-body text-xs font-semibold text-neutral-500">Use a one-time email code.</p>
+        </div>
+        <button
+          onClick={onSignIn}
+          className="shrink-0 rounded-xl border border-white/10 bg-white/6 px-3 py-2 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/10"
+        >
+          Sign In
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -98,366 +369,38 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
     return () => clearInterval(id);
   }, []);
 
-  const groupProgress = groupCount / 72;
-  const bracketProgress = knockoutCount / 32;
-  const isComplete = groupCount === 72 && knockoutCount === 32 && !!champion;
+  const action = getHomeAction(groupCount, knockoutCount, champion);
+  const hasPicks = groupCount > 0 || knockoutCount > 0;
 
   return (
-    <div style={{ paddingTop: '16px', paddingBottom: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="flex flex-col gap-3 pt-3 pb-8">
+      <HomeHeader />
 
-      {/* ── Hero: Title + Countdown ── */}
-      <div style={{
-        position: 'relative',
-        overflow: 'visible',
-        padding: '32px 20px 28px',
-        textAlign: 'center',
-      }}>
-        {/* Radial gold glow */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '600px',
-          height: '600px',
-          background: 'radial-gradient(ellipse at 50% 40%, rgba(249,212,6,0.09) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
+      <PrimaryAction action={action} onNavigate={onNavigate} />
 
-        {/* Title */}
-        <div style={{ marginBottom: '20px', position: 'relative' }}>
-          <p style={{ fontSize: '10px', fontWeight: 700, color: '#f9d406', textTransform: 'uppercase', letterSpacing: '0.35em', margin: '0 0 8px' }}>
-            FIFA™
-          </p>
-          <h1 style={{ fontSize: '34px', fontWeight: 900, color: '#f1f5f9', letterSpacing: '-0.03em', margin: 0, lineHeight: 0.95, fontFamily: 'var(--font-display)' }}>
-            World Cup <span style={{ color: '#f9d406' }}>2026</span>
-          </h1>
-        </div>
+      <PredictionDashboard
+        groupCount={groupCount}
+        knockoutCount={knockoutCount}
+        champion={champion}
+        teamFlagsByCode={teamFlagsByCode}
+        onNavigate={onNavigate}
+      />
 
-        {/* Trophy */}
-        <img
-          src="/images/fifa_logov2_transparent.png"
-          alt="FIFA World Cup 2026"
-          className="animate-trophy-glow"
-          style={{ width: '400px', height: '440px', margin: '32px auto 40px' }}
+      <EventStrip timeLeft={timeLeft} />
+
+      {onClear && hasPicks && (
+        <ClearPredictionsAction
+          confirmingClear={confirmingClear}
+          onClear={onClear}
+          onConfirmingChange={setConfirmingClear}
         />
-
-        {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '18px' }}>
-          <span style={{ display: 'inline-block', width: '32px', height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-          <p style={{ fontSize: '9px', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.25em', margin: 0 }}>
-            Kickoff in
-          </p>
-          <span style={{ display: 'inline-block', width: '32px', height: '1px', background: 'rgba(255,255,255,0.08)' }} />
-        </div>
-
-        {timeLeft ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', gap: '4px' }}>
-              <CountdownTile value={timeLeft.days} label="days" />
-              <span style={{ fontSize: '2rem', fontWeight: 900, color: '#1e293b', lineHeight: 1, paddingTop: '6px', letterSpacing: '-0.02em' }}>:</span>
-              <CountdownTile value={timeLeft.hours} label="hrs" />
-              <span style={{ fontSize: '2rem', fontWeight: 900, color: '#1e293b', lineHeight: 1, paddingTop: '6px', letterSpacing: '-0.02em' }}>:</span>
-              <CountdownTile value={timeLeft.minutes} label="min" />
-              <span style={{ fontSize: '2rem', fontWeight: 900, color: '#1e293b', lineHeight: 1, paddingTop: '6px', letterSpacing: '-0.02em' }}>:</span>
-              <CountdownTile value={timeLeft.seconds} label="sec" />
-            </div>
-            <p style={{ marginTop: '18px', fontSize: '12px', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-              <span style={{ display: 'inline-block', width: '24px', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-              June 11, 2026 · Mexico City
-              <span style={{ display: 'inline-block', width: '24px', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
-            </p>
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 0' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s ease-in-out infinite', display: 'inline-block' }} />
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#cbd5e1' }}>Tournament in progress</span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Start / Continue CTA ── */}
-      {!isComplete && (
-        <button
-          onClick={() => onNavigate(groupCount < 72 ? 'groups' : knockoutCount < 32 ? 'bracket' : 'submit')}
-          style={{
-            width: '100%',
-            padding: '16px 20px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #f9d406 0%, #c9a800 100%)',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            transition: 'transform 0.12s ease',
-            boxShadow: '0 4px 24px rgba(249,212,6,0.25)',
-          }}
-          onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
-          onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-          onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-        >
-          <span className="material-symbols-outlined" style={{ color: '#0a0a0a', fontSize: '22px' }}>
-            {groupCount === 0 ? 'emoji_events' : 'arrow_forward'}
-          </span>
-          <span style={{ fontSize: '15px', fontWeight: 800, color: '#0a0a0a', letterSpacing: '-0.01em' }}>
-            {groupCount === 0 ? 'Start My Picks' : 'Continue My Picks'}
-          </span>
-        </button>
       )}
 
-      {/* ── Start New Predictions Hero CTA ── */}
-      {onClear && (groupCount > 0 || knockoutCount > 0) && (
-        <div style={{
-          position: 'relative',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          background: 'linear-gradient(135deg, #0f1b2d 0%, #080e1a 100%)',
-          border: `1px solid ${confirmingClear ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.06)'}`,
-          transition: 'border-color 0.25s ease',
-        }}>
-          {confirmingClear && (
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.07) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }} />
-          )}
-          <button
-            onClick={() => {
-              if (confirmingClear) {
-                onClear();
-                setConfirmingClear(false);
-              } else {
-                setConfirmingClear(true);
-                setTimeout(() => setConfirmingClear(false), 3000);
-              }
-            }}
-            style={{
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '18px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '14px',
-              textAlign: 'left',
-              transition: 'transform 0.12s ease',
-            }}
-            onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.985)')}
-            onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-            onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-          >
-            <div style={{
-              width: '42px', height: '42px', borderRadius: '12px', flexShrink: 0,
-              background: confirmingClear ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${confirmingClear ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.25s ease',
-            }}>
-              <span className="material-symbols-outlined" style={{
-                fontSize: '22px',
-                color: confirmingClear ? '#ef4444' : '#475569',
-                transition: 'color 0.25s ease',
-              }}>
-                {confirmingClear ? 'warning' : 'restart_alt'}
-              </span>
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{
-                fontSize: '14px', fontWeight: 700, margin: '0 0 3px',
-                color: confirmingClear ? '#ef4444' : '#f1f5f9',
-                transition: 'color 0.25s ease',
-              }}>
-                {confirmingClear ? 'Tap again to confirm' : 'Start New Predictions'}
-              </p>
-              <p style={{ fontSize: '12px', color: '#475569', margin: 0 }}>
-                {confirmingClear ? 'Your current picks will be cleared' : 'Clear your picks and begin fresh'}
-              </p>
-            </div>
-            <span className="material-symbols-outlined" style={{
-              fontSize: '20px',
-              color: confirmingClear ? 'rgba(239,68,68,0.4)' : '#1e293b',
-              transition: 'color 0.25s ease',
-            }}>
-              chevron_right
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* ── Predictions + Champion (combined) ── */}
-      <button
-        onClick={() => onNavigate(groupCount < 72 ? 'groups' : 'bracket')}
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          background: 'transparent',
-          border: 'none',
-          padding: '18px 20px',
-          position: 'relative',
-          overflow: 'hidden',
-          cursor: 'pointer',
-          transition: 'transform 0.12s ease',
-        }}
-        onPointerDown={e => (e.currentTarget.style.transform = 'scale(0.985)')}
-        onPointerUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-        onPointerLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
-      >
-        {/* Divider line */}
-        <div style={{
-          height: '1px',
-          background: 'rgba(255,255,255,0.06)',
-          marginBottom: '18px',
-        }} />
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9' }}>Your Predictions</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {isComplete && (
-              <span style={{
-                fontSize: '9px', fontWeight: 800, color: '#22c55e',
-                background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
-                padding: '3px 9px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.1em',
-              }}>
-                Complete
-              </span>
-            )}
-            <span className="material-symbols-outlined" style={{ color: '#334155', fontSize: '20px' }}>chevron_right</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <ProgressRow label="Groups" current={groupCount} total={72} />
-          <ProgressRow label="Bracket" current={knockoutCount} total={32} />
-        </div>
-
-        {/* Champion section — inlined below progress bars */}
-        {champion && (
-          <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '240px', height: '160px', borderRadius: '8px', overflow: 'hidden', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))' }}>
-              {teamFlagsByCode[champion] ? (
-                <img src={teamFlagsByCode[champion]} alt={champion} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: '5rem', lineHeight: 1 }}>{teamsByCode[champion]?.flag ?? '🏳️'}</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.09em' }}>
-                Champion
-              </span>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: '#f9d406' }}>
-                {teamsByCode[champion]?.name ?? champion}
-              </span>
-            </div>
-          </div>
-        )}
-      </button>
-
-      {/* ── Account Section ── */}
-      {user ? (
-        <div style={{ padding: '8px 20px 0' }}>
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '24px' }} />
-
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px',
-          }}>
-            <div style={{
-              width: '44px', height: '44px', borderRadius: '50%', flexShrink: 0,
-              background: 'rgba(249,212,6,0.10)', border: '1px solid rgba(249,212,6,0.18)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '24px' }}>person</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: '15px', fontWeight: 700, color: '#f1f5f9', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.display_name || 'Player'}
-              </p>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {user.email}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => signOut()}
-            style={{
-              width: '100%',
-              padding: '14px 20px',
-              borderRadius: '14px',
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ color: '#ef4444', fontSize: '20px' }}>logout</span>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#ef4444' }}>Sign Out</span>
-          </button>
-        </div>
-      ) : (
-        <div style={{ padding: '8px 20px 0' }}>
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '24px' }} />
-
-          <p style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: '16px', textAlign: 'center' }}>
-            Why sign in to your account using one time password?
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
-            {[
-              { icon: 'edit_calendar', text: 'Edit predictions anytime before kickoff' },
-              { icon: 'cloud_done', text: 'Predictions saved securely to your account' },
-              { icon: 'devices', text: 'Access your picks from any device' },
-              { icon: 'leaderboard', text: 'Compete on the leaderboard with friends' },
-            ].map((b) => (
-              <div key={b.icon} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                  background: 'rgba(249,212,6,0.06)', border: '1px solid rgba(249,212,6,0.10)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '16px' }}>{b.icon}</span>
-                </div>
-                <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>{b.text}</span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setShowAuth(true)}
-            style={{
-              width: '100%',
-              padding: '14px 20px',
-              borderRadius: '14px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ color: '#f9d406', fontSize: '20px' }}>login</span>
-            <span style={{ fontSize: '14px', fontWeight: 700, color: '#e2e8f0' }}>Sign In OTP</span>
-          </button>
-
-          <p style={{ fontSize: '11px', color: '#334155', textAlign: 'center', marginTop: '10px' }}>
-            No password needed — we send a one-time code to your email
-          </p>
-        </div>
-      )}
+      <AccountPanel
+        user={user}
+        onSignIn={() => setShowAuth(true)}
+        onSignOut={() => signOut()}
+      />
 
       {showAuth && (
         <AuthModal

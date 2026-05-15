@@ -186,7 +186,11 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       });
                     };
 
-                    const renderCard = (pred: LeaderboardPrediction, idx: number) => (
+                    const renderCard = (pred: LeaderboardPrediction, idx: number) => {
+                      const hasProfile = pred.display_name && pred.display_name !== 'Unknown';
+                      const primaryName = hasProfile ? pred.display_name : pred.name;
+                      const showSecondary = hasProfile && pred.name;
+                      return (
                       <button
                         key={`${pred.user_id}-${pred.prediction_number ?? idx}`}
                         onClick={() => {
@@ -198,9 +202,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       >
                         <div className="flex-grow min-w-0">
                           <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
-                            {pred.display_name}
+                            {primaryName}
                             <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
-                            {pred.name && <span className="text-neutral-400 font-normal ml-1.5">— {pred.name}</span>}
+                            {showSecondary && <span className="text-neutral-400 font-normal ml-1.5">— {pred.name}</span>}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-neutral-400 truncate font-body">
@@ -218,7 +222,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         </div>
                         <span className="material-symbols-outlined text-neutral-500 text-[14px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
                       </button>
-                    );
+                      );
+                    };
 
                     return (
                       <>

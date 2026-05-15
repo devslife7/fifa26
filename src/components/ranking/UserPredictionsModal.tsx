@@ -138,7 +138,7 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
         {/* Header */}
         <div className="px-4 sm:px-5 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
           <div className="min-w-0">
-            <h2 className="text-lg font-black text-white truncate">{prediction.display_name}&apos;s Predictions</h2>
+            <h2 className="text-lg font-black text-white truncate">{(prediction.display_name && prediction.display_name !== 'Unknown' ? prediction.display_name : prediction.name) || 'Anonymous'}&apos;s Predictions</h2>
             <div className="flex items-center gap-3 mt-1">
               {championTeam && (
                 <div className="flex items-center gap-1.5 text-xs text-neutral-400">

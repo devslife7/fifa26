@@ -12,7 +12,7 @@ const PREDICTION_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 
 const navItems = [
   { label: 'Home', icon: 'home', navigateTo: 'home' as TabId, activeTabs: ['home', 'profile'] as TabId[] },
-  { label: 'My Picks', icon: 'emoji_events', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
+  { label: 'Predictions', icon: 'emoji_events', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
   { label: 'Ranking', icon: 'leaderboard', navigateTo: 'ranking' as TabId, activeTabs: ['ranking'] as TabId[] },
   { label: 'News', icon: 'newspaper', navigateTo: 'news' as TabId, activeTabs: ['news'] as TabId[] },
 ];
@@ -27,7 +27,7 @@ export default function BottomNav({ activeTab, nextPredictionTab, onTabChange }:
           return (
             <button
               key={item.label}
-              onClick={() => onTabChange(item.label === 'My Picks' ? nextPredictionTab : item.navigateTo)}
+              onClick={() => onTabChange(item.label === 'Predictions' ? nextPredictionTab : item.navigateTo)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[48px] transition-colors relative ${isActive
                   ? 'text-primary'
                   : 'text-neutral-400 hover:text-primary'

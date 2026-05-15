@@ -212,6 +212,11 @@ export default function Home() {
   const prevGroupCountRef = useRef<number>(-1);
   const prevTiesResolvedRef = useRef<boolean | null>(null);
   const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollPositionsRef = useRef<Partial<Record<TabId, number>>>({});
+  const activeTabRef = useRef<TabId>(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  const PREDICTION_TABS: TabId[] = useMemo(() => ['groups', 'bracket', 'thirdplace', 'submit'], []);
+  const [lastPredictionTab, setLastPredictionTab] = useState<TabId | null>(null);
 
   const flowState = useMemo(
     () => getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
@@ -232,9 +237,17 @@ export default function Home() {
   }, [mounted, predictionSnapshot]);
 
   const navigateTo = useCallback((tab: TabId) => {
+    const prev = activeTabRef.current;
+    if (prev !== tab) {
+      scrollPositionsRef.current[prev] = window.scrollY;
+      if (PREDICTION_TABS.includes(prev)) {
+        setLastPredictionTab(prev);
+      }
+    }
     setActiveTab(tab);
-    setTimeout(() => window.scrollTo({ top: 0 }), 0);
-  }, []);
+    const target = scrollPositionsRef.current[tab] ?? 0;
+    requestAnimationFrame(() => window.scrollTo({ top: target }));
+  }, [PREDICTION_TABS]);
 
   // Auto-advance when user completes the 72nd group prediction
   useEffect(() => {
@@ -544,7 +557,7 @@ export default function Home() {
       {/* Bottom Nav */}
       <BottomNav
         activeTab={activeTab}
-        nextPredictionTab={flowState.nextPredictionTab}
+        nextPredictionTab={lastPredictionTab ?? flowState.nextPredictionTab}
         onTabChange={navigateTo}
       />
 

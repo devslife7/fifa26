@@ -14,7 +14,6 @@ interface PredictionsListProps {
   darkMode: boolean;
   hasPredictions: boolean;
   onLoadPrediction: (prediction: SavedPrediction) => void;
-  onNavigateToPredictions: (view: 'groups' | 'bracket') => void;
   onNewPrediction: () => void;
   onRename: (id: string, name: string) => void;
   onSetActive: (id: string) => void;
@@ -23,7 +22,7 @@ interface PredictionsListProps {
 
 export default function PredictionsList({
   predictions, loading, currentEditingId, darkMode: d, hasPredictions,
-  onLoadPrediction, onNavigateToPredictions, onNewPrediction, onRename, onSetActive, onDelete,
+  onLoadPrediction, onNewPrediction, onRename, onSetActive, onDelete,
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingPrediction, setViewingPrediction] = useState<SavedPrediction | null>(null);
@@ -99,7 +98,7 @@ export default function PredictionsList({
               darkMode={d}
               onToggleExpand={() => setExpandedId(expandedId === p.id ? null : p.id)}
               onView={() => setViewingPrediction(p)}
-              onEdit={() => { onLoadPrediction(p); onNavigateToPredictions('groups'); }}
+              onEdit={() => onLoadPrediction(p)}
               onRename={(name) => onRename(p.id, name)}
               onSetActive={() => onSetActive(p.id)}
               onCopyLink={() => {

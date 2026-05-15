@@ -8,13 +8,15 @@ interface Props {
   predictions: Record<string, MatchResult>;
   tiebreakerPicks: string[];
   onTiebreakerChange: (picks: string[]) => void;
+  onContinue?: () => void;
   teamFlagsByCode?: Record<string, string>;
 }
 
-export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
+export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, onContinue, teamFlagsByCode }: Props) {
   const ranking = getThirdPlaceRanking(predictions);
   const tieInfo = detectThirdPlaceTie(predictions);
   const hasTie = tieInfo.slotsToFill > 0;
+  const tiebreakerComplete = hasTie && tiebreakerPicks.length === tieInfo.slotsToFill;
 
   const tiedTeamCodes = new Set(tieInfo.tied.map(e => e.team));
   const lockedInCodes = new Set(tieInfo.lockedIn.map(e => e.team));
@@ -67,10 +69,12 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
           {hasTie && (
             <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 mb-4 text-center shadow-sm">
               <p className="text-sm font-bold text-white">
-                Tiebreaker: Select {tieInfo.slotsToFill} of {tieInfo.tied.length} teams
+                {tiebreakerComplete ? 'Tiebreaker complete' : `Tiebreaker: Select ${tieInfo.slotsToFill} of ${tieInfo.tied.length} teams`}
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                These teams are tied on {tieInfo.tied[0]?.standing.points} points. Pick which ones advance.
+                {tiebreakerComplete
+                  ? 'Your selected third-place teams will feed into the Round of 32.'
+                  : `These teams are tied on ${tieInfo.tied[0]?.standing.points} points. Pick which ones advance.`}
               </p>
             </div>
           )}
@@ -169,6 +173,15 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
               </tbody>
             </table>
           </div>
+          {tiebreakerComplete && onContinue && (
+            <button
+              onClick={onContinue}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-black transition-transform active:scale-[0.98]"
+            >
+              Continue to Bracket
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+            </button>
+          )}
         </>
       )}
 

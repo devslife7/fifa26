@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
-import { generateBracket } from '@/lib/logic/bracket';
+import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
 
@@ -18,6 +18,7 @@ interface Props {
 }
 
 const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
+const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1, FIN: 1 };
 
 const roundLabels: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -36,6 +37,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const roundRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const matchRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isScrollingFromClick = useRef(false);
 
   const setRoundRef = useCallback((round: KnockoutRound, el: HTMLDivElement | null) => {
@@ -46,6 +48,10 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     tabRefs.current[round] = el;
   }, []);
 
+  const setMatchRef = useCallback((matchId: string, el: HTMLDivElement | null) => {
+    matchRefs.current[matchId] = el;
+  }, []);
+
   // Pre-populate completedRounds so auto-advance doesn't re-trigger on mount
   const completedRounds = useRef<Set<KnockoutRound>>(new Set());
   const hasMounted = useRef(false);
@@ -54,7 +60,6 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   // In readOnly mode (modal), always start at R32
   useLayoutEffect(() => {
     let targetRound: KnockoutRound = 'R32';
-    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
     for (const round of rounds) {
       const prefix = round + '-';
       const count = Object.keys(knockoutPredictions).filter(k => k.startsWith(prefix)).length;
@@ -75,7 +80,6 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   }, []);
   useEffect(() => {
     if (!hasMounted.current) return;
-    const roundSizes: Partial<Record<KnockoutRound, number>> = { R32: 16, R16: 8, QF: 4, SF: 2, '3RD': 1 };
     const size = roundSizes[activeRound];
     if (!size) return;
 
@@ -196,10 +200,61 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     matchesByRound[round] = bracket.filter(m => m.round === round);
   }
 
+  const activeRoundMatches = matchesByRound[activeRound] ?? [];
+  const activeRoundPicked = activeRoundMatches.filter(match => knockoutPredictions[match.id]).length;
+  const activeRoundTotal = roundSizes[activeRound] ?? activeRoundMatches.length;
+
+  const isMatchOpen = (match: typeof bracket[number]) => {
+    return !!match.home && !!match.away && !isPlaceholder(match.home) && !isPlaceholder(match.away) && !knockoutPredictions[match.id];
+  };
+
+  const nextOpenMatch = (() => {
+    const startIndex = rounds.indexOf(activeRound);
+    const searchRounds = [...rounds.slice(startIndex), ...rounds.slice(0, startIndex)];
+    for (const round of searchRounds) {
+      const match = matchesByRound[round].find(isMatchOpen);
+      if (match) return match;
+    }
+    return null;
+  })();
+
+  const handleNextOpenMatch = () => {
+    if (!nextOpenMatch) return;
+    const round = nextOpenMatch.round;
+    setActiveRound(round);
+    const roundEl = roundRefs.current[round];
+    const matchEl = matchRefs.current[nextOpenMatch.id];
+    const container = scrollContainerRef.current;
+    if (roundEl && container) {
+      container.scrollTo({ left: roundEl.offsetLeft - 16, behavior: 'smooth' });
+    }
+    setTimeout(() => {
+      matchEl?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }, 120);
+  };
+
   return (
     <div>
       {/* Sticky Round Tabs */}
       <div className="sticky top-[77px] z-20 bg-background-dark">
+        {!readOnly && (
+          <div className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-neutral-500">Current round</p>
+              <p className="mt-0.5 text-sm font-black text-white">
+                {roundLabels[activeRound]} <span className="text-primary tabular-nums">{activeRoundPicked}/{activeRoundTotal}</span>
+              </p>
+            </div>
+            <button
+              onClick={handleNextOpenMatch}
+              disabled={!nextOpenMatch}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-black text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-neutral-600"
+            >
+              <span className="material-symbols-outlined text-[16px]">my_location</span>
+              Next open
+            </button>
+          </div>
+        )}
         <div className="flex items-center border-b border-white/10">
           <div
             ref={tabsContainerRef}
@@ -262,7 +317,11 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
 
                 if (!nextRoundPrefix || matches.length < 2) {
                   return matches.map((match, i) => (
-                    <div key={match.id} className={i > 0 ? 'mt-4' : ''}>
+                    <div
+                      key={match.id}
+                      ref={(el) => setMatchRef(match.id, el)}
+                      className={`${i > 0 ? 'mt-4' : ''} scroll-mt-32`}
+                    >
                       <KnockoutMatchCard
                         matchId={match.id}
                         homeCode={match.home}
@@ -292,28 +351,32 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                     <div className="flex items-stretch">
                       {/* Match cards */}
                       <div className="flex-1 flex flex-col gap-3">
-                        <KnockoutMatchCard
-                          matchId={pair.first.id}
-                          homeCode={pair.first.home}
-                          awayCode={pair.first.away}
-                          result={pair.first.result}
-                          onPredict={onPredict}
-                          liveMatch={liveMatches?.[pair.first.id]}
-                          teamFlagsByCode={teamFlagsByCode}
-                          readOnly={readOnly}
-                          venue={KNOCKOUT_VENUES[pair.first.id]}
-                        />
-                        <KnockoutMatchCard
-                          matchId={pair.second.id}
-                          homeCode={pair.second.home}
-                          awayCode={pair.second.away}
-                          result={pair.second.result}
-                          onPredict={onPredict}
-                          liveMatch={liveMatches?.[pair.second.id]}
-                          teamFlagsByCode={teamFlagsByCode}
-                          readOnly={readOnly}
-                          venue={KNOCKOUT_VENUES[pair.second.id]}
-                        />
+                        <div ref={(el) => setMatchRef(pair.first.id, el)} className="scroll-mt-32">
+                          <KnockoutMatchCard
+                            matchId={pair.first.id}
+                            homeCode={pair.first.home}
+                            awayCode={pair.first.away}
+                            result={pair.first.result}
+                            onPredict={onPredict}
+                            liveMatch={liveMatches?.[pair.first.id]}
+                            teamFlagsByCode={teamFlagsByCode}
+                            readOnly={readOnly}
+                            venue={KNOCKOUT_VENUES[pair.first.id]}
+                          />
+                        </div>
+                        <div ref={(el) => setMatchRef(pair.second.id, el)} className="scroll-mt-32">
+                          <KnockoutMatchCard
+                            matchId={pair.second.id}
+                            homeCode={pair.second.home}
+                            awayCode={pair.second.away}
+                            result={pair.second.result}
+                            onPredict={onPredict}
+                            liveMatch={liveMatches?.[pair.second.id]}
+                            teamFlagsByCode={teamFlagsByCode}
+                            readOnly={readOnly}
+                            venue={KNOCKOUT_VENUES[pair.second.id]}
+                          />
+                        </div>
                       </div>
                       {/* Bracket connector lines + feeds badge */}
                       <div className="relative w-16 flex-shrink-0">

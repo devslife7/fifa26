@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { SavedPrediction, TabId } from '@/types';
+import { SavedPrediction } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { getTopThree } from '@/lib/logic/bracket';
 import PredictionDetailCard from './PredictionDetailCard';

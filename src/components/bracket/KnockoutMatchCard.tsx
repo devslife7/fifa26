@@ -180,7 +180,7 @@ export default function KnockoutMatchCard({
               </span>
             )}
             {!canPredict && !liveMatch && (
-              <span className="text-[10px] font-semibold text-neutral-400 italic">PENDING</span>
+              <span className="text-[10px] font-semibold text-neutral-400 italic">Make earlier picks</span>
             )}
           </div>
         </div>

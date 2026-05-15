@@ -1,14 +1,10 @@
 'use client';
 
 import { TabId } from '@/types';
+import { PredictionFlowState } from '@/lib/logic/prediction-flow';
 
 interface StepperBarProps {
-  groupCount: number;
-  knockoutCount: number;
-  tiesResolved: boolean;
-  thirdPlacePickCount: number;
-  thirdPlaceSlotsToFill: number;
-  hasChampion: boolean;
+  flowState: PredictionFlowState;
   isSubmitted: boolean;
   activeTab: TabId;
   onNavigate: (tab: TabId) => void;
@@ -20,48 +16,54 @@ interface Step {
   action: 'groups' | 'thirdplace' | 'bracket' | 'submit';
 }
 
-const steps: Step[] = [
+const baseSteps: Step[] = [
   { label: 'Groups', icon: 'grid_view', action: 'groups' },
-  { label: '3rd Place', icon: 'swap_vert', action: 'thirdplace' },
   { label: 'Bracket', icon: 'account_tree', action: 'bracket' },
   { label: 'Submit', icon: 'send', action: 'submit' },
 ];
 
-export default function StepperBar({ groupCount, knockoutCount, tiesResolved, thirdPlacePickCount, thirdPlaceSlotsToFill, hasChampion, isSubmitted, activeTab, onNavigate }: StepperBarProps) {
-  const groupsDone = groupCount >= 72;
+export default function StepperBar({ flowState, isSubmitted, activeTab, onNavigate }: StepperBarProps) {
+  const steps: Step[] = flowState.thirdPlaceRequired
+    ? [
+        baseSteps[0],
+        { label: '3rd Place', icon: 'swap_vert', action: 'thirdplace' },
+        baseSteps[1],
+        baseSteps[2],
+      ]
+    : baseSteps;
 
-  const getStepStatus = (idx: number): 'completed' | 'active' | 'future' => {
+  const getStepStatus = (step: Step): 'completed' | 'active' | 'future' => {
     // Groups
-    if (idx === 0) {
-      if (groupsDone) return 'completed';
-      if (activeTab === 'groups' || groupCount > 0) return 'active';
+    if (step.action === 'groups') {
+      if (flowState.groupsComplete) return 'completed';
+      if (activeTab === 'groups' || flowState.groupCount > 0) return 'active';
       return 'future';
     }
     // 3rd Place
-    if (idx === 1) {
-      if (groupsDone && tiesResolved) return 'completed';
-      if (groupsDone) return 'active';
+    if (step.action === 'thirdplace') {
+      if (flowState.groupsComplete && flowState.thirdPlaceComplete) return 'completed';
+      if (flowState.groupsComplete) return 'active';
       return 'future';
     }
     // Bracket
-    if (idx === 2) {
-      if (hasChampion) return 'completed';
-      if (groupsDone && tiesResolved && (activeTab === 'bracket' || knockoutCount > 0)) return 'active';
+    if (step.action === 'bracket') {
+      if (flowState.hasChampion) return 'completed';
+      if (flowState.groupsComplete && flowState.thirdPlaceComplete && (activeTab === 'bracket' || flowState.knockoutCount > 0)) return 'active';
       return 'future';
     }
     // Submit
-    if (idx === 3) {
+    if (step.action === 'submit') {
       if (isSubmitted) return 'completed';
-      if (hasChampion) return 'active';
+      if (flowState.submitAvailable) return 'active';
       return 'future';
     }
     return 'future';
   };
 
-  const getProgress = (idx: number): string => {
-    if (idx === 0) return `${groupCount}/72`;
-    if (idx === 1 && thirdPlaceSlotsToFill > 0) return `${thirdPlacePickCount}/${thirdPlaceSlotsToFill}`;
-    if (idx === 2) return `${knockoutCount}/32`;
+  const getProgress = (step: Step): string => {
+    if (step.action === 'groups') return flowState.groupProgressLabel;
+    if (step.action === 'thirdplace') return flowState.thirdPlaceProgressLabel;
+    if (step.action === 'bracket') return flowState.bracketProgressLabel;
     return '';
   };
 
@@ -73,11 +75,11 @@ export default function StepperBar({ groupCount, knockoutCount, tiesResolved, th
   return (
     <div className="flex items-center px-1 py-3">
       {steps.map((step, i) => {
-        const status = getStepStatus(i);
+        const status = getStepStatus(step);
         const isCompleted = status === 'completed';
         const isActive = status === 'active';
         const isFuture = status === 'future';
-        const progress = getProgress(i);
+        const progress = getProgress(step);
 
         return (
           <div key={step.label} className="flex items-center flex-1 last:flex-none">

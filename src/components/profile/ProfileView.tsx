@@ -8,6 +8,7 @@ import {
   setEditingPrediction,
 } from '@/lib/client/storage';
 import { getChampion } from '@/lib/logic/bracket';
+import { createPredictionSnapshot, getPredictionFlowState } from '@/lib/logic/prediction-flow';
 import AuthModal from '@/components/auth/AuthModal';
 import ProfileHeader from './ProfileHeader';
 import WorkingDraftCard from './WorkingDraftCard';
@@ -20,7 +21,7 @@ interface ProfileViewProps {
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
   onNavigate: (tab: TabId) => void;
-  onNavigateToPredictions: (view: 'groups' | 'bracket') => void;
+  onNavigateToPredictions: (view?: TabId) => void;
   onLoadPrediction: (prediction: SavedPrediction) => void;
   onNewPrediction: () => void;
   onClearPredictions: () => void;
@@ -41,7 +42,7 @@ export default function ProfileView({
   const [showNameModal, setShowNameModal] = useState(false);
   const [newPredName, setNewPredName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const predictionsSnapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
+  const predictionsSnapshot = createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   const [submitted, setSubmitted] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -63,6 +64,7 @@ export default function ProfileView({
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
+  const flowState = getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? []);
 
   // Also check at runtime when predictions change via props
   useEffect(() => {
@@ -219,7 +221,7 @@ export default function ProfileView({
           }}
           user={user}
           onSignIn={() => setShowAuth(true)}
-          onEdit={() => onNavigateToPredictions(groupCount < 72 ? 'groups' : 'bracket')}
+          onEdit={() => onNavigateToPredictions(flowState.nextPredictionTab)}
         />
       )}
 
@@ -232,6 +234,7 @@ export default function ProfileView({
               predictionId={currentEditingId}
               groupCount={groupCount}
               knockoutCount={knockoutCount}
+              nextPredictionTab={flowState.nextPredictionTab}
               saving={savingCurrent}
               darkMode={d}
               onSave={() => {
@@ -254,7 +257,6 @@ export default function ProfileView({
             darkMode={d}
             hasPredictions={hasPredictions}
             onLoadPrediction={onLoadPrediction}
-            onNavigateToPredictions={onNavigateToPredictions}
             onNewPrediction={onNewPrediction}
             onRename={handleRename}
             onSetActive={handleSetActive}

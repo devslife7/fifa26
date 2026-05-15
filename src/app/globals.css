@@ -1,34 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  /* Primary & Brand */
-  --color-primary: #f9d406;
-  --color-primary-dark: #d4b305;
-  --color-primary-light: #FEFAE9;
+  /* FIFA World Cup 2026-inspired design system */
+  --color-cup-gold: #f5c542;
+  --color-cup-gold-dark: #b98212;
+  --color-cup-gold-light: #fff3b0;
+  --color-stadium-black: #05070d;
+  --color-stadium-ink: #0b1020;
+  --color-stadium-steel: #162033;
+  --color-pitch-green: #00a859;
+  --color-maple-red: #d71920;
+  --color-host-blue: #0057b8;
+  --color-fiesta-cyan: #1ccad8;
+  --color-confetti-pink: #f45b9a;
+  --color-cream: #fff9e8;
 
-  /* Backgrounds */
-  --color-background-light: #f8f8f5;
-  --color-background-dark: #0a0f1a;
+  /* Semantic brand aliases */
+  --color-primary: var(--color-cup-gold);
+  --color-primary-dark: var(--color-cup-gold-dark);
+  --color-primary-light: #fff8da;
+  --color-accent: var(--color-fiesta-cyan);
+  --color-accent-warm: var(--color-confetti-pink);
 
-  /* Functional — WC2026 official bid colors */
-  --color-wc-green: #3CAC3B;
-  --color-wc-green-light: #f0fdf4;
-  --color-wc-green-border: #bbf7d0;
-  --color-wc-red: #E61D25;
-  --color-wc-red-light: #fef2f2;
-  --color-wc-red-border: #fecaca;
-  --color-wc-blue: #2A398D;
-  --color-wc-blue-light: #eff6ff;
+  /* Backgrounds and surfaces */
+  --color-background-light: #f8f6ef;
+  --color-background-dark: var(--color-stadium-black);
+  --color-surface: #0f1727;
+  --color-surface-raised: #151f32;
+  --color-surface-muted: #202b42;
+  --color-surface-light: #ffffff;
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Host-nation and match-state accents */
+  --color-wc-green: var(--color-pitch-green);
+  --color-wc-green-light: #e9fff4;
+  --color-wc-green-border: #8ee4b8;
+  --color-wc-red: var(--color-maple-red);
+  --color-wc-red-light: #fff0f1;
+  --color-wc-red-border: #ffb7bb;
+  --color-wc-blue: var(--color-host-blue);
+  --color-wc-blue-light: #eaf3ff;
+  --color-wc-blue-border: #9ac7ff;
   --color-wc-amber: #f59e0b;
-  --color-wc-amber-light: #fffbeb;
-  --color-wc-amber-border: #fde68a;
+  --color-wc-amber-light: #fff7df;
+  --color-wc-amber-border: #f7d774;
 
-  /* Neutrals (replaces slate scale) */
+  /* Neutrals tuned for dark stadium UI */
   --color-neutral-50: #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
+  --color-neutral-100: #eef2f6;
+  --color-neutral-200: #dce4ee;
+  --color-neutral-300: #bdc8d8;
+  --color-neutral-400: #91a0b7;
   --color-neutral-500: #64748b;
   --color-neutral-600: #475569;
   --color-neutral-700: #334155;
@@ -36,11 +59,11 @@
   --color-neutral-900: #0f172a;
 
   /* Special purpose */
-  --color-medal-gold: #FFD700;
-  --color-medal-silver: #C0C0C0;
-  --color-medal-bronze: #CD7F32;
-  --color-scrollbar-track: #f1f1f1;
-  --color-scrollbar-thumb: #cccccc;
+  --color-medal-gold: var(--color-cup-gold);
+  --color-medal-silver: #c8d0dc;
+  --color-medal-bronze: #c77a3f;
+  --color-scrollbar-track: var(--color-stadium-ink);
+  --color-scrollbar-thumb: var(--color-surface-muted);
 
   /* Fonts */
   --font-display: var(--font-fwc2026), sans-serif;
@@ -142,7 +165,7 @@ html {
 
 body {
   background: var(--color-background-dark);
-  color: #e2e8f0;
+  color: var(--color-neutral-200);
   font-family: var(--font-display);
   overflow-x: hidden;
 }
@@ -153,11 +176,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: var(--color-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--color-scrollbar-thumb);
   border-radius: 3px;
 }
 

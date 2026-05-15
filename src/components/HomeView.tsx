@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { TabId } from '@/types';
+import { BRACKET_TOTAL, GROUP_TOTAL, PredictionFlowState } from '@/lib/logic/prediction-flow';
 import { teamsByCode } from '@/data/teams';
 import { useAuth } from '@/components/providers/AuthProvider';
 import AuthModal from '@/components/auth/AuthModal';
 
 interface HomeViewProps {
-  groupCount: number;
-  knockoutCount: number;
+  flowState: PredictionFlowState;
   champion: string | null;
   teamFlagsByCode: Record<string, string>;
   onNavigate: (tab: TabId) => void;
+  onManagePredictions: () => void;
   onClear?: () => void;
 }
 
@@ -29,8 +30,6 @@ type HomeAction = {
   target: TabId;
 };
 
-const GROUP_TOTAL = 72;
-const BRACKET_TOTAL = 32;
 const TOURNAMENT_START = new Date('2026-06-11T00:00:00Z');
 
 function getTimeRemaining(): TimeRemaining | null {
@@ -45,13 +44,15 @@ function getTimeRemaining(): TimeRemaining | null {
   };
 }
 
-function getHomeAction(groupCount: number, knockoutCount: number, champion: string | null): HomeAction {
-  if (champion) {
+function getHomeAction(flowState: PredictionFlowState): HomeAction {
+  const { groupCount, championCode, nextPredictionTab } = flowState;
+
+  if (championCode) {
     return {
       label: 'Review & Submit',
       detail: 'Review and submit your champion.',
       icon: 'verified',
-      target: 'submit',
+      target: nextPredictionTab,
     };
   }
 
@@ -60,25 +61,34 @@ function getHomeAction(groupCount: number, knockoutCount: number, champion: stri
       label: 'Start My Picks',
       detail: 'Start with group-stage picks.',
       icon: 'emoji_events',
-      target: 'groups',
+      target: nextPredictionTab,
     };
   }
 
-  if (groupCount < GROUP_TOTAL) {
+  if (!flowState.groupsComplete) {
     return {
       label: 'Continue My Picks',
       detail: 'Finish group-stage picks.',
       icon: 'arrow_forward',
-      target: 'groups',
+      target: nextPredictionTab,
     };
   }
 
-  if (knockoutCount < BRACKET_TOTAL) {
+  if (flowState.thirdPlaceRequired && !flowState.thirdPlaceComplete) {
+    return {
+      label: 'Resolve Tiebreaker',
+      detail: 'Pick which third-place teams advance.',
+      icon: 'swap_vert',
+      target: nextPredictionTab,
+    };
+  }
+
+  if (!flowState.bracketComplete) {
     return {
       label: 'Continue My Picks',
       detail: 'Build your knockout bracket.',
       icon: 'account_tree',
-      target: 'bracket',
+      target: nextPredictionTab,
     };
   }
 
@@ -86,17 +96,25 @@ function getHomeAction(groupCount: number, knockoutCount: number, champion: stri
     label: 'Review & Submit',
     detail: 'Prediction complete.',
     icon: 'verified',
-    target: 'submit',
+    target: nextPredictionTab,
   };
 }
 
-function CountdownTile({ value, label }: { value: number; label: string }) {
+function CountdownTile({ value, label, featured = false }: { value: number; label: string; featured?: boolean }) {
   return (
-    <div className="flex min-w-10 flex-col items-center gap-0.5">
-      <span className="font-display text-[26px] font-black leading-none text-primary tabular-nums">
+    <div className={`flex flex-col items-center gap-1 ${featured ? 'min-w-[70px]' : 'min-w-10'}`}>
+      <span
+        className={`font-display font-black leading-none text-primary tabular-nums ${
+          featured ? 'text-[44px] drop-shadow-[0_0_18px_rgba(249,212,6,0.2)]' : 'text-[26px]'
+        }`}
+      >
         {String(value).padStart(2, '0')}
       </span>
-      <span className="font-body text-[8px] font-bold uppercase tracking-[0.14em] text-neutral-500">
+      <span
+        className={`font-body font-bold uppercase text-neutral-500 ${
+          featured ? 'text-[9px] tracking-[0.18em]' : 'text-[8px] tracking-[0.14em]'
+        }`}
+      >
         {label}
       </span>
     </div>
@@ -130,21 +148,37 @@ function ProgressRow({ label, current, total }: { label: string; current: number
   );
 }
 
-function HomeHeader() {
+function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
   return (
-    <section className="relative overflow-hidden rounded-[24px] border border-white/8 bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.16),transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] px-5 pt-5 pb-4 text-center">
+    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.24),rgba(249,212,6,0.08)_34%,transparent_68%)] px-1 pt-0 pb-4 text-center">
       <div className="relative">
-        <p className="mb-2 font-body text-[10px] font-black uppercase tracking-[0.34em] text-primary">
-          FIFA
-        </p>
-        <h1 className="font-display text-[32px] font-black leading-none text-neutral-100">
-          World Cup <span className="text-primary">2026</span>
-        </h1>
         <img
           src="/images/fifa_logov2_transparent.png"
           alt="FIFA World Cup 2026"
-          className="animate-trophy-glow mx-auto mt-4 h-[180px] max-h-[22vh] w-auto object-contain sm:h-[210px]"
+          className="animate-trophy-glow mx-auto h-[360px] max-h-[42vh] w-auto object-contain sm:h-[420px]"
         />
+        <div className="mx-auto mt-2 max-w-[390px] px-1 py-2">
+          <div className="mb-2 flex items-center justify-between gap-3 text-left">
+            <div>
+              <p className="font-body text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Kickoff</p>
+              <p className="mt-0.5 text-sm font-bold text-neutral-200">June 11, 2026</p>
+            </div>
+            <span className="material-symbols-outlined text-[23px] text-primary">stadium</span>
+          </div>
+          {timeLeft ? (
+            <div className="grid grid-cols-4 gap-3">
+              <CountdownTile value={timeLeft.days} label="days" featured />
+              <CountdownTile value={timeLeft.hours} label="hrs" featured />
+              <CountdownTile value={timeLeft.minutes} label="min" featured />
+              <CountdownTile value={timeLeft.seconds} label="sec" featured />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 py-2">
+              <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+              <span className="font-body text-sm font-bold text-neutral-200">Tournament in progress</span>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -154,16 +188,18 @@ function PrimaryAction({ action, onNavigate }: { action: HomeAction; onNavigate:
   return (
     <button
       onClick={() => onNavigate(action.target)}
-      className="group flex w-full items-center gap-4 rounded-[18px] border border-primary/30 bg-gradient-to-br from-primary to-primary-dark px-5 py-4 text-left shadow-[0_10px_34px_rgba(249,212,6,0.24)] transition-transform active:scale-[0.985]"
+      className="group flex w-full items-center gap-4 rounded-[22px] bg-gradient-to-br from-primary to-primary-dark px-5 py-4 text-left shadow-[0_10px_30px_rgba(249,212,6,0.18)] transition-transform active:scale-[0.985]"
     >
-      <span className="material-symbols-outlined flex size-11 shrink-0 items-center justify-center rounded-xl bg-black/10 text-[24px] text-black">
-        {action.icon}
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-black/10">
+        <span className="material-symbols-outlined block translate-x-[1px] translate-y-[1px] text-[24px] leading-none text-black">
+          {action.icon}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-base font-black leading-tight text-black">{action.label}</span>
         <span className="mt-0.5 block font-body text-xs font-bold text-black/65">{action.detail}</span>
       </span>
-      <span className="material-symbols-outlined text-[22px] text-black/60 transition-transform group-hover:translate-x-0.5">
+      <span className="material-symbols-outlined text-[22px] leading-none text-black/60 transition-transform group-hover:translate-x-0.5">
         arrow_forward
       </span>
     </button>
@@ -176,21 +212,23 @@ function PredictionDashboard({
   champion,
   teamFlagsByCode,
   onNavigate,
+  nextTab,
 }: {
   groupCount: number;
   knockoutCount: number;
   champion: string | null;
   teamFlagsByCode: Record<string, string>;
   onNavigate: (tab: TabId) => void;
+  nextTab: TabId;
 }) {
-  const target: TabId = champion ? 'submit' : groupCount < GROUP_TOTAL ? 'groups' : 'bracket';
+  const target: TabId = nextTab;
   const championName = champion ? teamsByCode[champion]?.name ?? champion : 'Not selected';
   const championFlag = champion ? teamsByCode[champion]?.flag ?? '' : '';
 
   return (
     <button
       onClick={() => onNavigate(target)}
-      className="w-full rounded-[20px] border border-white/10 bg-neutral-900/80 p-5 text-left shadow-[0_14px_40px_rgba(0,0,0,0.18)] transition-transform active:scale-[0.99]"
+      className="w-full rounded-[24px] bg-white/[0.025] px-4 py-5 text-left transition-transform active:scale-[0.99]"
     >
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
@@ -211,8 +249,8 @@ function PredictionDashboard({
         <ProgressRow label="Bracket" current={knockoutCount} total={BRACKET_TOTAL} />
       </div>
 
-      <div className="mt-5 flex items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.035] p-3">
-        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/20">
+      <div className="mt-5 flex items-center gap-3 rounded-[18px] bg-black/10 p-3">
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-black/14">
           {champion && teamFlagsByCode[champion] ? (
             <img src={teamFlagsByCode[champion]} alt={championName} className="h-full w-full object-cover" />
           ) : (
@@ -228,33 +266,6 @@ function PredictionDashboard({
         <span className="material-symbols-outlined text-[20px] text-neutral-700">chevron_right</span>
       </div>
     </button>
-  );
-}
-
-function EventStrip({ timeLeft }: { timeLeft: TimeRemaining | null }) {
-  return (
-    <section className="rounded-[18px] border border-white/8 bg-white/[0.035] px-4 py-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-body text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Kickoff</p>
-          <p className="mt-0.5 text-sm font-bold text-neutral-200">June 11, 2026 · Mexico City</p>
-        </div>
-        <span className="material-symbols-outlined text-[22px] text-primary">stadium</span>
-      </div>
-      {timeLeft ? (
-        <div className="flex items-start justify-between gap-1">
-          <CountdownTile value={timeLeft.days} label="days" />
-          <CountdownTile value={timeLeft.hours} label="hrs" />
-          <CountdownTile value={timeLeft.minutes} label="min" />
-          <CountdownTile value={timeLeft.seconds} label="sec" />
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 py-1">
-          <span className="size-2 rounded-full bg-wc-green animate-pulse" />
-          <span className="font-body text-sm font-bold text-neutral-200">Tournament in progress</span>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -278,17 +289,17 @@ function ClearPredictionsAction({
         onConfirmingChange(true);
         setTimeout(() => onConfirmingChange(false), 3000);
       }}
-      className={`flex w-full items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition-transform active:scale-[0.99] ${
+      className={`flex w-full items-center gap-3 rounded-[22px] px-4 py-3 text-left transition-transform active:scale-[0.99] ${
         confirmingClear
-          ? 'border-wc-red/35 bg-wc-red/10'
-          : 'border-white/8 bg-white/[0.025]'
+          ? 'bg-wc-red/10'
+          : 'bg-white/[0.018]'
       }`}
     >
       <span
         className={`material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-xl border text-[22px] ${
           confirmingClear
-            ? 'border-wc-red/30 bg-wc-red/10 text-wc-red'
-            : 'border-white/8 bg-white/[0.035] text-neutral-500'
+            ? 'border-wc-red/20 bg-wc-red/10 text-wc-red'
+            : 'border-white/5 bg-white/[0.025] text-neutral-500'
         }`}
       >
         {confirmingClear ? 'warning' : 'restart_alt'}
@@ -309,14 +320,16 @@ function AccountPanel({
   user,
   onSignIn,
   onSignOut,
+  onManagePredictions,
 }: {
   user: { display_name?: string | null; email?: string | null } | null;
   onSignIn: () => void;
   onSignOut: () => void;
+  onManagePredictions: () => void;
 }) {
   if (user) {
     return (
-      <section className="rounded-[18px] border border-white/8 bg-white/[0.025] p-4">
+      <section className="rounded-[22px] bg-white/[0.018] p-4">
         <div className="flex items-center gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10">
             <span className="material-symbols-outlined text-[23px] text-primary">person</span>
@@ -332,13 +345,20 @@ function AccountPanel({
             <span className="material-symbols-outlined text-[16px]">logout</span>
             Sign Out
           </button>
+          <button
+            onClick={onManagePredictions}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/6 px-3 py-2 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/10"
+          >
+            <span className="material-symbols-outlined text-[16px]">folder_open</span>
+            Manage
+          </button>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="rounded-[18px] border border-white/8 bg-white/[0.025] p-4">
+    <section className="rounded-[22px] bg-white/[0.018] p-4">
       <div className="flex items-center gap-3">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/8">
           <span className="material-symbols-outlined text-[22px] text-primary">cloud_done</span>
@@ -348,17 +368,24 @@ function AccountPanel({
           <p className="mt-0.5 font-body text-xs font-semibold text-neutral-500">Use a one-time email code.</p>
         </div>
         <button
-          onClick={onSignIn}
+          onClick={onManagePredictions}
           className="shrink-0 rounded-xl border border-white/10 bg-white/6 px-3 py-2 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/10"
         >
-          Sign In
+          Manage
         </button>
       </div>
+      <button
+        onClick={onSignIn}
+        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 font-body text-xs font-black text-primary transition-colors hover:bg-primary/15"
+      >
+        <span className="material-symbols-outlined text-[16px]">login</span>
+        Sign In
+      </button>
     </section>
   );
 }
 
-export default function HomeView({ groupCount, knockoutCount, champion, teamFlagsByCode, onNavigate, onClear }: HomeViewProps) {
+export default function HomeView({ flowState, champion, teamFlagsByCode, onNavigate, onManagePredictions, onClear }: HomeViewProps) {
   const { user, signOut } = useAuth();
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -369,12 +396,13 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
     return () => clearInterval(id);
   }, []);
 
-  const action = getHomeAction(groupCount, knockoutCount, champion);
+  const action = getHomeAction(flowState);
+  const { groupCount, knockoutCount } = flowState;
   const hasPicks = groupCount > 0 || knockoutCount > 0;
 
   return (
-    <div className="flex flex-col gap-3 pt-3 pb-8">
-      <HomeHeader />
+    <div className="flex flex-col gap-3 pt-0 pb-8">
+      <HomeHeader timeLeft={timeLeft} />
 
       <PrimaryAction action={action} onNavigate={onNavigate} />
 
@@ -384,9 +412,8 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
         champion={champion}
         teamFlagsByCode={teamFlagsByCode}
         onNavigate={onNavigate}
+        nextTab={flowState.nextPredictionTab}
       />
-
-      <EventStrip timeLeft={timeLeft} />
 
       {onClear && hasPicks && (
         <ClearPredictionsAction
@@ -400,6 +427,7 @@ export default function HomeView({ groupCount, knockoutCount, champion, teamFlag
         user={user}
         onSignIn={() => setShowAuth(true)}
         onSignOut={() => signOut()}
+        onManagePredictions={onManagePredictions}
       />
 
       {showAuth && (

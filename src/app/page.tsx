@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { groups } from '@/data/teams';
-import { areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/logic/standings';
-import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds, getChampion } from '@/lib/logic/bracket';
-import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer } from '@/lib/client/storage';
+import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds } from '@/lib/logic/bracket';
+import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions, setEditingPrediction } from '@/lib/client/storage';
+import { createPredictionSnapshot, getPredictionFlowState, getSubmittedForSnapshot, markSnapshotSubmitted } from '@/lib/logic/prediction-flow';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/groups/GroupMatchCard';
@@ -20,6 +20,7 @@ import PullToRefresh from '@/components/ui/PullToRefresh';
 import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
 import NewsView from '@/components/news/NewsView';
+import ProfileView from '@/components/profile/ProfileView';
 
 export default function Home() {
   const { user } = useAuth();
@@ -212,16 +213,28 @@ export default function Home() {
   const prevTiesResolvedRef = useRef<boolean | null>(null);
   const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const groupCount = Object.keys(groupPredictions).length;
-  const knockoutCount = Object.keys(knockoutPredictions).length;
-  const tiesResolved = areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
-  const thirdPlaceTieInfo = groupCount >= 72 ? detectThirdPlaceTie(groupPredictions) : null;
-  const thirdPlaceSlotsToFill = thirdPlaceTieInfo?.slotsToFill ?? 0;
-  const thirdPlacePickCount = thirdPlaceTiebreaker.length;
-  const champion = useMemo(
-    () => getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
+  const flowState = useMemo(
+    () => getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
     [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
   );
+  const groupCount = flowState.groupCount;
+  const tiesResolved = flowState.thirdPlaceComplete;
+  const champion = flowState.championCode;
+  const predictionSnapshot = useMemo(
+    () => createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
+    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
+  );
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!mounted) return;
+    setIsSubmitted(getSubmittedForSnapshot(predictionSnapshot));
+  }, [mounted, predictionSnapshot]);
+
+  const navigateTo = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    setTimeout(() => window.scrollTo({ top: 0 }), 0);
+  }, []);
 
   // Auto-advance when user completes the 72nd group prediction
   useEffect(() => {
@@ -259,6 +272,54 @@ export default function Home() {
     }
   }, [tiesResolved, mounted, groupCount, activeTab]);
 
+  const scrollToMatch = useCallback((matchId: string) => {
+    const el = document.getElementById(`group-match-${matchId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  const handleNextIncompleteGroupMatch = useCallback(() => {
+    const next = allGroupMatches.find(match => !groupPredictions[match.id]);
+    if (next) scrollToMatch(next.id);
+  }, [groupPredictions, scrollToMatch]);
+
+  const handleContinueAfterGroup = useCallback((group: string) => {
+    const currentIndex = groups.indexOf(group as typeof groups[number]);
+    const nextGroup = groups.slice(currentIndex + 1).find(g =>
+      allGroupMatches.some(match => match.group === g && !groupPredictions[match.id])
+    );
+    const nextMatch = allGroupMatches.find(match => match.group === nextGroup && !groupPredictions[match.id]);
+    if (nextMatch) scrollToMatch(nextMatch.id);
+  }, [groupPredictions, scrollToMatch]);
+
+  const handleLoadPrediction = useCallback((prediction: SavedPrediction) => {
+    loadFromServer(prediction);
+    const nextGroupPredictions = prediction.group_matches ?? {};
+    const nextKnockoutPredictions = prediction.knockout_matches ?? {};
+    const nextThirdPlaceTiebreaker = prediction.third_place_tiebreaker ?? [];
+    setGroupPredictions(nextGroupPredictions);
+    setKnockoutPredictions(nextKnockoutPredictions);
+    setThirdPlaceTiebreaker(nextThirdPlaceTiebreaker);
+    const nextFlow = getPredictionFlowState(nextGroupPredictions, nextKnockoutPredictions, nextThirdPlaceTiebreaker);
+    navigateTo(nextFlow.nextPredictionTab);
+  }, [navigateTo]);
+
+  const handleNewPrediction = useCallback(() => {
+    resetAllPredictions();
+    localStorage.removeItem('prediction_submitted');
+    localStorage.removeItem('prediction_submitted_snapshot');
+    setGroupPredictions({});
+    setKnockoutPredictions({});
+    setThirdPlaceTiebreaker([]);
+    setEditingPrediction(null);
+    setIsSubmitted(false);
+    navigateTo('groups');
+  }, [navigateTo]);
+
+  const handleNavigateToPredictions = useCallback((view?: TabId) => {
+    navigateTo(view ?? flowState.nextPredictionTab);
+  }, [flowState.nextPredictionTab, navigateTo]);
+
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
       const matches = allGroupMatches
@@ -291,15 +352,10 @@ export default function Home() {
         <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
           <div className="max-w-2xl mx-auto px-3 sm:px-4">
             <StepperBar
-            groupCount={groupCount}
-            knockoutCount={knockoutCount}
-            tiesResolved={tiesResolved}
-            thirdPlacePickCount={thirdPlacePickCount}
-            thirdPlaceSlotsToFill={thirdPlaceSlotsToFill}
-            hasChampion={!!champion}
-            isSubmitted={false}
+            flowState={flowState}
+            isSubmitted={isSubmitted}
             activeTab={activeTab}
-            onNavigate={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
+            onNavigate={navigateTo}
             />
           </div>
         </div>
@@ -308,15 +364,16 @@ export default function Home() {
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
+        activeTab === 'profile' ? 'max-w-md px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
       }`}>
         {activeTab === 'home' && (
           <HomeView
-            groupCount={groupCount}
-            knockoutCount={knockoutCount}
+            flowState={flowState}
             champion={champion ?? null}
             teamFlagsByCode={teamFlagsByCode ?? {}}
-            onNavigate={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
+            onNavigate={navigateTo}
+            onManagePredictions={() => navigateTo('profile')}
             onClear={handleClearGroups}
           />
         )}
@@ -343,6 +400,14 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col gap-1 shrink-0">
                   <button
+                    onClick={handleNextIncompleteGroupMatch}
+                    disabled={groupCount >= 72}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">my_location</span>
+                    Next
+                  </button>
+                  <button
                     onClick={handleRandomizeGroups}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/10 text-neutral-300 font-semibold text-[11px] hover:bg-white/5 transition-colors"
                   >
@@ -364,22 +429,46 @@ export default function Home() {
             <div className="mt-3 space-y-5">
               {matchesByGroup.map(section => (
                 <div key={section.label}>
-                  <div className="py-2 mb-2">
+                  <div className="py-2 mb-2 flex items-center justify-between gap-3">
                     <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
+                    {(() => {
+                      const picked = section.matches.filter(match => groupPredictions[match.id]).length;
+                      const complete = picked === section.matches.length;
+                      const hasLaterIncomplete = groups
+                        .slice(groups.indexOf(section.matches[0].group) + 1)
+                        .some(group => allGroupMatches.some(match => match.group === group && !groupPredictions[match.id]));
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black tabular-nums ${complete ? 'text-wc-green' : 'text-neutral-500'}`}>
+                            {picked}/{section.matches.length}
+                          </span>
+                          {complete && hasLaterIncomplete && (
+                            <button
+                              onClick={() => handleContinueAfterGroup(section.matches[0].group)}
+                              className="flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-bold text-neutral-300 hover:bg-white/[0.10]"
+                            >
+                              Continue
+                              <span className="material-symbols-outlined text-[12px]">arrow_downward</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
                     {section.matches.map(match => (
-                      <GroupMatchCard
-                        key={match.id}
-                        matchId={match.id}
-                        homeCode={match.home}
-                        awayCode={match.away}
-                        result={groupPredictions[match.id]}
-                        onPredict={handleGroupPredict}
-                        liveMatch={liveMatchesByLocalId?.[match.id]}
-                        teamFlagsByCode={teamFlagsByCode}
-                        groupLabel={match.group}
-                      />
+                      <div key={match.id} id={`group-match-${match.id}`} className="scroll-mt-32">
+                        <GroupMatchCard
+                          matchId={match.id}
+                          homeCode={match.home}
+                          awayCode={match.away}
+                          result={groupPredictions[match.id]}
+                          onPredict={handleGroupPredict}
+                          liveMatch={liveMatchesByLocalId?.[match.id]}
+                          teamFlagsByCode={teamFlagsByCode}
+                          groupLabel={match.group}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -394,6 +483,7 @@ export default function Home() {
             predictions={groupPredictions}
             tiebreakerPicks={thirdPlaceTiebreaker}
             onTiebreakerChange={handleTiebreakerChange}
+            onContinue={() => navigateTo('bracket')}
             teamFlagsByCode={teamFlagsByCode}
           />
         )}
@@ -419,6 +509,19 @@ export default function Home() {
 
         {activeTab === 'news' && <NewsView />}
 
+        {activeTab === 'profile' && (
+          <ProfileView
+            groupPredictions={groupPredictions}
+            knockoutPredictions={knockoutPredictions}
+            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+            onNavigate={navigateTo}
+            onNavigateToPredictions={handleNavigateToPredictions}
+            onLoadPrediction={handleLoadPrediction}
+            onNewPrediction={handleNewPrediction}
+            onClearPredictions={handleClearGroups}
+          />
+        )}
+
         {activeTab === 'submit' && (
           <ChampionOverlay
             isPage
@@ -428,13 +531,11 @@ export default function Home() {
             user={user ?? null}
             onDismiss={() => setActiveTab('bracket')}
             onSubmitted={() => {
-              localStorage.setItem('prediction_submitted', 'true');
-              const snapshot = JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker);
-              localStorage.setItem('prediction_submitted_snapshot', snapshot);
+              markSnapshotSubmitted(predictionSnapshot);
+              setIsSubmitted(true);
             }}
             onNavigateToRanking={() => {
-              setActiveTab('ranking');
-              setTimeout(() => window.scrollTo({ top: 0 }), 0);
+              navigateTo('ranking');
             }}
           />
         )}
@@ -443,7 +544,8 @@ export default function Home() {
       {/* Bottom Nav */}
       <BottomNav
         activeTab={activeTab}
-        onTabChange={(tab) => { setActiveTab(tab); setTimeout(() => window.scrollTo({ top: 0 }), 0); }}
+        nextPredictionTab={flowState.nextPredictionTab}
+        onTabChange={navigateTo}
       />
 
       {/* Rate limit toast */}

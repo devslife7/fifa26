@@ -148,36 +148,96 @@ function ProgressRow({ label, current, total }: { label: string; current: number
   );
 }
 
-function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
+function HeroCountUnit({ value, label }: { value: number; label: string }) {
   return (
-    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.24),rgba(249,212,6,0.08)_34%,transparent_68%)] px-1 pt-0 pb-4 text-center">
-      <div className="relative">
-        <img
-          src="/images/fifa_logov2_transparent.png"
-          alt="FIFA World Cup 2026"
-          className="animate-trophy-glow mx-auto h-[360px] max-h-[42vh] w-auto object-contain sm:h-[420px]"
-        />
-        <div className="mx-auto mt-2 max-w-[390px] px-1 py-2">
-          <div className="mb-2 flex items-center justify-between gap-3 text-left">
-            <div>
-              <p className="font-body text-[10px] font-black uppercase tracking-[0.18em] text-neutral-500">Kickoff</p>
-              <p className="mt-0.5 text-sm font-bold text-neutral-200">June 11, 2026</p>
-            </div>
-            <span className="material-symbols-outlined text-[23px] text-primary">stadium</span>
+    <div className="flex min-w-0 flex-col items-center">
+      <span className="font-display text-[34px] font-black leading-none tabular-nums text-neutral-50 drop-shadow-[0_2px_12px_rgba(249,212,6,0.22)] sm:text-[38px]">
+        {String(value).padStart(2, '0')}
+      </span>
+      <span className="mt-1.5 font-body text-[8px] font-black uppercase tracking-[0.24em] text-neutral-500">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
+  const live = !timeLeft;
+
+  return (
+    <section className="relative -mx-3 pb-3 sm:-mx-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.22),rgba(249,212,6,0.05)_40%,transparent_72%)]"
+      />
+
+      <div className="relative mx-auto w-full sm:max-w-[440px]">
+        <div className="relative overflow-hidden shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:rounded-b-[32px]">
+          <img
+            src="/images/promotional-image-hero.png"
+            alt="FIFA World Cup 2026"
+            className="block aspect-[4/5] w-full object-cover object-[50%_32%]"
+          />
+
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"
+          />
+
+          <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 backdrop-blur-md">
+              <span className="size-1 rounded-full bg-primary" />
+              <span className="font-body text-[9px] font-black uppercase tracking-[0.22em] text-neutral-100">
+                FIFA 26 · Edition
+              </span>
+            </span>
+            {live && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
+                <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
+                <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-wc-green">
+                  Live
+                </span>
+              </span>
+            )}
           </div>
-          {timeLeft ? (
-            <div className="grid grid-cols-4 gap-3">
-              <CountdownTile value={timeLeft.days} label="days" featured />
-              <CountdownTile value={timeLeft.hours} label="hrs" featured />
-              <CountdownTile value={timeLeft.minutes} label="min" featured />
-              <CountdownTile value={timeLeft.seconds} label="sec" featured />
+
+        </div>
+
+        <div className="relative -mt-12 px-3 sm:px-4">
+          <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015] px-4 py-3.5 backdrop-blur-2xl shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent"
+            />
+
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-neutral-100">Jun 11, 2026</p>
+                <p className="mt-0.5 font-body text-[11px] font-semibold text-neutral-500">
+                  Estadio Azteca · Mexico City
+                </p>
+              </div>
+              <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-primary/85">
+                {live ? 'In Progress' : 'Counting Down'}
+              </span>
             </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <span className="size-2 rounded-full bg-wc-green animate-pulse" />
-              <span className="font-body text-sm font-bold text-neutral-200">Tournament in progress</span>
-            </div>
-          )}
+
+            {timeLeft ? (
+              <div className="grid grid-cols-4 gap-1">
+                <HeroCountUnit value={timeLeft.days} label="days" />
+                <HeroCountUnit value={timeLeft.hours} label="hrs" />
+                <HeroCountUnit value={timeLeft.minutes} label="min" />
+                <HeroCountUnit value={timeLeft.seconds} label="sec" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+                <span className="font-body text-sm font-bold text-neutral-200">
+                  Tournament in progress
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
@@ -188,18 +248,18 @@ function PrimaryAction({ action, onNavigate }: { action: HomeAction; onNavigate:
   return (
     <button
       onClick={() => onNavigate(action.target)}
-      className="group flex w-full items-center gap-4 rounded-[22px] bg-gradient-to-br from-primary to-primary-dark px-5 py-4 text-left shadow-[0_10px_30px_rgba(249,212,6,0.18)] transition-transform active:scale-[0.985]"
+      className="group flex w-full items-center gap-3 rounded-[18px] bg-gradient-to-br from-primary to-primary-dark px-4 py-2.5 text-left shadow-[0_10px_30px_rgba(249,212,6,0.18)] transition-transform active:scale-[0.985]"
     >
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-black/10">
-        <span className="material-symbols-outlined block translate-x-[1px] translate-y-[1px] text-[24px] leading-none text-black">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-black/10">
+        <span className="material-symbols-outlined block translate-x-[1px] translate-y-[1px] text-[20px] leading-none text-black">
           {action.icon}
         </span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-black leading-tight text-black">{action.label}</span>
-        <span className="mt-0.5 block font-body text-xs font-bold text-black/65">{action.detail}</span>
+        <span className="block text-[15px] font-black leading-tight text-black">{action.label}</span>
+        <span className="block font-body text-[11px] font-bold leading-tight text-black/65">{action.detail}</span>
       </span>
-      <span className="material-symbols-outlined text-[22px] leading-none text-black/60 transition-transform group-hover:translate-x-0.5">
+      <span className="material-symbols-outlined text-[20px] leading-none text-black/60 transition-transform group-hover:translate-x-0.5">
         arrow_forward
       </span>
     </button>

@@ -13,6 +13,7 @@ interface Props {
   teamFlagsByCode?: Record<string, string>;
   readOnly?: boolean;
   groupLabel?: string;
+  focused?: boolean;
 }
 
 
@@ -43,8 +44,8 @@ function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string
     return null;
   }
 
-  const imgClass = size === 'small' ? "w-5 h-3.5 sm:w-6 sm:h-4 object-cover rounded-sm" : "w-7 h-5 sm:w-9 sm:h-6 object-cover rounded-sm";
-  const emojiClass = size === 'small' ? "flex-shrink-0 text-lg sm:text-xl leading-none" : "flex-shrink-0 text-2xl sm:text-3xl leading-none";
+  const imgClass = size === 'small' ? "w-6 h-4 sm:w-7 sm:h-5 object-cover rounded-sm" : "w-9 h-6 sm:w-11 sm:h-7 object-cover rounded-sm";
+  const emojiClass = size === 'small' ? "flex-shrink-0 text-xl sm:text-2xl leading-none" : "flex-shrink-0 text-3xl sm:text-4xl leading-none";
 
   if (flagUrl) {
     return (
@@ -66,7 +67,7 @@ function FlagEmoji({ code, flagUrl, flagEmoji, size = 'normal' }: { code: string
   return <span className={emojiClass}>{flagEmoji}</span>;
 }
 
-export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode, readOnly = false, groupLabel }: Props) {
+export default function GroupMatchCard({ matchId, homeCode, awayCode, result, onPredict, liveMatch, teamFlagsByCode, readOnly = false, groupLabel, focused = false }: Props) {
   const home = teamsByCode[homeCode];
   const away = teamsByCode[awayCode];
 
@@ -111,14 +112,14 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           )}
         </div>
       )}
-      <div className="flex items-stretch gap-1.5 px-2 py-2">
+      <div className="flex items-stretch gap-2 px-2 py-2.5">
 
         {/* Home */}
         <button
-          className={`flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
+          className={`flex-1 min-w-0 flex items-center gap-3 px-4 py-3.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
             selected('home')
-              ? 'bg-primary/20 ring-primary/50 text-white'
-              : `bg-white/5 ring-white/[0.08] text-neutral-400 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
+              ? 'bg-primary/40 ring-primary text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+              : `bg-white/[0.09] ring-white/20 text-neutral-100 ${readOnly ? '' : 'hover:bg-white/[0.14] hover:ring-white/30 hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('home')}
           disabled={readOnly}
@@ -127,44 +128,44 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
             <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="normal" />
           </div>
           <div className="hidden sm:flex items-center">
-            <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="small" />
+            <FlagEmoji code={homeCode} flagUrl={homeFlagUrl} flagEmoji={home.flag} size="normal" />
           </div>
-          <span className="text-sm font-semibold leading-tight truncate text-left font-body">
+          <span className="text-[15px] font-semibold leading-tight truncate text-left font-body">
             {home.name}
           </span>
         </button>
 
         {/* Draw / VS */}
         <button
-          className={`w-12 sm:w-14 flex-shrink-0 flex items-center justify-center rounded-xl ring-1 ring-inset transition-all duration-200 ${
+          className={`w-14 sm:w-16 flex-shrink-0 flex items-center justify-center rounded-xl ring-1 ring-inset transition-all duration-200 ${
             selected('draw')
-              ? 'bg-primary/20 ring-primary/50 text-white'
-              : `bg-white/5 ring-white/[0.08] text-neutral-500 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
+              ? 'bg-primary/40 ring-primary text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+              : `bg-white/[0.09] ring-white/20 text-neutral-200 ${readOnly ? '' : 'hover:bg-white/[0.14] hover:ring-white/30 hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('draw')}
           disabled={readOnly}
         >
-          <span className="font-bold text-xs font-body">TIE</span>
+          <span className="font-bold text-[13px] font-body">TIE</span>
         </button>
 
         {/* Away */}
         <button
-          className={`flex-1 min-w-0 flex items-center justify-end gap-3 px-3 py-2.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
+          className={`flex-1 min-w-0 flex items-center justify-end gap-3 px-4 py-3.5 rounded-xl ring-1 ring-inset transition-all duration-200 ${
             selected('away')
-              ? 'bg-primary/20 ring-primary/50 text-white'
-              : `bg-white/5 ring-white/[0.08] text-neutral-400 ${readOnly ? '' : 'hover:bg-white/[0.08] hover:text-white'}`
+              ? 'bg-primary/40 ring-primary text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+              : `bg-white/[0.09] ring-white/20 text-neutral-100 ${readOnly ? '' : 'hover:bg-white/[0.14] hover:ring-white/30 hover:text-white'}`
           } ${readOnly ? 'cursor-default' : ''}`}
           onClick={() => handlePredict('away')}
           disabled={readOnly}
         >
-          <span className="text-sm font-semibold leading-tight truncate text-right font-body">
+          <span className="text-[15px] font-semibold leading-tight truncate text-right font-body">
             {away.name}
           </span>
           <div className="sm:hidden flex items-center">
             <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} size="normal" />
           </div>
           <div className="hidden sm:flex items-center">
-            <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} size="small" />
+            <FlagEmoji code={awayCode} flagUrl={awayFlagUrl} flagEmoji={away.flag} size="normal" />
           </div>
         </button>
       </div>

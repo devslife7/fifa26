@@ -16,6 +16,7 @@ interface Props {
   teamFlagsByCode?: Record<string, string>;
   readOnly?: boolean;
   venue?: string;
+  focused?: boolean;
 }
 
 function formatMatchDate(utcDate: string): string {
@@ -38,7 +39,7 @@ function TeamFlag({ code, flagUrl, flagEmoji }: { code?: string; flagUrl?: strin
       <img
         src={flagUrl}
         alt=""
-        className="w-7 h-5 object-cover rounded-sm"
+        className="w-10 h-7 object-cover rounded-sm"
         onError={e => {
           const img = e.currentTarget;
           img.style.display = 'none';
@@ -48,7 +49,7 @@ function TeamFlag({ code, flagUrl, flagEmoji }: { code?: string; flagUrl?: strin
       />
     );
   }
-  return <span className="text-xl leading-none">{flagEmoji}</span>;
+  return <span className="text-3xl leading-none">{flagEmoji}</span>;
 }
 
 export default function KnockoutMatchCard({
@@ -62,6 +63,7 @@ export default function KnockoutMatchCard({
   teamFlagsByCode,
   readOnly = false,
   venue,
+  focused = false,
 }: Props) {
   const homePH = isPlaceholder(homeCode);
   const awayPH = isPlaceholder(awayCode);
@@ -115,23 +117,23 @@ export default function KnockoutMatchCard({
 
     return (
       <button
-        className={`w-full flex items-center justify-between px-3 py-3 rounded-full transition-colors ${isSelected
-            ? 'bg-primary/15 ring-1 ring-inset ring-primary/70'
+        className={`w-full flex items-center justify-between px-4 py-4 rounded-full ring-1 ring-inset transition-colors ${isSelected
+            ? 'bg-primary/35 ring-primary text-white'
             : canPredictAction
-              ? 'hover:bg-white/5'
-              : `opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
+              ? 'bg-white/[0.09] ring-white/20 hover:bg-white/[0.14] hover:ring-white/30'
+              : `bg-white/[0.04] ring-white/10 opacity-80 ${readOnly ? 'cursor-default' : 'cursor-default'}`
           }`}
         onClick={() => canPredictAction && onPredict(matchId, side)}
         disabled={!canPredictAction}
       >
         <div className="flex items-center gap-3">
           {(!code?.startsWith('TBD') && team.flag !== '🏳️') && (
-            <span className="flex items-center justify-center min-w-[24px]">
+            <span className="flex items-center justify-center min-w-[36px]">
               <TeamFlag code={code} flagUrl={flagUrl} flagEmoji={team.flag} />
-              {flagUrl && <span className="text-xl leading-none" hidden>{team.flag}</span>}
+              {flagUrl && <span className="text-3xl leading-none" hidden>{team.flag}</span>}
             </span>
           )}
-          <span className={`font-body font-semibold text-sm break-words whitespace-normal text-left ${isSelected ? 'text-white' : 'text-neutral-400'}`}>
+          <span className={`font-body font-semibold text-[15px] break-words whitespace-normal text-left ${isSelected ? 'text-white' : 'text-neutral-100'}`}>
             {team.name}
           </span>
         </div>

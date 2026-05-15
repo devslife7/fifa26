@@ -167,7 +167,7 @@ body {
   background: var(--color-background-dark);
   color: var(--color-neutral-200);
   font-family: var(--font-display);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Custom scrollbar */

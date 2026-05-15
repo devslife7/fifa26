@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TabId, MatchResult, KnockoutResult, SavedPrediction } from '@/types';
+import { TabId, MatchResult, KnockoutResult, SavedPrediction, GroupLetter } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { groups } from '@/data/teams';
 import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds } from '@/lib/logic/bracket';
+import { calculateGroupStandings } from '@/lib/logic/standings';
 import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions, setEditingPrediction } from '@/lib/client/storage';
 import { createPredictionSnapshot, getPredictionFlowState, getSubmittedForSnapshot, markSnapshotSubmitted } from '@/lib/logic/prediction-flow';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/groups/GroupMatchCard';
+import GroupQualifiersStrip from '@/components/groups/GroupQualifiersStrip';
 import ThirdPlaceTable from '@/components/groups/ThirdPlaceTable';
 import BracketView from '@/components/bracket/BracketView';
 import BottomNav from '@/components/layout/BottomNav';
@@ -32,6 +34,34 @@ export default function Home() {
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
+  const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
+  const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [userExpandedGroups, setUserExpandedGroups] = useState<Set<GroupLetter>>(new Set());
+
+  const toggleGroupExpanded = useCallback((group: GroupLetter) => {
+    setUserExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      return next;
+    });
+  }, []);
+
+  const scrollToMatch = useCallback((matchId: string) => {
+    const el = document.getElementById(`group-match-${matchId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  const triggerAutoAdvance = useCallback((matchId: string) => {
+    if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
+    setFocusedMatchId(matchId);
+    requestAnimationFrame(() => scrollToMatch(matchId));
+    focusClearTimerRef.current = setTimeout(() => {
+      setFocusedMatchId(null);
+      focusClearTimerRef.current = null;
+    }, 1200);
+  }, [scrollToMatch]);
 
   // Load local predictions on mount
   useEffect(() => {
@@ -71,10 +101,11 @@ export default function Home() {
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {
       if (prev[matchId] === result) return prev;
+      const wasEmpty = prev[matchId] === undefined;
       const next = { ...prev, [matchId]: result };
 
       // Smart clearing: only clear affected knockout predictions
-      const groupLetter = matchId.split('-')[0] as import('@/types').GroupLetter;
+      const groupLetter = matchId.split('-')[0] as GroupLetter;
       const affectedR32 = getAffectedR32Matches(groupLetter);
       const idsToClear = new Set<string>();
       for (const r32Id of affectedR32) {
@@ -98,9 +129,18 @@ export default function Home() {
       });
 
       setThirdPlaceTiebreaker([]);
+
+      // Auto-advance: when filling an empty slot, focus + scroll to the next undecided match
+      if (wasEmpty) {
+        const nextMatch = allGroupMatches.find(m => !next[m.id]);
+        if (nextMatch) {
+          triggerAutoAdvance(nextMatch.id);
+        }
+      }
+
       return next;
     });
-  }, []);
+  }, [triggerAutoAdvance]);
 
   const handleTiebreakerChange = useCallback((picks: string[]) => {
     setThirdPlaceTiebreaker(picks);
@@ -157,6 +197,7 @@ export default function Home() {
     setGroupPredictions({});
     setKnockoutPredictions({});
     setThirdPlaceTiebreaker([]);
+    setUserExpandedGroups(new Set());
   }, []);
 
   const handleRandomizeBracket = useCallback(() => {
@@ -285,24 +326,9 @@ export default function Home() {
     }
   }, [tiesResolved, mounted, groupCount, activeTab]);
 
-  const scrollToMatch = useCallback((matchId: string) => {
-    const el = document.getElementById(`group-match-${matchId}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, []);
-
   const handleNextIncompleteGroupMatch = useCallback(() => {
     const next = allGroupMatches.find(match => !groupPredictions[match.id]);
     if (next) scrollToMatch(next.id);
-  }, [groupPredictions, scrollToMatch]);
-
-  const handleContinueAfterGroup = useCallback((group: string) => {
-    const currentIndex = groups.indexOf(group as typeof groups[number]);
-    const nextGroup = groups.slice(currentIndex + 1).find(g =>
-      allGroupMatches.some(match => match.group === g && !groupPredictions[match.id])
-    );
-    const nextMatch = allGroupMatches.find(match => match.group === nextGroup && !groupPredictions[match.id]);
-    if (nextMatch) scrollToMatch(nextMatch.id);
   }, [groupPredictions, scrollToMatch]);
 
   const handleLoadPrediction = useCallback((prediction: SavedPrediction) => {
@@ -404,88 +430,93 @@ export default function Home() {
         {activeTab === 'groups' && (
           <div>
             <div className="mt-4">
-              <div className="flex items-start justify-between gap-2 mb-0">
-                <div>
-                  <h2 className="text-[21px] font-black text-white">Group Stage</h2>
-                  {groupCount < 72 && (
-                    <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mt-0.5">Tap a team or TIE to predict each match</p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <button
-                    onClick={handleNextIncompleteGroupMatch}
-                    disabled={groupCount >= 72}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">my_location</span>
-                    Next
-                  </button>
-                  <button
-                    onClick={handleRandomizeGroups}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/10 text-neutral-300 font-semibold text-[11px] hover:bg-white/5 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">casino</span>
-                    Randomize
-                  </button>
-                  <button
-                    onClick={handleClearGroups}
-                    disabled={groupCount === 0}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-md border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">backspace</span>
-                    Clear
-                  </button>
-                </div>
+              <h2 className="text-[21px] font-black text-white">Group Stage</h2>
+              {groupCount === 0 && (
+                <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mt-0.5">Tap a team or TIE to predict each match</p>
+              )}
+              <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                <button
+                  onClick={handleNextIncompleteGroupMatch}
+                  disabled={groupCount >= 72}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-[13px]">my_location</span>
+                  Next
+                </button>
+                <button
+                  onClick={handleRandomizeGroups}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-300 font-semibold text-[11px] hover:bg-white/5 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[13px]">casino</span>
+                  Randomize
+                </button>
+                <button
+                  onClick={handleClearGroups}
+                  disabled={groupCount === 0}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-[13px]">backspace</span>
+                  Clear
+                </button>
               </div>
             </div>
 
             <div className="mt-3 space-y-5">
-              {matchesByGroup.map(section => (
-                <div key={section.label}>
-                  <div className="py-2 mb-2 flex items-center justify-between gap-3">
-                    <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
-                    {(() => {
-                      const picked = section.matches.filter(match => groupPredictions[match.id]).length;
-                      const complete = picked === section.matches.length;
-                      const hasLaterIncomplete = groups
-                        .slice(groups.indexOf(section.matches[0].group) + 1)
-                        .some(group => allGroupMatches.some(match => match.group === group && !groupPredictions[match.id]));
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-black tabular-nums ${complete ? 'text-wc-green' : 'text-neutral-500'}`}>
-                            {picked}/{section.matches.length}
-                          </span>
-                          {complete && hasLaterIncomplete && (
-                            <button
-                              onClick={() => handleContinueAfterGroup(section.matches[0].group)}
-                              className="flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-bold text-neutral-300 hover:bg-white/[0.10]"
-                            >
-                              Continue
-                              <span className="material-symbols-outlined text-[12px]">arrow_downward</span>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
-                    {section.matches.map(match => (
-                      <div key={match.id} id={`group-match-${match.id}`} className="scroll-mt-32">
-                        <GroupMatchCard
-                          matchId={match.id}
-                          homeCode={match.home}
-                          awayCode={match.away}
-                          result={groupPredictions[match.id]}
-                          onPredict={handleGroupPredict}
-                          liveMatch={liveMatchesByLocalId?.[match.id]}
-                          teamFlagsByCode={teamFlagsByCode}
-                          groupLabel={match.group}
-                        />
+              {matchesByGroup.map(section => {
+                const groupLetter = section.matches[0].group;
+                const picked = section.matches.filter(match => groupPredictions[match.id]).length;
+                const complete = picked === section.matches.length;
+                const collapsed = complete && !userExpandedGroups.has(groupLetter);
+                return (
+                  <div key={section.label}>
+                    <div className="py-2 mb-2 flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">{section.label}</span>
+                      <span className={`text-[10px] font-black tabular-nums ${complete ? 'text-wc-green' : 'text-neutral-500'}`}>
+                        {picked}/{section.matches.length}
+                      </span>
+                    </div>
+                    {collapsed ? (
+                      <GroupQualifiersStrip
+                        group={groupLetter}
+                        standings={calculateGroupStandings(groupLetter, groupPredictions)}
+                        expanded={false}
+                        onToggle={() => toggleGroupExpanded(groupLetter)}
+                        teamFlagsByCode={teamFlagsByCode}
+                        thirdPlaceRelevant={flowState.thirdPlaceRequired}
+                      />
+                    ) : (
+                      <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
+                        {complete && (
+                          <button
+                            onClick={() => toggleGroupExpanded(groupLetter)}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-1.5 bg-white/[0.03] hover:bg-white/[0.06] transition-colors border-b border-white/5"
+                          >
+                            <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                              Group {groupLetter} · Complete
+                            </span>
+                            <span className="material-symbols-outlined text-[18px] text-neutral-400">expand_less</span>
+                          </button>
+                        )}
+                        {section.matches.map(match => (
+                          <div key={match.id} id={`group-match-${match.id}`} className="scroll-mt-32">
+                            <GroupMatchCard
+                              matchId={match.id}
+                              homeCode={match.home}
+                              awayCode={match.away}
+                              result={groupPredictions[match.id]}
+                              onPredict={handleGroupPredict}
+                              focused={focusedMatchId === match.id}
+                              liveMatch={liveMatchesByLocalId?.[match.id]}
+                              teamFlagsByCode={teamFlagsByCode}
+                              groupLabel={match.group}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
           </div>

@@ -31,7 +31,18 @@ const roundLabels: Record<KnockoutRound, string> = {
 
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
+  const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
+  const pendingAdvanceRef = useRef<string | null>(null);
+  const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+
+  const handleMatchPredict = useCallback((matchId: string, result: KnockoutResult) => {
+    const isNewPick = !knockoutPredictions[matchId];
+    if (isNewPick && !readOnly) {
+      pendingAdvanceRef.current = matchId;
+    }
+    onPredict(matchId, result);
+  }, [knockoutPredictions, onPredict, readOnly]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -218,6 +229,29 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     return null;
   })();
 
+  // Per-pick auto-advance: scroll to next open match in active round
+  useEffect(() => {
+    if (!pendingAdvanceRef.current) return;
+    pendingAdvanceRef.current = null;
+
+    const currentMatches = matchesByRound[activeRound] ?? [];
+    const nextInRound = currentMatches.find(isMatchOpen);
+    if (!nextInRound) return; // let round-complete handler take over
+
+    const advanceTimer = setTimeout(() => {
+      setFocusedMatchId(nextInRound.id);
+      matchRefs.current[nextInRound.id]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
+      focusClearTimerRef.current = setTimeout(() => {
+        setFocusedMatchId(null);
+        focusClearTimerRef.current = null;
+      }, 1200);
+    }, 150);
+
+    return () => clearTimeout(advanceTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [knockoutPredictions]);
+
   const handleNextOpenMatch = () => {
     if (!nextOpenMatch) return;
     const round = nextOpenMatch.round;
@@ -327,7 +361,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                         homeCode={match.home}
                         awayCode={match.away}
                         result={match.result}
-                        onPredict={onPredict}
+                        onPredict={handleMatchPredict}
+                        focused={focusedMatchId === match.id}
                         liveMatch={liveMatches?.[match.id]}
                         teamFlagsByCode={teamFlagsByCode}
                         readOnly={readOnly}
@@ -357,7 +392,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                             homeCode={pair.first.home}
                             awayCode={pair.first.away}
                             result={pair.first.result}
-                            onPredict={onPredict}
+                            onPredict={handleMatchPredict}
+                            focused={focusedMatchId === pair.first.id}
                             liveMatch={liveMatches?.[pair.first.id]}
                             teamFlagsByCode={teamFlagsByCode}
                             readOnly={readOnly}
@@ -370,7 +406,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                             homeCode={pair.second.home}
                             awayCode={pair.second.away}
                             result={pair.second.result}
-                            onPredict={onPredict}
+                            onPredict={handleMatchPredict}
+                            focused={focusedMatchId === pair.second.id}
                             liveMatch={liveMatches?.[pair.second.id]}
                             teamFlagsByCode={teamFlagsByCode}
                             readOnly={readOnly}

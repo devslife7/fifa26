@@ -5,6 +5,7 @@ import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
+import ScoringExplainer from '@/components/scoring/ScoringExplainer';
 
 interface Props {
   groupPredictions: Record<string, MatchResult>;
@@ -323,6 +324,12 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
           </div>
         </div>
       </div>
+
+      {!readOnly && (
+        <div className="px-4 pt-4">
+          <ScoringExplainer variant="knockout-only" />
+        </div>
+      )}
 
       {/* Horizontal Scrollable Bracket */}
       <div

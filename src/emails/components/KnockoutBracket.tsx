@@ -2,6 +2,7 @@ import * as React from 'react';
 import type { KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
 import { generateBracket } from '@/lib/logic/bracket';
 import { tn, tf } from '@/lib/services/email-helpers';
+import { emailTheme as t } from '../theme';
 
 type Variant = 'normal' | 'bronze' | 'gold';
 
@@ -12,31 +13,55 @@ interface KoMatchProps {
   variant: Variant;
 }
 
+function variantWinColor(variant: Variant): string {
+  if (variant === 'gold') return '#b8860b';
+  if (variant === 'bronze') return '#8a4a1a';
+  return '#000000';
+}
+
+function variantArrowColor(variant: Variant): string {
+  if (variant === 'gold') return '#b8860b';
+  if (variant === 'bronze') return t.bronze;
+  return t.winGreen;
+}
+
+function variantBorder(variant: Variant): string {
+  if (variant === 'gold') return 'rgba(212,160,23,0.3)';
+  if (variant === 'bronze') return 'rgba(205,127,50,0.25)';
+  return 'rgba(0,0,0,0.1)';
+}
+
+function variantBg(variant: Variant): string {
+  if (variant === 'gold') return 'rgba(212,160,23,0.08)';
+  if (variant === 'bronze') return 'rgba(205,127,50,0.06)';
+  return 'transparent';
+}
+
+function variantFontSize(variant: Variant): string {
+  if (variant === 'gold') return '15px';
+  return '11px';
+}
+
+function variantPad(variant: Variant): string {
+  if (variant === 'gold') return '7px 12px';
+  return '4px 10px';
+}
+
 function KoMatch({ homeCode, awayCode, result, variant }: KoMatchProps) {
   const isHome = result === 'home';
   const isAway = result === 'away';
-
-  const winBg =
-    variant === 'gold'
-      ? 'rgba(212,160,23,0.15)'
-      : variant === 'bronze'
-        ? 'rgba(205,127,50,0.1)'
-        : 'rgba(34,197,94,0.08)';
-  const winColor = variant === 'gold' ? '#b8860b' : '#1a1a1a';
+  const winColor = variantWinColor(variant);
   const loseColor = 'rgba(0,0,0,0.3)';
-  const border =
-    variant === 'gold'
-      ? 'rgba(212,160,23,0.3)'
-      : variant === 'bronze'
-        ? 'rgba(205,127,50,0.2)'
-        : 'rgba(0,0,0,0.1)';
-  const fs = variant === 'gold' ? '13px' : '11px';
-  const pad = variant === 'gold' ? '5px 10px' : '3px 8px';
+  const arrowColor = variantArrowColor(variant);
+  const fs = variantFontSize(variant);
+  const pad = variantPad(variant);
 
   const homeFlag = tf(homeCode);
   const awayFlag = tf(awayCode);
   const homeLabel = homeCode ? tn(homeCode) : 'TBD';
   const awayLabel = awayCode ? tn(awayCode) : 'TBD';
+
+  const arrow = isHome ? '▶' : isAway ? '◀' : '·';
 
   return (
     <table
@@ -44,32 +69,51 @@ function KoMatch({ homeCode, awayCode, result, variant }: KoMatchProps) {
       cellPadding={0}
       cellSpacing={0}
       role="presentation"
-      style={{ borderRadius: '6px', overflow: 'hidden', border: `1px solid ${border}`, marginBottom: '4px' }}
+      style={{
+        borderRadius: '6px',
+        overflow: 'hidden',
+        border: `1px solid ${variantBorder(variant)}`,
+        backgroundColor: variantBg(variant),
+        marginBottom: '2px',
+      }}
     >
       <tbody>
         <tr>
           <td
+            align="right"
             style={{
               padding: pad,
               fontSize: fs,
-              backgroundColor: isHome ? winBg : 'transparent',
               fontWeight: isHome ? 700 : 400,
               color: isHome ? winColor : loseColor,
-              borderBottom: '1px solid rgba(0,0,0,0.06)',
+              whiteSpace: 'nowrap',
+              width: '45%',
             }}
           >
-            {homeFlag ? <>{homeFlag}&nbsp;</> : null}
             {homeLabel}
+            {homeFlag ? <>&nbsp;{homeFlag}</> : null}
           </td>
-        </tr>
-        <tr>
           <td
+            align="center"
+            style={{
+              padding: pad,
+              fontSize: variant === 'gold' ? '13px' : '10px',
+              fontWeight: 700,
+              color: arrowColor,
+              width: '10%',
+            }}
+          >
+            {arrow}
+          </td>
+          <td
+            align="left"
             style={{
               padding: pad,
               fontSize: fs,
-              backgroundColor: isAway ? winBg : 'transparent',
               fontWeight: isAway ? 700 : 400,
               color: isAway ? winColor : loseColor,
+              whiteSpace: 'nowrap',
+              width: '45%',
             }}
           >
             {awayFlag ? <>{awayFlag}&nbsp;</> : null}
@@ -110,7 +154,7 @@ export function KnockoutBracket({ groupPredictions, knockoutPredictions, thirdPl
 
     sections.push(
       <tr key={`${round}-h`}>
-        <td style={{ padding: '12px 32px 4px' }}>
+        <td style={{ padding: '8px 32px 4px' }}>
           <div
             style={{
               fontSize: '10px',
@@ -132,7 +176,7 @@ export function KnockoutBracket({ groupPredictions, knockoutPredictions, thirdPl
   return (
     <>
       <tr>
-        <td style={{ padding: '24px 32px 8px' }}>
+        <td style={{ padding: '16px 32px 6px' }}>
           <div
             style={{
               fontSize: '11px',
@@ -151,13 +195,7 @@ export function KnockoutBracket({ groupPredictions, knockoutPredictions, thirdPl
   );
 }
 
-function RoundBody({
-  matches,
-  variant,
-}: {
-  matches: KnockoutMatch[];
-  variant: Variant;
-}) {
+function RoundBody({ matches, variant }: { matches: KnockoutMatch[]; variant: Variant }) {
   if (matches.length > 2) {
     const half = Math.ceil(matches.length / 2);
     const left = matches.slice(0, half);
@@ -225,7 +263,7 @@ function RoundBody({
         <table width="100%" cellPadding={0} cellSpacing={0} role="presentation">
           <tbody>
             <tr>
-              <td width="49%">
+              <td>
                 <KoMatch
                   homeCode={matches[0].home}
                   awayCode={matches[0].away}
@@ -233,7 +271,6 @@ function RoundBody({
                   variant={variant}
                 />
               </td>
-              <td width="51%"></td>
             </tr>
           </tbody>
         </table>

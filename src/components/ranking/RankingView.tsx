@@ -7,6 +7,7 @@ import { allGroupMatches } from '@/data/matches';
 import { detectThirdPlaceTie } from '@/lib/logic/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from './UserPredictionsModal';
+import ScoringExplainer from '@/components/scoring/ScoringExplainer';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p1', display_name: 'Mateo Hernandez', total_points: 87, champion_code: 'BR', calculated_at: '', position_change: 0 },
@@ -379,39 +380,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
         {/* How to Score Points */}
         <section className="mt-10 md:mt-0 mb-4 md:sticky md:top-20 md:self-start">
-          <div className="relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-neutral-900/80 to-background-dark">
-            {/* Subtle gold accent line at top */}
-            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-
-            <div className="px-4 pt-4 pb-1">
-              <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase text-neutral-500 font-body">Scoring</h2>
-            </div>
-
-            <div className="px-4 pb-4 pt-2">
-              {[
-                { round: 'Group Stage', pts: 1 },
-                { round: 'Round of 32', pts: 2 },
-                { round: 'Round of 16', pts: 3 },
-                { round: 'Quarterfinals', pts: 4 },
-                { round: 'Semifinals', pts: 5 },
-                { round: 'Third Place', pts: 3 },
-                { round: 'Final', pts: 6 },
-                { round: 'Champion', pts: 10 },
-              ].map((row, i) => (
-                <div key={row.round} className="flex items-center justify-between py-[7px] border-b border-white/[0.04] last:border-0">
-                  <span className="text-[13px] font-medium text-neutral-400 font-body">{row.round}</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex gap-px">
-                      {Array.from({ length: row.pts }).map((_, j) => (
-                        <div key={j} className="w-[3px] h-[10px] rounded-full bg-primary/30" />
-                      ))}
-                    </div>
-                    <span className="text-[13px] font-black tabular-nums text-neutral-200 w-5 text-right">+{row.pts}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ScoringExplainer variant="full" />
         </section>
       </div>
 

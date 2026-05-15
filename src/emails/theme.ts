@@ -10,6 +10,9 @@ export const emailTheme = {
   inkLine: 'rgba(0,0,0,0.08)',
   bronze: '#cd7f32',
   silver: '#c0c0c0',
+  winTint: 'rgba(34,197,94,0.10)',
+  tieTint: 'rgba(212,160,23,0.08)',
+  winGreen: '#16a34a',
   fontFamily:
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 } as const;

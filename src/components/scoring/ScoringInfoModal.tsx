@@ -39,16 +39,6 @@ export default function ScoringInfoModal({ onClose }: Props) {
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
           <ScoringExplainer variant="knockout-only" surface="plain" />
         </div>
-
-        <div className="border-t border-white/10 px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-black text-black transition-colors hover:bg-primary/90"
-          >
-            Got it
-          </button>
-        </div>
       </div>
     </div>
   );

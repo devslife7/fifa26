@@ -53,7 +53,7 @@ export default function KnockoutMatchCard({
   teamFlagsByCode,
   readOnly = false,
   venue,
-  focused = false,
+  focused: _focused = false,
 }: Props) {
   const homePH = isPlaceholder(homeCode);
   const awayPH = isPlaceholder(awayCode);
@@ -132,7 +132,7 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${focused ? 'bracket-match-focused' : ''} ${!canPredict ? 'opacity-80' : ''}`}>
+    <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${!canPredict ? 'opacity-80' : ''}`}>
       <div className="px-3 pt-1.5 flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">{matchId}</span>
         {liveMatch?.utcDate && (

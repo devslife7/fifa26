@@ -350,13 +350,15 @@ function ClearPredictionsAction({
       }`}
     >
       <span
-        className={`material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-xl border text-[22px] ${
+        className={`flex size-10 shrink-0 items-center justify-center rounded-xl border ${
           confirmingClear
             ? 'border-wc-red/20 bg-wc-red/10 text-wc-red'
             : 'border-white/5 bg-white/[0.025] text-neutral-500'
         }`}
       >
-        {confirmingClear ? 'warning' : 'restart_alt'}
+        <span className="material-symbols-outlined block translate-y-[1px] text-[22px] leading-none">
+          {confirmingClear ? 'warning' : 'restart_alt'}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className={`block text-sm font-black ${confirmingClear ? 'text-wc-red' : 'text-neutral-100'}`}>

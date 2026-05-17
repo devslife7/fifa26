@@ -19,6 +19,7 @@ const KNOCKOUT_ROWS: Row[] = [
   { label: 'Semifinals', pts: KNOCKOUT_POINTS.SF },
   { label: 'Third Place', pts: KNOCKOUT_POINTS['3RD'] },
   { label: 'Final', pts: KNOCKOUT_POINTS.FIN },
+  { label: 'Champion Bonus', pts: CHAMPION_POINTS },
 ];
 
 export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
@@ -26,6 +27,18 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
     variant === 'full'
       ? [{ label: 'Group Stage', pts: GROUP_POINTS }, ...KNOCKOUT_ROWS]
       : KNOCKOUT_ROWS;
+  const intro =
+    variant === 'full'
+      ? (
+        <>
+          <span className="font-bold text-white">How to earn points.</span> Group matches give +{GROUP_POINTS} for each correct result: home win, draw, or away win. In knockout rounds, you earn the round&apos;s points when the team you picked to advance from that match actually advances in real life.
+        </>
+      )
+      : (
+        <>
+          <span className="font-bold text-white">How knockout points work.</span> Your bracket pick is a bet on which team advances. If the team you picked to win a match actually makes it past that round in real life, you earn the round&apos;s points — the opponent in your bracket doesn&apos;t have to match reality.
+        </>
+      );
 
   const content = (
     <>
@@ -37,7 +50,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
 
       <div className={surface === 'card' ? 'px-4 pt-2 pb-3' : 'pt-2 pb-3'}>
         <p className="text-[13px] leading-relaxed text-neutral-300 font-body">
-          <span className="font-bold text-white">How knockout points work.</span> Your bracket pick is a bet on which team advances. If the team you picked to win a match actually makes it past that round in real life, you earn the round&apos;s points — the opponent in your bracket doesn&apos;t have to match reality.
+          {intro}
         </p>
       </div>
 
@@ -64,7 +77,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
 
       <div className={`${surface === 'card' ? 'px-4 pt-1 pb-4' : 'pt-3'} border-t border-white/[0.04]`}>
         <p className="text-[12px] leading-relaxed text-neutral-400 font-body">
-          <span className="font-bold text-primary">Champion bonus +{CHAMPION_POINTS}</span> if your predicted champion wins the tournament. All-or-nothing — no partial credit for reaching the Final or Semifinal.
+          Champion bonus is all-or-nothing: your predicted champion must win the tournament.
         </p>
       </div>
     </>

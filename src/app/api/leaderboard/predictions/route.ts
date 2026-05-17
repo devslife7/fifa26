@@ -6,9 +6,8 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('prediction_number, name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, is_approved, profiles!left(display_name)')
+    .select('prediction_number, name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, created_at, updated_at, is_approved, profiles!left(display_name)')
     .eq('is_complete', true)
-    .eq('is_approved', true)
     .order('completed_at', { ascending: true });
 
   if (error) {
@@ -27,6 +26,8 @@ export async function GET() {
       knockout_matches: row.knockout_matches ?? {},
       third_place_tiebreaker: row.third_place_tiebreaker ?? null,
       is_approved: row.is_approved ?? false,
+      created_at: row.created_at ?? null,
+      updated_at: row.updated_at ?? null,
     };
   });
 

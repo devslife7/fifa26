@@ -90,12 +90,12 @@ export default function KnockoutMatchCard({
 
     if (!team) {
       return (
-        <div className="w-full flex items-center justify-between p-2 rounded-lg bg-white/10 animate-pulse">
+        <div className="w-full flex items-center justify-between rounded-xl bg-white/[0.035] px-3 py-3 ring-1 ring-inset ring-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 flex items-center justify-center bg-primary rounded-full">
-              <span className="material-symbols-outlined text-[16px] font-bold">lock</span>
+            <div className="flex size-7 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+              <span className="material-symbols-outlined block translate-y-[1px] text-[17px] leading-none">lock</span>
             </div>
-            <span className="font-bold text-sm text-neutral-400 italic">TBD</span>
+            <span className="font-body text-sm font-black italic tracking-wide text-neutral-500">TBD</span>
           </div>
         </div>
       );

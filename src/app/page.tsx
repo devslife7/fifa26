@@ -550,7 +550,6 @@ export default function Home() {
             predictions={groupPredictions}
             tiebreakerPicks={thirdPlaceTiebreaker}
             onTiebreakerChange={handleTiebreakerChange}
-            onContinue={() => navigateTo('bracket')}
             teamFlagsByCode={teamFlagsByCode}
           />
         )}

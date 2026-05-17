@@ -1,25 +1,25 @@
 'use client';
 
 import { MatchResult } from '@/types';
-import { getThirdPlaceRanking, detectThirdPlaceTie, ThirdPlaceEntry } from '@/lib/logic/standings';
+import { getThirdPlaceRanking, detectThirdPlaceTie } from '@/lib/logic/standings';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {
   predictions: Record<string, MatchResult>;
   tiebreakerPicks: string[];
   onTiebreakerChange: (picks: string[]) => void;
-  onContinue?: () => void;
   teamFlagsByCode?: Record<string, string>;
 }
 
-export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, onContinue, teamFlagsByCode }: Props) {
+export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
   const ranking = getThirdPlaceRanking(predictions);
   const tieInfo = detectThirdPlaceTie(predictions);
   const hasTie = tieInfo.slotsToFill > 0;
-  const tiebreakerComplete = hasTie && tiebreakerPicks.length === tieInfo.slotsToFill;
-
-  const tiedTeamCodes = new Set(tieInfo.tied.map(e => e.team));
-  const lockedInCodes = new Set(tieInfo.lockedIn.map(e => e.team));
+  const selectableTeams = hasTie ? tieInfo.tied : [];
+  const selectableTeamCodes = new Set(selectableTeams.map(entry => entry.team));
+  const selectedCount = tiebreakerPicks.filter(teamCode => selectableTeamCodes.has(teamCode)).length;
+  const remainingCount = Math.max(tieInfo.slotsToFill - selectedCount, 0);
+  const tiebreakerComplete = hasTie && selectedCount === tieInfo.slotsToFill;
 
   const handleToggle = (teamCode: string) => {
     const current = new Set(tiebreakerPicks);
@@ -31,28 +31,17 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
     onTiebreakerChange(Array.from(current));
   };
 
-  const getStatus = (entry: ThirdPlaceEntry) => {
-    if (lockedInCodes.has(entry.team)) {
-      return 'advances';
-    }
-    if (tiedTeamCodes.has(entry.team)) {
-      return 'tied';
-    }
-    return 'eliminated';
-  };
-
-  // Build display order: lockedIn, then tied, then eliminated
-  const displayOrder = hasTie
-    ? [...tieInfo.lockedIn, ...tieInfo.tied, ...tieInfo.eliminated]
-    : ranking;
-
   return (
     <div className="mt-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Third-Place Teams</h2>
+          <h2 className="text-[26px] font-black leading-tight text-white tracking-tight">
+            {hasTie ? `Pick ${tieInfo.slotsToFill} Third-Place Teams` : 'Third-Place Qualifiers'}
+          </h2>
           <p className="text-neutral-500 text-sm mt-1">
-            Top 8 of 12 third-place teams advance to the Round of 32
+            {hasTie
+              ? `${tieInfo.tied.length} teams are tied on ${tieInfo.tied[0]?.standing.points} points. Your picks fill the remaining Round of 32 spots.`
+              : 'Top 8 of 12 third-place teams advance to the Round of 32.'}
           </p>
         </div>
       </div>
@@ -66,93 +55,88 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
         </div>
       ) : (
         <>
-          {hasTie && (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 mb-4 text-center shadow-sm">
-              <p className="text-sm font-bold text-white">
-                {tiebreakerComplete ? 'Tiebreaker complete' : `Tiebreaker: Select ${tieInfo.slotsToFill} of ${tieInfo.tied.length} teams`}
-              </p>
-              <p className="text-xs text-neutral-400 mt-1">
-                {tiebreakerComplete
-                  ? 'Your selected third-place teams will feed into the Round of 32.'
-                  : `These teams are tied on ${tieInfo.tied[0]?.standing.points} points. Pick which ones advance.`}
-              </p>
+          <div className="mb-4 rounded-2xl border border-white/10 bg-neutral-900 p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-neutral-500">Tiebreaker Progress</p>
+                <p className="mt-1 text-sm font-bold text-neutral-200">
+                  {hasTie
+                    ? tiebreakerComplete
+                      ? 'Complete. These teams will feed into the Round of 32.'
+                      : `${remainingCount} ${remainingCount === 1 ? 'pick' : 'picks'} remaining.`
+                    : 'No tiebreaker picks are needed.'}
+                </p>
+              </div>
+              {hasTie && (
+                <span className="shrink-0 rounded-2xl bg-primary px-5 py-3 text-[32px] font-black leading-none text-black shadow-[0_0_0_1px_rgba(0,0,0,0.15)_inset]">
+                  {selectedCount}/{tieInfo.slotsToFill}
+                </span>
+              )}
             </div>
-          )}
+          </div>
 
-          <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
-            <table className="w-full text-sm table-fixed">
-              <thead className="bg-white/5 text-neutral-400 font-bold border-b border-white/5">
-                <tr>
-                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-6 sm:w-10 text-[10px] sm:text-sm">#</th>
-                  <th className="text-left py-3 px-1 sm:py-4 sm:px-2 text-[10px] sm:text-sm">Team</th>
-                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-9 sm:w-14 text-[10px] sm:text-sm">Grp</th>
-                  <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-7 sm:w-12 text-[10px] sm:text-sm">Pts</th>
-                  <th className="text-center py-3 px-1 sm:py-4 sm:px-2 w-20 sm:w-28 text-[10px] sm:text-sm">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {displayOrder.map((entry, i) => {
-                  const team = teamsByCode[entry.team];
-                  if (!team) return null;
-                  const status = getStatus(entry);
-                  const isSelected = tiebreakerPicks.includes(entry.team);
-                  const isTied = status === 'tied';
-                  const isAdvances = status === 'advances';
-                  const isEliminated = status === 'eliminated';
+          {selectableTeams.length > 0 && (
+            <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
+              <table className="w-full text-sm table-fixed">
+                <thead className="bg-white/5 text-neutral-400 font-bold border-b border-white/5">
+                  <tr>
+                    <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-6 sm:w-10 text-[10px] sm:text-sm">#</th>
+                    <th className="text-left py-3 px-1 sm:py-4 sm:px-2 text-[10px] sm:text-sm">Team</th>
+                    <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-9 sm:w-14 text-[10px] sm:text-sm">Grp</th>
+                    <th className="text-center py-3 px-0.5 sm:py-4 sm:px-2 w-7 sm:w-12 text-[10px] sm:text-sm">Pts</th>
+                    <th className="text-center py-3 px-1 sm:py-4 sm:px-2 w-20 sm:w-28 text-[10px] sm:text-sm">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {selectableTeams.map((entry, i) => {
+                    const team = teamsByCode[entry.team];
+                    if (!team) return null;
+                    const isSelected = tiebreakerPicks.includes(entry.team);
 
-                  return (
-                    <tr
-                      key={entry.team}
-                      className={`
-                        transition-all duration-200 relative
-                        ${isAdvances ? 'bg-wc-green/10' : ''}
-                        ${isTied && isSelected ? 'bg-white/10 shadow-[inset_4px_0_0_0_var(--color-primary)]' : ''}
-                        ${isTied && !isSelected ? 'hover:bg-white/5 cursor-pointer' : ''}
-                        ${isEliminated ? 'opacity-75' : ''}
-                      `}
-                      onClick={isTied ? () => handleToggle(entry.team) : undefined}
-                    >
-                      <td className={`py-3 px-0.5 sm:py-4 sm:px-2 text-center font-bold text-[11px] sm:text-sm ${isTied && isSelected ? 'text-white' : 'text-neutral-400'}`}>{i + 1}</td>
-                      <td className="py-3 px-1 sm:py-4 sm:px-2 min-w-0">
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                          {teamFlagsByCode?.[entry.team] ? (
-                            <span className="flex-shrink-0 inline-flex">
-                              <img
-                                src={teamFlagsByCode[entry.team]}
-                                alt=""
-                                className="w-9 h-6 sm:w-11 sm:h-7 object-cover rounded-sm"
-                                onError={e => {
-                                  e.currentTarget.style.display = 'none';
-                                  (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
-                                }}
-                              />
-                              <span className="text-3xl sm:text-4xl leading-none" hidden>{team.flag}</span>
+                    return (
+                      <tr
+                        key={entry.team}
+                        className={`
+                          relative cursor-pointer transition-all duration-200
+                          ${isSelected ? 'bg-white/10 shadow-[inset_4px_0_0_0_var(--color-primary)]' : 'hover:bg-white/5'}
+                        `}
+                        onClick={() => handleToggle(entry.team)}
+                      >
+                        <td className={`py-3 px-0.5 sm:py-4 sm:px-2 text-center font-bold text-[11px] sm:text-sm ${isSelected ? 'text-white' : 'text-neutral-400'}`}>{i + 1}</td>
+                        <td className="py-3 px-1 sm:py-4 sm:px-2 min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                            {teamFlagsByCode?.[entry.team] ? (
+                              <span className="flex-shrink-0 inline-flex">
+                                <img
+                                  src={teamFlagsByCode[entry.team]}
+                                  alt=""
+                                  className="w-9 h-6 sm:w-11 sm:h-7 object-cover rounded-sm"
+                                  onError={e => {
+                                    e.currentTarget.style.display = 'none';
+                                    (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
+                                  }}
+                                />
+                                <span className="text-3xl sm:text-4xl leading-none" hidden>{team.flag}</span>
+                              </span>
+                            ) : (
+                              <span className="text-3xl sm:text-4xl leading-none flex-shrink-0">{team.flag}</span>
+                            )}
+                            <span className="font-body font-semibold text-[13px] sm:text-[15px] leading-tight truncate min-w-0 text-white">
+                              {team.name}
                             </span>
-                          ) : (
-                            <span className="text-3xl sm:text-4xl leading-none flex-shrink-0">{team.flag}</span>
-                          )}
-                          <span className={`font-body font-semibold text-[13px] sm:text-[15px] leading-tight truncate min-w-0 ${isEliminated ? 'text-neutral-500' : 'text-white'}`}>
-                            {team.name}
+                          </div>
+                        </td>
+                        <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2">
+                          <span className="bg-white/10 px-1 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-300">
+                            {entry.group}
                           </span>
-                        </div>
-                      </td>
-                      <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2">
-                        <span className="bg-white/10 px-1 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold text-neutral-300">
-                          {entry.group}
-                        </span>
-                      </td>
-                      <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2 font-black text-white text-[13px] sm:text-base">
-                        {entry.standing.points}
-                      </td>
-                      <td className="text-center py-3 px-1 sm:py-4 sm:px-2">
-                        {isAdvances && (
-                          <span className="inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-wc-green/15 text-wc-green">
-                            Advances
-                          </span>
-                        )}
-                        {isTied && (
+                        </td>
+                        <td className="text-center py-3 px-0.5 sm:py-4 sm:px-2 font-black text-white text-[13px] sm:text-base">
+                          {entry.standing.points}
+                        </td>
+                        <td className="text-center py-3 px-1 sm:py-4 sm:px-2">
                           <button
-                            className={`inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md transition-all duration-200 ${
+                            className={`inline-flex h-8 w-[58px] items-center justify-center rounded-md px-1 text-center text-[9px] font-black uppercase leading-[10px] tracking-wider transition-colors duration-200 sm:w-[68px] ${
                               isSelected
                                 ? 'bg-primary text-black'
                                 : 'bg-white/10 text-neutral-300 hover:bg-primary/15 hover:text-primary'
@@ -160,27 +144,13 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
                           >
                             {isSelected ? '✓ Picked' : 'Tap to pick'}
                           </button>
-                        )}
-                        {isEliminated && (
-                          <span className="inline-flex items-center justify-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-wc-red/15 text-wc-red">
-                            Eliminated
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {tiebreakerComplete && onContinue && (
-            <button
-              onClick={onContinue}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-bold text-black transition-transform active:scale-[0.98]"
-            >
-              Continue to Bracket
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

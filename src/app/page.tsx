@@ -359,6 +359,24 @@ export default function Home() {
     navigateTo(view ?? flowState.nextPredictionTab);
   }, [flowState.nextPredictionTab, navigateTo]);
 
+  const handlePullRefresh = useCallback(async () => {
+    if (activeTab === 'news') {
+      await new Promise<void>(resolve => {
+        const timeout = window.setTimeout(resolve, 8000);
+        window.dispatchEvent(new CustomEvent('news:refresh', {
+          detail: {
+            done: () => {
+              window.clearTimeout(timeout);
+              resolve();
+            },
+          },
+        }));
+      });
+      return;
+    }
+    await refetch();
+  }, [activeTab, refetch]);
+
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
       const matches = allGroupMatches
@@ -381,7 +399,7 @@ export default function Home() {
   }
 
   return (
-    <PullToRefresh>
+    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen pb-page-safe">
       {liveError && (
         <LiveBanner message={liveError} />

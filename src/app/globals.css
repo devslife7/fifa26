@@ -229,3 +229,32 @@ body {
   background: var(--color-primary);
   z-index: 10;
 }
+
+@keyframes bracket-focus-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 197, 66, 0.45);
+  }
+
+  70% {
+    box-shadow: 0 0 0 10px rgba(245, 197, 66, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 197, 66, 0);
+  }
+}
+
+.bracket-match-focused {
+  background: rgba(245, 197, 66, 0.07);
+  outline: 2px solid rgba(245, 197, 66, 0.85);
+  outline-offset: 3px;
+  transform: translateY(-2px);
+  animation: bracket-focus-pulse 1.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bracket-match-focused {
+    animation: none;
+    transform: none;
+  }
+}

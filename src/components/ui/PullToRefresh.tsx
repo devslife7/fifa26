@@ -5,7 +5,12 @@ import { useRef, useState, useCallback, useEffect, type ReactNode } from 'react'
 const THRESHOLD = 80;
 const MAX_PULL = 120;
 
-export default function PullToRefresh({ children }: { children: ReactNode }) {
+interface PullToRefreshProps {
+  children: ReactNode;
+  onRefresh?: () => Promise<void> | void;
+}
+
+export default function PullToRefresh({ children, onRefresh }: PullToRefreshProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const startY = useRef(0);
@@ -48,12 +53,23 @@ export default function PullToRefresh({ children }: { children: ReactNode }) {
     if (pullDistance >= THRESHOLD && !refreshing) {
       setRefreshing(true);
       setPullDistance(THRESHOLD);
-      // Small delay so the user sees the spinner before reload
-      setTimeout(() => window.location.reload(), 300);
+      setTimeout(async () => {
+        try {
+          if (onRefresh) {
+            await onRefresh();
+          } else {
+            window.location.reload();
+            return;
+          }
+        } finally {
+          setRefreshing(false);
+          setPullDistance(0);
+        }
+      }, 250);
     } else {
       setPullDistance(0);
     }
-  }, [pullDistance, refreshing]);
+  }, [onRefresh, pullDistance, refreshing]);
 
   useEffect(() => {
     document.addEventListener('touchstart', onTouchStart, { passive: true });

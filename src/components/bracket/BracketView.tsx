@@ -33,17 +33,10 @@ const roundLabels: Record<KnockoutRound, string> = {
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
-  const pendingAdvanceRef = useRef<string | null>(null);
+  const pendingAdvanceRef = useRef<{ matchId: string; round: KnockoutRound } | null>(null);
   const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
-
-  const handleMatchPredict = useCallback((matchId: string, result: KnockoutResult) => {
-    const isNewPick = !knockoutPredictions[matchId];
-    if (isNewPick && !readOnly) {
-      pendingAdvanceRef.current = matchId;
-    }
-    onPredict(matchId, result);
-  }, [knockoutPredictions, onPredict, readOnly]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +56,90 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const setMatchRef = useCallback((matchId: string, el: HTMLDivElement | null) => {
     matchRefs.current[matchId] = el;
   }, []);
+
+  const prefersReducedMotion = useCallback(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }, []);
+
+  const getScrollBehavior = useCallback((): ScrollBehavior => {
+    return prefersReducedMotion() ? 'auto' : 'smooth';
+  }, [prefersReducedMotion]);
+
+  const scheduleTransition = useCallback((callback: () => void, delay: number) => {
+    const timer = setTimeout(() => {
+      transitionTimersRef.current.delete(timer);
+      callback();
+    }, prefersReducedMotion() ? 0 : delay);
+    transitionTimersRef.current.add(timer);
+    return timer;
+  }, [prefersReducedMotion]);
+
+  const clearTransitionTimers = useCallback(() => {
+    for (const timer of transitionTimersRef.current) {
+      clearTimeout(timer);
+    }
+    transitionTimersRef.current.clear();
+    if (focusClearTimerRef.current) {
+      clearTimeout(focusClearTimerRef.current);
+      focusClearTimerRef.current = null;
+    }
+  }, []);
+
+  const holdScrollSync = useCallback((duration = 450) => {
+    isScrollingFromClick.current = true;
+    scheduleTransition(() => {
+      isScrollingFromClick.current = false;
+    }, duration);
+  }, [scheduleTransition]);
+
+  const focusMatch = useCallback((matchId: string) => {
+    setFocusedMatchId(matchId);
+    if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
+    focusClearTimerRef.current = scheduleTransition(() => {
+      setFocusedMatchId(null);
+      focusClearTimerRef.current = null;
+    }, 1200);
+  }, [scheduleTransition]);
+
+  const scrollToRound = useCallback((round: KnockoutRound, behavior: ScrollBehavior = getScrollBehavior()) => {
+    const el = roundRefs.current[round];
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    container.scrollTo({
+      left: Math.max(0, el.offsetLeft - 16),
+      behavior,
+    });
+  }, [getScrollBehavior]);
+
+  const scrollPageToMatch = useCallback((matchId: string, behavior: ScrollBehavior = getScrollBehavior()) => {
+    const matchEl = matchRefs.current[matchId];
+    if (!matchEl) return;
+
+    const container = scrollContainerRef.current;
+    const preservedScrollLeft = container?.scrollLeft ?? 0;
+    const rect = matchEl.getBoundingClientRect();
+    const centeredTop = window.scrollY + rect.top - Math.max(120, (window.innerHeight - rect.height) / 2);
+
+    window.scrollTo({
+      top: Math.max(0, centeredTop),
+      behavior,
+    });
+
+    if (container) {
+      container.scrollLeft = preservedScrollLeft;
+      requestAnimationFrame(() => {
+        container.scrollLeft = preservedScrollLeft;
+      });
+    }
+  }, [getScrollBehavior]);
+
+  const handleMatchPredict = useCallback((matchId: string, result: KnockoutResult) => {
+    const isNewPick = !knockoutPredictions[matchId];
+    if (isNewPick && !readOnly) {
+      pendingAdvanceRef.current = { matchId, round: activeRound };
+    }
+    onPredict(matchId, result);
+  }, [activeRound, knockoutPredictions, onPredict, readOnly]);
 
   // Pre-populate completedRounds so auto-advance doesn't re-trigger on mount
   const completedRounds = useRef<Set<KnockoutRound>>(new Set());
@@ -104,26 +181,26 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       const roundOrder = rounds;
       const nextRound = roundOrder[roundOrder.indexOf(activeRound) + 1];
       if (nextRound) {
-        setTimeout(() => {
+        pendingAdvanceRef.current = null;
+        clearTransitionTimers();
+        setFocusedMatchId(null);
+        scheduleTransition(() => {
+          holdScrollSync();
           setActiveRound(nextRound);
-          const el = roundRefs.current[nextRound];
-          const container = scrollContainerRef.current;
-          if (el && container) {
-            container.scrollTo({
-              left: el.offsetLeft - 16, // 16px to match the px-4 padding
-              behavior: 'smooth'
-            });
-            // Delay vertical scroll slightly so mobile browsers don't cancel the horizontal one
-            setTimeout(() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }, 50);
-          }
+          scrollToRound(nextRound);
+          scheduleTransition(() => {
+            window.scrollTo({ top: 0, behavior: getScrollBehavior() });
+          }, 50);
         }, 350);
       }
     } else if (!isComplete) {
       completedRounds.current.delete(activeRound);
     }
-  }, [knockoutPredictions, activeRound]);
+  }, [knockoutPredictions, activeRound, clearTransitionTimers, getScrollBehavior, holdScrollSync, scheduleTransition, scrollToRound]);
+
+  useEffect(() => {
+    return () => clearTransitionTimers();
+  }, [clearTransitionTimers]);
 
   // Scroll → update active tab
   useEffect(() => {
@@ -146,20 +223,21 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
           return;
         }
 
-        let leftmostRound: KnockoutRound = rounds[0];
+        const viewportAnchor = scrollLeft + 16;
+        let closestRound: KnockoutRound = rounds[0];
+        let closestDistance = Number.POSITIVE_INFINITY;
 
         for (const round of rounds) {
           const el = roundRefs.current[round];
           if (!el) continue;
-          // A column is "visible" if its right edge is past the scroll position
-          const colRight = el.offsetLeft + el.offsetWidth;
-          if (colRight > scrollLeft + 40) {
-            leftmostRound = round;
-            break;
+          const distance = Math.abs(el.offsetLeft - viewportAnchor);
+          if (distance < closestDistance) {
+            closestRound = round;
+            closestDistance = distance;
           }
         }
 
-        setActiveRound(prev => (prev !== leftmostRound ? leftmostRound : prev));
+        setActiveRound(prev => (prev !== closestRound ? closestRound : prev));
         ticking = false;
       });
     };
@@ -183,27 +261,22 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
 
       container.scrollTo({
         left: scrollPos,
-        behavior: hasMounted.current ? 'smooth' : 'instant'
+        behavior: hasMounted.current ? getScrollBehavior() : 'auto'
       });
     }
-  }, [activeRound]);
+  }, [activeRound, getScrollBehavior]);
 
   // Tab click → scroll to round
   const handleTabClick = (round: KnockoutRound) => {
+    clearTransitionTimers();
+    pendingAdvanceRef.current = null;
+    setFocusedMatchId(null);
     setActiveRound(round);
-    isScrollingFromClick.current = true;
-    const el = roundRefs.current[round];
-    const container = scrollContainerRef.current;
-    if (el && container) {
-      container.scrollTo({
-        left: el.offsetLeft - 16, // 16px to match the px-4 padding
-        behavior: 'smooth'
-      });
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 50);
-    }
-    setTimeout(() => { isScrollingFromClick.current = false; }, 400);
+    holdScrollSync();
+    scrollToRound(round);
+    scheduleTransition(() => {
+      window.scrollTo({ top: 0, behavior: getScrollBehavior() });
+    }, 50);
   };
 
   // Group matches by round
@@ -232,39 +305,36 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
 
   // Per-pick auto-advance: scroll to next open match in active round
   useEffect(() => {
-    if (!pendingAdvanceRef.current) return;
+    const pendingAdvance = pendingAdvanceRef.current;
+    if (!pendingAdvance) return;
     pendingAdvanceRef.current = null;
 
-    const currentMatches = matchesByRound[activeRound] ?? [];
+    if (pendingAdvance.round !== activeRound) return;
+
+    const currentMatches = matchesByRound[pendingAdvance.round] ?? [];
     const nextInRound = currentMatches.find(isMatchOpen);
     if (!nextInRound) return; // let round-complete handler take over
 
-    const advanceTimer = setTimeout(() => {
-      setFocusedMatchId(nextInRound.id);
-      matchRefs.current[nextInRound.id]?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
-      focusClearTimerRef.current = setTimeout(() => {
-        setFocusedMatchId(null);
-        focusClearTimerRef.current = null;
-      }, 1200);
+    clearTransitionTimers();
+    scheduleTransition(() => {
+      focusMatch(nextInRound.id);
+      scrollPageToMatch(nextInRound.id);
     }, 150);
-
-    return () => clearTimeout(advanceTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [knockoutPredictions]);
 
   const handleNextOpenMatch = () => {
     if (!nextOpenMatch) return;
     const round = nextOpenMatch.round;
+    clearTransitionTimers();
+    pendingAdvanceRef.current = null;
+    setFocusedMatchId(null);
     setActiveRound(round);
-    const roundEl = roundRefs.current[round];
-    const matchEl = matchRefs.current[nextOpenMatch.id];
-    const container = scrollContainerRef.current;
-    if (roundEl && container) {
-      container.scrollTo({ left: roundEl.offsetLeft - 16, behavior: 'smooth' });
-    }
-    setTimeout(() => {
-      matchEl?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    holdScrollSync();
+    scrollToRound(round);
+    scheduleTransition(() => {
+      focusMatch(nextOpenMatch.id);
+      scrollPageToMatch(nextOpenMatch.id);
     }, 120);
   };
 

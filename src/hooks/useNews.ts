@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { NewsArticle } from '@/types/news';
 
 interface UseNewsResult {
@@ -8,10 +8,14 @@ interface UseNewsResult {
   loading: boolean;
   error: string | null;
   lastUpdated: number | null;
-  refetch: () => void;
+  isStale: boolean;
+  readUrls: Set<string>;
+  markRead: (article: NewsArticle) => void;
+  refetch: () => Promise<void>;
 }
 
 const LS_KEY = 'fifa26_news_cache';
+const READ_KEY = 'fifa26_news_read_urls';
 const STALE_MS = 15 * 60 * 1000; // 15 minutes
 
 interface CachedNews {
@@ -38,11 +42,33 @@ function writeLocalCache(articles: NewsArticle[]): void {
   }
 }
 
+function readReadUrls(): Set<string> {
+  try {
+    const raw = localStorage.getItem(READ_KEY);
+    if (!raw) return new Set();
+    const urls = JSON.parse(raw);
+    return Array.isArray(urls) ? new Set(urls.filter((url): url is string => typeof url === 'string')) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeReadUrls(urls: Set<string>): void {
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify(Array.from(urls).slice(-200)));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
 export function useNews(): UseNewsResult {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [isStale, setIsStale] = useState(false);
+  const [readUrls, setReadUrls] = useState<Set<string>>(() => new Set());
+  const articlesRef = useRef<NewsArticle[]>([]);
 
   const fetchData = useCallback(async (force: boolean) => {
     setLoading(true);
@@ -53,11 +79,18 @@ export function useNews(): UseNewsResult {
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       const fetched: NewsArticle[] = data.articles ?? [];
+      if (fetched.length === 0 && articlesRef.current.length > 0) {
+        setIsStale(true);
+        return;
+      }
       setArticles(fetched);
+      articlesRef.current = fetched;
       setLastUpdated(Date.now());
+      setIsStale(false);
       writeLocalCache(fetched);
     } catch {
       setError('News unavailable');
+      setIsStale(true);
     } finally {
       setLoading(false);
     }
@@ -65,9 +98,12 @@ export function useNews(): UseNewsResult {
 
   useEffect(() => {
     const cached = readLocalCache();
+    setReadUrls(readReadUrls());
     if (cached && cached.articles.length > 0) {
       setArticles(cached.articles);
+      articlesRef.current = cached.articles;
       setLastUpdated(cached.fetchedAt);
+      setIsStale(Date.now() - cached.fetchedAt > STALE_MS);
       setLoading(false);
 
       // Always fetch in background to pick up fresh data
@@ -78,8 +114,17 @@ export function useNews(): UseNewsResult {
   }, [fetchData]);
 
   const refetch = useCallback(() => {
-    fetchData(true);
+    return fetchData(true);
   }, [fetchData]);
 
-  return { articles, loading, error, lastUpdated, refetch };
+  const markRead = useCallback((article: NewsArticle) => {
+    setReadUrls(prev => {
+      const next = new Set(prev);
+      next.add(article.url);
+      writeReadUrls(next);
+      return next;
+    });
+  }, []);
+
+  return { articles, loading, error, lastUpdated, isStale, readUrls, markRead, refetch };
 }

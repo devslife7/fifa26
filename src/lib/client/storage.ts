@@ -18,7 +18,9 @@ export function loadPredictions(): Predictions {
 export function savePredictions(predictions: Predictions): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(predictions));
-  window.dispatchEvent(new CustomEvent('predictions-saved'));
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('predictions-saved'));
+  }, 0);
 }
 
 export function resetAllPredictions(): void {

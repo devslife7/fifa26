@@ -5,7 +5,7 @@ import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
 import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
-import ScoringExplainer from '@/components/scoring/ScoringExplainer';
+import ScoringInfoModal from '@/components/scoring/ScoringInfoModal';
 
 interface Props {
   groupPredictions: Record<string, MatchResult>;
@@ -30,9 +30,13 @@ const roundLabels: Record<KnockoutRound, string> = {
   FIN: 'Finals',
 };
 
+const SCORING_INFO_VIEW_COUNT_KEY = 'fifa26.bracket.scoringInfoViewCount';
+const SCORING_INFO_MAX_AUTO_SHOWS = 2;
+
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
+  const [showScoringInfo, setShowScoringInfo] = useState(false);
   const pendingAdvanceRef = useRef<{ matchId: string; round: KnockoutRound } | null>(null);
   const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transitionTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -44,6 +48,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const matchRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isScrollingFromClick = useRef(false);
+  const hasHandledScoringInfoRef = useRef(false);
 
   const setRoundRef = useCallback((round: KnockoutRound, el: HTMLDivElement | null) => {
     roundRefs.current[round] = el;
@@ -84,6 +89,23 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
       focusClearTimerRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (readOnly) return;
+    if (hasHandledScoringInfoRef.current) return;
+    hasHandledScoringInfoRef.current = true;
+
+    try {
+      const storedCount = Number(window.localStorage.getItem(SCORING_INFO_VIEW_COUNT_KEY) ?? '0');
+      const currentCount = Number.isFinite(storedCount) ? storedCount : 0;
+      if (currentCount >= SCORING_INFO_MAX_AUTO_SHOWS) return;
+
+      window.localStorage.setItem(SCORING_INFO_VIEW_COUNT_KEY, String(currentCount + 1));
+      setShowScoringInfo(true);
+    } catch {
+      setShowScoringInfo(true);
+    }
+  }, [readOnly]);
 
   const holdScrollSync = useCallback((duration = 450) => {
     isScrollingFromClick.current = true;
@@ -348,10 +370,8 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
         </div>
       </div>
 
-      {!readOnly && (
-        <div className="px-4 pt-4">
-          <ScoringExplainer variant="knockout-only" />
-        </div>
+      {!readOnly && showScoringInfo && (
+        <ScoringInfoModal onClose={() => setShowScoringInfo(false)} />
       )}
 
       {/* Horizontal Scrollable Bracket */}

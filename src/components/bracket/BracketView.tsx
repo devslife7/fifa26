@@ -285,23 +285,9 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     matchesByRound[round] = bracket.filter(m => m.round === round);
   }
 
-  const activeRoundMatches = matchesByRound[activeRound] ?? [];
-  const activeRoundPicked = activeRoundMatches.filter(match => knockoutPredictions[match.id]).length;
-  const activeRoundTotal = roundSizes[activeRound] ?? activeRoundMatches.length;
-
   const isMatchOpen = (match: typeof bracket[number]) => {
     return !!match.home && !!match.away && !isPlaceholder(match.home) && !isPlaceholder(match.away) && !knockoutPredictions[match.id];
   };
-
-  const nextOpenMatch = (() => {
-    const startIndex = rounds.indexOf(activeRound);
-    const searchRounds = [...rounds.slice(startIndex), ...rounds.slice(0, startIndex)];
-    for (const round of searchRounds) {
-      const match = matchesByRound[round].find(isMatchOpen);
-      if (match) return match;
-    }
-    return null;
-  })();
 
   // Per-pick auto-advance: scroll to next open match in active round
   useEffect(() => {
@@ -323,43 +309,10 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [knockoutPredictions]);
 
-  const handleNextOpenMatch = () => {
-    if (!nextOpenMatch) return;
-    const round = nextOpenMatch.round;
-    clearTransitionTimers();
-    pendingAdvanceRef.current = null;
-    setFocusedMatchId(null);
-    setActiveRound(round);
-    holdScrollSync();
-    scrollToRound(round);
-    scheduleTransition(() => {
-      focusMatch(nextOpenMatch.id);
-      scrollPageToMatch(nextOpenMatch.id);
-    }, 120);
-  };
-
   return (
     <div>
       {/* Sticky Round Tabs */}
       <div className="sticky top-[77px] z-20 bg-background-dark">
-        {!readOnly && (
-          <div className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-neutral-500">Current round</p>
-              <p className="mt-0.5 text-sm font-black text-white">
-                {roundLabels[activeRound]} <span className="text-primary tabular-nums">{activeRoundPicked}/{activeRoundTotal}</span>
-              </p>
-            </div>
-            <button
-              onClick={handleNextOpenMatch}
-              disabled={!nextOpenMatch}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-black text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.04] disabled:text-neutral-600"
-            >
-              <span className="material-symbols-outlined text-[16px]">my_location</span>
-              Next open
-            </button>
-          </div>
-        )}
         <div className="flex items-center border-b border-white/10">
           <div
             ref={tabsContainerRef}

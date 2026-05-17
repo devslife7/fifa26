@@ -264,6 +264,17 @@ export default function PredictionRow({
                 Copy Link
               </button>
             )}
+            {p.pdf_path && (
+              <button
+                onClick={() => window.open(`/api/predictions/manage/${p.id}/pdf`, '_blank', 'noopener,noreferrer')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  d ? 'bg-white/10 text-white/70 hover:bg-white/15' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">download</span>
+                PDF
+              </button>
+            )}
             <button
               onClick={() => setDeleting(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-wc-red hover:bg-wc-red/10 transition-colors"

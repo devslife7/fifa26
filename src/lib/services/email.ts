@@ -43,6 +43,10 @@ interface SendPredictionEmailParams {
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
+  pdfAttachment?: {
+    filename: string;
+    content: string;
+  };
 }
 
 export async function sendPredictionEmail({
@@ -59,6 +63,7 @@ export async function sendPredictionEmail({
   groupMatches,
   knockoutMatches,
   thirdPlaceTiebreaker,
+  pdfAttachment,
 }: SendPredictionEmailParams) {
   // React Email escapes text children automatically; we don't pre-escape here
   // (escapeHtml in lib/utils is available for future raw-HTML interpolation paths).
@@ -93,5 +98,13 @@ export async function sendPredictionEmail({
     subject,
     html,
     text,
+    attachments: pdfAttachment
+      ? [
+          {
+            filename: pdfAttachment.filename,
+            content: pdfAttachment.content,
+          },
+        ]
+      : undefined,
   });
 }

@@ -13,7 +13,7 @@ export default async function SharedBracketPage({ params }: Props) {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('*, profiles(display_name)')
+    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
     .eq('share_token', token)
     .eq('is_complete', true)
     .single();

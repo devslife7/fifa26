@@ -84,6 +84,12 @@ export interface SavedPrediction {
   is_approved?: boolean;
   submitter_name?: string;
   submitter_email?: string;
+  pdf_path?: string | null;
+  pdf_generated_at?: string | null;
+  pdf_size_bytes?: number | null;
+  pdf_generation_error?: string | null;
+  confirmation_email_sent_at?: string | null;
+  confirmation_email_error?: string | null;
   created_at: string;
   updated_at: string;
 }

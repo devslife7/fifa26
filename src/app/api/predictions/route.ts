@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { getAuthUser } from '@/lib/services/auth-server';
-import { sendPredictionEmail } from '@/lib/services/email';
-import { resolveTeam } from '@/lib/services/email-helpers';
-import { getTopThree } from '@/lib/logic/bracket';
+import { sendPredictionConfirmation } from '@/lib/services/prediction-confirmation';
 
 const MAX_PREDICTIONS = 10;
+
+export const runtime = 'nodejs';
 
 export async function GET() {
   const user = await getAuthUser();
@@ -83,33 +83,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Send email asynchronously (don't block response)
     if (data?.share_token && championCode) {
       const origin = request.headers.get('origin') || 'https://fifa26.app';
-      const shareUrl = `${origin}/shared/${data.share_token}`;
-      const champion = resolveTeam(championCode);
-      const topThree = getTopThree(groupMatches ?? {}, knockoutMatches ?? {}, thirdPlaceTiebreaker ?? undefined);
-      const second = topThree.second ? resolveTeam(topThree.second) : null;
-      const third = topThree.third ? resolveTeam(topThree.third) : null;
-
-      sendPredictionEmail({
+      await sendPredictionConfirmation({
+        supabase: serviceClient,
+        prediction: data,
         to: submitterEmail,
-        name: submitterName || name || 'Predictor',
-        predictionId: data.id,
-        predictionNumber: data.prediction_number,
-        shareToken: data.share_token,
-        championName: champion.name,
-        championFlag: champion.flag,
-        shareUrl,
-        secondName: second?.name,
-        secondFlag: second?.flag,
-        thirdName: third?.name,
-        thirdFlag: third?.flag,
+        displayName: submitterName || name || 'Predictor',
+        origin,
+        championCode,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
-        thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? undefined,
-      }).catch((err) => {
-        console.error('Failed to send prediction email:', err);
+        thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
       });
     }
 
@@ -129,7 +114,7 @@ export async function POST(request: Request) {
     // Verify ownership
     const { data: existing } = await supabase
       .from('predictions')
-      .select('id, share_token')
+      .select('id, share_token, is_complete, pdf_path, confirmation_email_sent_at')
       .eq('id', predictionId)
       .eq('user_id', user.sub)
       .single();
@@ -163,6 +148,26 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (
+      isComplete &&
+      data?.share_token &&
+      championCode &&
+      (!existing.is_complete || !data.pdf_path || !data.confirmation_email_sent_at)
+    ) {
+      const origin = request.headers.get('origin') || 'https://fifa26.app';
+      await sendPredictionConfirmation({
+        supabase,
+        prediction: data,
+        to: user.email,
+        displayName: user.display_name || name || data.name || 'Predictor',
+        origin,
+        championCode,
+        groupMatches: groupMatches ?? {},
+        knockoutMatches: knockoutMatches ?? {},
+        thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
+      });
     }
 
     return NextResponse.json({ predictions: data });
@@ -204,6 +209,21 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (isComplete && data?.share_token && championCode) {
+      const origin = request.headers.get('origin') || 'https://fifa26.app';
+      await sendPredictionConfirmation({
+        supabase,
+        prediction: data,
+        to: user.email,
+        displayName: user.display_name || name || 'Predictor',
+        origin,
+        championCode,
+        groupMatches: groupMatches ?? {},
+        knockoutMatches: knockoutMatches ?? {},
+        thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
+      });
     }
 
     return NextResponse.json({ predictions: data });

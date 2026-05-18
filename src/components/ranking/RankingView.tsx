@@ -67,6 +67,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [totalUsers, setTotalUsers] = useState(0);
   const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
+  const [refreshing, setRefreshing] = useState(false);
+  const [justRefreshed, setJustRefreshed] = useState(false);
 
   useEffect(() => {
     const fetchLeaderboard = fetch('/api/leaderboard')
@@ -127,6 +129,65 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     });
   }, [user]);
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await fetch('/api/football/matches?force=true', { cache: 'no-store' });
+      const [lbRes, predsRes, myPredsRes] = await Promise.all([
+        fetch('/api/leaderboard', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ leaderboard: [] })),
+        fetch('/api/leaderboard/predictions', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ predictions: [], total_users: 0 })),
+        user
+          ? fetch('/api/predictions', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ predictions: [] }))
+          : Promise.resolve({ predictions: [] }),
+      ]);
+      const entries: LeaderboardEntry[] = lbRes.leaderboard ?? [];
+      const preds: LeaderboardPrediction[] = predsRes.predictions ?? [];
+      const myPreds: SavedPrediction[] = myPredsRes.predictions ?? [];
+
+      if (entries.length === 0) {
+        setLeaderboard(PLACEHOLDER_USERS);
+        setUsePlaceholder(true);
+      } else {
+        setLeaderboard(entries);
+        setUsePlaceholder(false);
+      }
+
+      const myLeaderboardPreds: LeaderboardPrediction[] = user
+        ? myPreds
+            .filter(p => p.is_complete)
+            .map(p => ({
+              prediction_number: p.prediction_number,
+              name: p.name,
+              user_id: user.id,
+              display_name: user.display_name ?? 'You',
+              champion_code: p.champion_code,
+              group_matches: p.group_matches ?? {},
+              knockout_matches: p.knockout_matches ?? {},
+              third_place_tiebreaker: p.third_place_tiebreaker,
+              is_approved: p.is_approved ?? false,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+            }))
+        : [];
+
+      if (preds.length === 0) {
+        setPredictions(myLeaderboardPreds);
+        setTotalUsers(myLeaderboardPreds.length);
+      } else {
+        const existing = new Set(preds.filter(p => p.user_id === user?.id).map(p => p.prediction_number));
+        const missing = myLeaderboardPreds.filter(p => !existing.has(p.prediction_number));
+        setPredictions([...missing, ...preds]);
+        setTotalUsers(predsRes.total_users || preds.length);
+      }
+
+      setJustRefreshed(true);
+      setTimeout(() => setJustRefreshed(false), 2000);
+    } finally {
+      setTimeout(() => setRefreshing(false), 5000);
+    }
+  };
+
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
     if (rank === 2) return <span className="material-symbols-outlined text-medal-silver text-2xl font-variation-fill">emoji_events</span>;
@@ -146,6 +207,23 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       <header className="py-6 sticky top-0 bg-background-dark/80 backdrop-blur-md z-30">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label="Refresh leaderboard"
+            title={justRefreshed ? 'Updated' : 'Refresh'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold font-body transition-colors ${
+              justRefreshed
+                ? 'border-wc-green/50 text-wc-green bg-wc-green/10'
+                : 'border-white/10 text-neutral-300 hover:border-primary/30 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>
+              {justRefreshed ? 'check' : 'refresh'}
+            </span>
+            {justRefreshed ? 'Updated' : 'Refresh'}
+          </button>
         </div>
       </header>
 

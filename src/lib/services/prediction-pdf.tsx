@@ -82,36 +82,6 @@ const styles = StyleSheet.create({
     marginTop: -2,
     marginBottom: 6,
   },
-  bonusRow: {
-    flexDirection: 'row',
-    border: '1px solid #d1d5db',
-    borderRadius: 4,
-    backgroundColor: '#fef3c7',
-    marginBottom: 6,
-    minHeight: 22,
-    alignItems: 'stretch',
-  },
-  bonusLabel: {
-    width: '28%',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRight: '1px solid #d1d5db',
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 9,
-    color: '#92400e',
-  },
-  bonusPick: {
-    flex: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRight: '1px solid #d1d5db',
-    fontSize: 9,
-  },
-  bonusCheckCell: {
-    width: '12%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   totalRow: {
     flexDirection: 'row',
     borderBottom: '1px solid #d1d5db',
@@ -132,6 +102,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     fontFamily: 'Helvetica-Bold',
     fontSize: 10,
+    color: '#111827',
+    textAlign: 'center',
+  },
+  grandTotalRow: {
+    flexDirection: 'row',
+    borderBottom: '1px solid #d1d5db',
+    backgroundColor: '#f3f4f6',
+    marginTop: 8,
+    minHeight: 26,
+  },
+  grandTotalLabel: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 12,
+    color: '#111827',
+    textAlign: 'right',
+    borderRight: '1px solid #e5e7eb',
+  },
+  grandTotalValue: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 12,
     color: '#111827',
     textAlign: 'center',
   },
@@ -245,6 +239,8 @@ function PredictionPdfDocument({
     (sum, m) => sum + (KNOCKOUT_POINTS[m.round] ?? 0),
     0,
   );
+  const groupMaxPoints = allGroupMatches.length * GROUP_POINTS;
+  const grandTotalMax = groupMaxPoints + knockoutMaxPoints + CHAMPION_POINTS;
 
   const metaPrefix = predictionNumber ? `Snapshot #${predictionNumber} · ` : '';
 
@@ -254,7 +250,7 @@ function PredictionPdfDocument({
       author="FIFA 26 Predictions"
       subject="Submitted prediction snapshot"
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={styles.page} wrap={false}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>FIFA 26 Predictions</Text>
           <View style={styles.identity}>
@@ -267,6 +263,9 @@ function PredictionPdfDocument({
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Group Stage Picks</Text>
+          <Text style={styles.sectionSubtitle}>
+            +{GROUP_POINTS} point per correct match result. Maximum {groupMaxPoints} points across all group matches.
+          </Text>
           <View style={styles.groupColumns}>
             {[0, 1].map((colIdx) => {
               const half = Math.ceil(allGroupMatches.length / 2);
@@ -275,63 +274,53 @@ function PredictionPdfDocument({
                 <View key={colIdx} style={[styles.groupColumn, styles.table]}>
                   <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
                     <Text style={[styles.cell, styles.headerCell, { width: '9%' }]}>Match</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Home</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Away</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '13%' }]}>Pick</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '10%' }]}>Pts</Text>
-                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '12%' }]}>Correct</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '34%' }]}>Home</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '34%' }]}>Away</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '15%' }]}>Pick</Text>
+                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>✓</Text>
                   </View>
                   {slice.map((match) => (
                     <View key={match.id} style={styles.row} wrap={false}>
                       <Text style={[styles.cell, { width: '9%' }]}>{match.id}</Text>
-                      <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.home)}</Text>
-                      <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.away)}</Text>
-                      <Text style={[styles.cell, { width: '13%' }]}>{groupPickCode(match.id, groupMatches[match.id])}</Text>
-                      <Text style={[styles.cell, { width: '10%' }]}>+{GROUP_POINTS}</Text>
-                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '12%' }]}>
+                      <Text style={[styles.cell, { width: '34%' }]}>{teamName(match.home)}</Text>
+                      <Text style={[styles.cell, { width: '34%' }]}>{teamName(match.away)}</Text>
+                      <Text style={[styles.cell, { width: '15%' }]}>{groupPickCode(match.id, groupMatches[match.id])}</Text>
+                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>
                         <View style={styles.checkbox} />
                       </View>
                     </View>
                   ))}
-                  <View style={styles.totalRow} wrap={false}>
-                    <Text style={[styles.totalLabel, { width: '70%' }]}>TOTAL</Text>
-                    <Text style={[styles.totalValue, { width: '30%' }]}>_____ / {slice.length * GROUP_POINTS}</Text>
-                  </View>
                 </View>
               );
             })}
           </View>
+          <View style={[styles.totalRow, { marginTop: 4 }]} wrap={false}>
+            <Text style={[styles.totalLabel, { width: '85%' }]}>GROUP PICKS TOTAL</Text>
+            <Text style={[styles.totalValue, { width: '15%' }]}>_____ / {groupMaxPoints}</Text>
+          </View>
         </View>
 
       </Page>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={styles.page} wrap={false}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
           <Text style={styles.sectionSubtitle}>
             Points awarded per round when your pick advances. Champion match adds a separate +{CHAMPION_POINTS} bonus.
           </Text>
 
-          <View style={styles.bonusRow} wrap={false}>
-            <Text style={styles.bonusLabel}>Champion (+{CHAMPION_POINTS})</Text>
-            <Text style={styles.bonusPick}>{teamName(championCode)}</Text>
-            <View style={styles.bonusCheckCell}>
-              <View style={styles.checkbox} />
-            </View>
-          </View>
-
           <View style={styles.table}>
             <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
-              <Text style={[styles.cell, styles.headerCell, { width: '6%' }]}>Match</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '8%' }]}>Match</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '12%' }]}>Round</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Home</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Away</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '7%' }]}>Pick</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '6%' }]}>Pts</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '9%' }]}>Correct</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>✓</Text>
             </View>
             {orderedKnockout.map((match) => (
               <View key={match.id} style={styles.row} wrap={false}>
-                <Text style={[styles.cell, { width: '6%' }]}>{match.id}</Text>
+                <Text style={[styles.cell, { width: '8%' }]}>{match.id}</Text>
                 <Text style={[styles.cell, { width: '12%' }]}>{roundLabels[match.round]}</Text>
                 <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.home)}</Text>
                 <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.away)}</Text>
@@ -341,15 +330,33 @@ function PredictionPdfDocument({
                 <Text style={[styles.cell, { width: '6%' }]}>
                   +{KNOCKOUT_POINTS[match.round] ?? 0}
                 </Text>
-                <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '9%' }]}>
+                <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
                   <View style={styles.checkbox} />
                 </View>
               </View>
             ))}
-            <View style={styles.totalRow} wrap={false}>
-              <Text style={[styles.totalLabel, { width: '75%' }]}>TOTAL (rounds + champion bonus)</Text>
-              <Text style={[styles.totalValue, { width: '25%' }]}>_____ / {knockoutMaxPoints + CHAMPION_POINTS}</Text>
+            <View style={styles.row} wrap={false}>
+              <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>Champion</Text>
+              <Text style={[styles.cell, { width: '60%' }]}>{teamName(championCode)}</Text>
+              <Text style={[styles.cell, { width: '7%' }]}>{championCode ?? '—'}</Text>
+              <Text style={[styles.cell, { width: '6%' }]}>+{CHAMPION_POINTS}</Text>
+              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
+                <View style={styles.checkbox} />
+              </View>
             </View>
+            <View style={styles.totalRow} wrap={false}>
+              <Text style={[styles.totalLabel, { width: '70%' }]}>Knockout Picks Total</Text>
+              <Text style={[styles.totalValue, { width: '30%' }]}>_____ / {knockoutMaxPoints + CHAMPION_POINTS}</Text>
+            </View>
+          </View>
+
+          <View style={styles.grandTotalRow} wrap={false}>
+            <Text style={[styles.grandTotalLabel, { width: '70%' }]}>
+              GRAND TOTAL (group + knockout + champion)
+            </Text>
+            <Text style={[styles.grandTotalValue, { width: '30%' }]}>
+              _____ / {grandTotalMax}
+            </Text>
           </View>
         </View>
 

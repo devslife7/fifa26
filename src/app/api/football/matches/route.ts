@@ -1,42 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchLiveMatches } from '@/lib/services/football-api';
 import { getFixturesFromDb } from '@/lib/services/fixtures-db';
+import { syncMatches } from '@/lib/services/sync-matches';
 
-const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' };
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 export async function GET(request: NextRequest) {
   const force = request.nextUrl.searchParams.get('force') === 'true';
 
-  if (!force) {
-    const dbMatches = await getFixturesFromDb();
-    if (dbMatches.length > 0) {
-      return NextResponse.json({ matches: dbMatches, source: 'db' }, { headers: CACHE_HEADERS });
-    }
+  let rateLimited = false;
+  try {
+    const result = await syncMatches({ force });
+    if (result.status === 'rate_limited') rateLimited = true;
+  } catch (e) {
+    console.error('syncMatches failed', e);
   }
 
-  // Fallback: in-memory API cache
-  try {
-    const result = await fetchLiveMatches(force);
-    if (!result) {
-      return NextResponse.json(
-        { matches: [], source: null, error: 'unavailable' },
-        { status: 200, headers: CACHE_HEADERS },
-      );
-    }
+  const matches = await getFixturesFromDb();
+
+  if (rateLimited && matches.length === 0) {
     return NextResponse.json(
-      { matches: result.matches, source: result.source },
-      { headers: CACHE_HEADERS },
-    );
-  } catch (e) {
-    if (e instanceof Error && e.message === 'RATE_LIMITED') {
-      return NextResponse.json(
-        { matches: [], error: 'rate_limited' },
-        { status: 429 },
-      );
-    }
-    return NextResponse.json(
-      { matches: [], error: 'unavailable' },
-      { status: 200, headers: CACHE_HEADERS },
+      { matches: [], error: 'rate_limited' },
+      { status: 429, headers: NO_STORE },
     );
   }
+
+  return NextResponse.json(
+    { matches, source: 'db', rateLimited },
+    { headers: NO_STORE },
+  );
 }

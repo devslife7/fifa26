@@ -172,6 +172,19 @@ const styles = StyleSheet.create({
     border: '1px solid #6b7280',
     borderRadius: 2,
   },
+  teamCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  teamCellText: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  teamCellPts: {
+    color: '#6b7280',
+    fontSize: 8,
+  },
   footer: {
     marginTop: 10,
     paddingTop: 6,
@@ -233,8 +246,10 @@ function PredictionPdfDocument({
   const championCode = finalMatch ? getMatchWinner(finalMatch) : undefined;
   const thirdWinnerCode = thirdMatch ? getMatchWinner(thirdMatch) : undefined;
 
+  // Each knockout match row contributes both its home and away teams to that
+  // round's qualifier set, so a fully-correct row earns 2 × round points.
   const knockoutMaxPoints = orderedKnockout.reduce(
-    (sum, m) => sum + (QUALIFIER_POINTS[m.round] ?? 0),
+    (sum, m) => sum + 2 * (QUALIFIER_POINTS[m.round] ?? 0),
     0,
   );
   const groupMaxPoints = allGroupMatches.length * GROUP_POINTS;
@@ -304,51 +319,55 @@ function PredictionPdfDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
           <Text style={styles.sectionSubtitle}>
-            Earn the round&apos;s points for every team in your bracket that actually qualifies for that round. The 3rd-place match (+{WINNER_POINTS['3RD']}) and Final (+{WINNER_POINTS.FIN}) each pay a bonus when you pick the actual winner.
+            Scoring is per team, not per match. Tick each team in a row that actually qualifies for that round — each tick is worth that round&apos;s points (R32 +{QUALIFIER_POINTS.R32}, R16 +{QUALIFIER_POINTS.R16}, QF +{QUALIFIER_POINTS.QF}, SF +{QUALIFIER_POINTS.SF}, 3RD +{QUALIFIER_POINTS['3RD']}, FIN +{QUALIFIER_POINTS.FIN}). The 3rd-place match adds +{WINNER_POINTS['3RD']} and the Final adds +{WINNER_POINTS.FIN} when you pick the actual winner.
           </Text>
 
           <View style={styles.table}>
             <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
               <Text style={[styles.cell, styles.headerCell, { width: '8%' }]}>Match</Text>
               <Text style={[styles.cell, styles.headerCell, { width: '12%' }]}>Round</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Home</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Away</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '7%' }]}>Pick</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '6%' }]}>Pts</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>✓</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '33%' }]}>Home</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '33%' }]}>Away</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '8%' }]}>Pick</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.lastCell, { width: '6%' }]}>Row max</Text>
             </View>
             {orderedKnockout.map((match) => (
               <View key={match.id} style={styles.row} wrap={false}>
                 <Text style={[styles.cell, { width: '8%' }]}>{match.id}</Text>
                 <Text style={[styles.cell, { width: '12%' }]}>{roundLabels[match.round]}</Text>
-                <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.home)}</Text>
-                <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.away)}</Text>
-                <Text style={[styles.cell, { width: '7%' }]}>
-                  {knockoutPickCode(match.home, match.away, match.result)}
-                </Text>
-                <Text style={[styles.cell, { width: '6%' }]}>
-                  +{QUALIFIER_POINTS[match.round] ?? 0}
-                </Text>
-                <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
+                <View style={[styles.cell, styles.teamCell, { width: '33%' }]}>
+                  <Text style={styles.teamCellText}>{teamName(match.home)}</Text>
+                  <Text style={styles.teamCellPts}>+{QUALIFIER_POINTS[match.round] ?? 0}</Text>
                   <View style={styles.checkbox} />
                 </View>
+                <View style={[styles.cell, styles.teamCell, { width: '33%' }]}>
+                  <Text style={styles.teamCellText}>{teamName(match.away)}</Text>
+                  <Text style={styles.teamCellPts}>+{QUALIFIER_POINTS[match.round] ?? 0}</Text>
+                  <View style={styles.checkbox} />
+                </View>
+                <Text style={[styles.cell, { width: '8%' }]}>
+                  {knockoutPickCode(match.home, match.away, match.result)}
+                </Text>
+                <Text style={[styles.cell, styles.lastCell, { width: '6%' }]}>
+                  +{2 * (QUALIFIER_POINTS[match.round] ?? 0)}
+                </Text>
               </View>
             ))}
             <View style={styles.row} wrap={false}>
               <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>3rd-place winner</Text>
-              <Text style={[styles.cell, { width: '60%' }]}>{teamName(thirdWinnerCode)}</Text>
-              <Text style={[styles.cell, { width: '7%' }]}>{thirdWinnerCode ?? '—'}</Text>
+              <Text style={[styles.cell, { width: '58%' }]}>{teamName(thirdWinnerCode)}</Text>
+              <Text style={[styles.cell, { width: '8%' }]}>{thirdWinnerCode ?? '—'}</Text>
               <Text style={[styles.cell, { width: '6%' }]}>+{WINNER_POINTS['3RD']}</Text>
-              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
+              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>
                 <View style={styles.checkbox} />
               </View>
             </View>
             <View style={styles.row} wrap={false}>
               <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>Final winner</Text>
-              <Text style={[styles.cell, { width: '60%' }]}>{teamName(championCode)}</Text>
-              <Text style={[styles.cell, { width: '7%' }]}>{championCode ?? '—'}</Text>
+              <Text style={[styles.cell, { width: '58%' }]}>{teamName(championCode)}</Text>
+              <Text style={[styles.cell, { width: '8%' }]}>{championCode ?? '—'}</Text>
               <Text style={[styles.cell, { width: '6%' }]}>+{WINNER_POINTS.FIN}</Text>
-              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
+              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>
                 <View style={styles.checkbox} />
               </View>
             </View>

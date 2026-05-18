@@ -356,12 +356,6 @@ export default function ChampionOverlay({
               </div>
             </div>
 
-            {/* Pending badge */}
-            <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-wc-amber/10 border border-wc-amber/20 rounded-full">
-              <span className="material-symbols-outlined text-wc-amber text-[16px]">schedule</span>
-              <span className="text-xs font-semibold text-wc-amber">Pending admin approval</span>
-            </div>
-
             {/* Action buttons */}
             <div className="w-full mt-6 space-y-3">
               <button
@@ -665,12 +659,6 @@ export default function ChampionOverlay({
                   <p className="text-[10px] text-wc-green mt-1">Confirmation resent!</p>
                 )}
               </div>
-            </div>
-
-            {/* Pending badge */}
-            <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-wc-amber/10 border border-wc-amber/20 rounded-full">
-              <span className="material-symbols-outlined text-wc-amber text-[16px]">schedule</span>
-              <span className="text-xs font-semibold text-wc-amber">Pending admin approval</span>
             </div>
 
             {/* Action buttons */}

@@ -1,0 +1,153 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic:
+      - generic: check_circle
+      - text: Saved
+    - generic [ref=e138]:
+      - button "check Groups 72/72" [ref=e139] [cursor=pointer]:
+        - generic [ref=e141]: check
+        - generic [ref=e142]: Groups
+        - generic [ref=e143]: 72/72
+      - button "swap_vert 3rd Place 0/8" [ref=e145] [cursor=pointer]:
+        - generic [ref=e147]: swap_vert
+        - generic [ref=e148]: 3rd Place
+        - generic [ref=e149]: 0/8
+      - button "account_tree Bracket 0/32" [disabled] [ref=e151]:
+        - generic [ref=e153]: account_tree
+        - generic [ref=e154]: Bracket
+        - generic [ref=e155]: 0/32
+      - button "send Submit" [disabled] [ref=e157]:
+        - generic [ref=e159]: send
+        - generic [ref=e160]: Submit
+    - main [ref=e4]:
+      - generic [ref=e162]:
+        - generic [ref=e164]:
+          - heading "Pick 8 Third-Place Teams" [level=2] [ref=e165]
+          - paragraph [ref=e166]: 12 teams are tied on 3 points. Your picks fill the remaining Round of 32 spots.
+        - generic [ref=e168]:
+          - generic [ref=e169]:
+            - paragraph [ref=e170]: Tiebreaker Progress
+            - paragraph [ref=e171]: 8 picks remaining.
+          - generic [ref=e172]: 0/8
+        - table [ref=e174]:
+          - rowgroup [ref=e175]:
+            - row "# Team Grp Pts Status" [ref=e176]:
+              - columnheader "#" [ref=e177]
+              - columnheader "Team" [ref=e178]
+              - columnheader "Grp" [ref=e179]
+              - columnheader "Pts" [ref=e180]
+              - columnheader "Status" [ref=e181]
+          - rowgroup [ref=e182]:
+            - row "1 Croatia L 3 Tap to pick" [ref=e183] [cursor=pointer]:
+              - cell "1" [ref=e184]
+              - cell "Croatia" [ref=e185]:
+                - generic [ref=e188]: Croatia
+              - cell "L" [ref=e189]
+              - cell "3" [ref=e190]
+              - cell "Tap to pick" [ref=e191]:
+                - button "Tap to pick" [ref=e192]
+            - row "2 Morocco C 3 Tap to pick" [ref=e193] [cursor=pointer]:
+              - cell "2" [ref=e194]
+              - cell "Morocco" [ref=e195]:
+                - generic [ref=e198]: Morocco
+              - cell "C" [ref=e199]
+              - cell "3" [ref=e200]
+              - cell "Tap to pick" [ref=e201]:
+                - button "Tap to pick" [ref=e202]
+            - row "3 Japan F 3 Tap to pick" [ref=e203] [cursor=pointer]:
+              - cell "3" [ref=e204]
+              - cell "Japan" [ref=e205]:
+                - generic [ref=e208]: Japan
+              - cell "F" [ref=e209]
+              - cell "3" [ref=e210]
+              - cell "Tap to pick" [ref=e211]:
+                - button "Tap to pick" [ref=e212]
+            - row "4 Iran G 3 Tap to pick" [ref=e213] [cursor=pointer]:
+              - cell "4" [ref=e214]
+              - cell "Iran" [ref=e215]:
+                - generic [ref=e218]: Iran
+              - cell "G" [ref=e219]
+              - cell "3" [ref=e220]
+              - cell "Tap to pick" [ref=e221]:
+                - button "Tap to pick" [ref=e222]
+            - row "5 Senegal I 3 Tap to pick" [ref=e223] [cursor=pointer]:
+              - cell "5" [ref=e224]
+              - cell "Senegal" [ref=e225]:
+                - generic [ref=e228]: Senegal
+              - cell "I" [ref=e229]
+              - cell "3" [ref=e230]
+              - cell "Tap to pick" [ref=e231]:
+                - button "Tap to pick" [ref=e232]
+            - row "6 South Korea A 3 Tap to pick" [ref=e233] [cursor=pointer]:
+              - cell "6" [ref=e234]
+              - cell "South Korea" [ref=e235]:
+                - generic [ref=e238]: South Korea
+              - cell "A" [ref=e239]
+              - cell "3" [ref=e240]
+              - cell "Tap to pick" [ref=e241]:
+                - button "Tap to pick" [ref=e242]
+            - row "7 Australia D 3 Tap to pick" [ref=e243] [cursor=pointer]:
+              - cell "7" [ref=e244]
+              - cell "Australia" [ref=e245]:
+                - generic [ref=e248]: Australia
+              - cell "D" [ref=e249]
+              - cell "3" [ref=e250]
+              - cell "Tap to pick" [ref=e251]:
+                - button "Tap to pick" [ref=e252]
+            - row "8 Austria J 3 Tap to pick" [ref=e253] [cursor=pointer]:
+              - cell "8" [ref=e254]
+              - cell "Austria" [ref=e255]:
+                - generic [ref=e258]: Austria
+              - cell "J" [ref=e259]
+              - cell "3" [ref=e260]
+              - cell "Tap to pick" [ref=e261]:
+                - button "Tap to pick" [ref=e262]
+            - row "9 Ivory Coast E 3 Tap to pick" [ref=e263] [cursor=pointer]:
+              - cell "9" [ref=e264]
+              - cell "Ivory Coast" [ref=e265]:
+                - generic [ref=e268]: Ivory Coast
+              - cell "E" [ref=e269]
+              - cell "3" [ref=e270]
+              - cell "Tap to pick" [ref=e271]:
+                - button "Tap to pick" [ref=e272]
+            - row "10 Qatar B 3 Tap to pick" [ref=e273] [cursor=pointer]:
+              - cell "10" [ref=e274]
+              - cell "Qatar" [ref=e275]:
+                - generic [ref=e278]: Qatar
+              - cell "B" [ref=e279]
+              - cell "3" [ref=e280]
+              - cell "Tap to pick" [ref=e281]:
+                - button "Tap to pick" [ref=e282]
+            - row "11 Saudi Arabia H 3 Tap to pick" [ref=e283] [cursor=pointer]:
+              - cell "11" [ref=e284]
+              - cell "Saudi Arabia" [ref=e285]:
+                - generic [ref=e288]: Saudi Arabia
+              - cell "H" [ref=e289]
+              - cell "3" [ref=e290]
+              - cell "Tap to pick" [ref=e291]:
+                - button "Tap to pick" [ref=e292]
+            - row "12 DR Congo K 3 Tap to pick" [ref=e293] [cursor=pointer]:
+              - cell "12" [ref=e294]
+              - cell "DR Congo" [ref=e295]:
+                - generic [ref=e298]: DR Congo
+              - cell "K" [ref=e299]
+              - cell "3" [ref=e300]
+              - cell "Tap to pick" [ref=e301]:
+                - button "Tap to pick" [ref=e302]
+    - navigation [ref=e112]:
+      - generic [ref=e113]:
+        - button "home Home" [ref=e114]:
+          - generic [ref=e115]: home
+          - generic [ref=e116]: Home
+        - button "emoji_events Predictions" [active] [ref=e117]:
+          - generic [ref=e118]: emoji_events
+          - generic [ref=e119]: Predictions
+        - button "leaderboard Ranking" [ref=e120]:
+          - generic [ref=e121]: leaderboard
+          - generic [ref=e122]: Ranking
+        - button "newspaper News" [ref=e123]:
+          - generic [ref=e124]: newspaper
+          - generic [ref=e125]: News
+  - button "Open Next.js Dev Tools" [ref=e131] [cursor=pointer]:
+    - img [ref=e132]
+  - alert [ref=e135]

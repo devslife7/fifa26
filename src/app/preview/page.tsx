@@ -256,34 +256,36 @@ export default function PreviewPage() {
               </div>
             </div>
 
-            {/* Knockout stage examples */}
+            {/* Knockout qualifier examples */}
             <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
               <div className="px-4 py-3 border-b border-white/5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Knockout Stage</span>
-                  <span className="text-xs font-bold text-primary font-body">+2 to +6 pts per round</span>
+                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Knockout Qualifiers</span>
+                  <span className="text-xs font-bold text-primary font-body">+2 to +6 pts per qualifying team</span>
                 </div>
               </div>
               <div className="px-4 py-3 space-y-3">
+                <p className="text-[11px] text-neutral-400 font-body leading-relaxed">
+                  You earn the round&apos;s points for every team in your bracket that actually reaches that round — the matchup doesn&apos;t have to be exact.
+                </p>
                 {KO_MATCHES.map(m => {
-                  const correct = m.prediction === m.actual;
                   const round = m.id.split('-')[0];
                   const pts = round === 'R32' ? 2 : round === 'R16' ? 3 : round === 'QF' ? 4 : round === 'SF' ? 5 : 6;
+                  const pickedCode = m.prediction === 'home' ? m.home : m.away;
+                  const pickedAdvances = m.actual === m.prediction;
                   return (
                     <div key={m.id} className="flex items-center gap-3">
                       <span className="text-[10px] font-bold text-neutral-500 uppercase w-8 shrink-0">{round}</span>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <span className="text-lg leading-none">{teamsByCode[m.home]?.flag}</span>
-                        <span className="text-sm font-semibold font-body">{teamsByCode[m.home]?.name}</span>
-                        <span className="text-sm font-black tabular-nums mx-1">{m.score.home} - {m.score.away}</span>
-                        <span className="text-sm font-semibold font-body">{teamsByCode[m.away]?.name}</span>
-                        <span className="text-lg leading-none">{teamsByCode[m.away]?.flag}</span>
+                        <span className="text-[10px] text-neutral-500 font-body">Your pick:</span>
+                        <span className="text-lg leading-none">{teamsByCode[pickedCode]?.flag}</span>
+                        <span className="text-sm font-semibold font-body">{teamsByCode[pickedCode]?.name}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] text-neutral-500 font-body">
-                          You picked {teamsByCode[m.prediction === 'home' ? m.home : m.away]?.name}
+                          {pickedAdvances ? 'Reached next round' : 'Did not advance'}
                         </span>
-                        <PredictionResult correct={correct} points={pts} />
+                        <PredictionResult correct={pickedAdvances} points={pts} />
                       </div>
                     </div>
                   );
@@ -291,20 +293,27 @@ export default function PreviewPage() {
               </div>
             </div>
 
-            {/* Champion bonus */}
+            {/* Winner bonuses */}
             <div className="bg-primary/10 rounded-2xl border border-primary/20 overflow-hidden">
               <div className="px-4 py-3 border-b border-primary/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Champion Bonus</span>
-                  <span className="text-xs font-bold text-primary font-body">+10 pts</span>
+                  <span className="text-xs font-bold text-primary uppercase tracking-wider">Winner Bonuses</span>
+                  <span className="text-xs font-bold text-primary font-body">+4 third place · +10 champion</span>
                 </div>
               </div>
-              <div className="px-4 py-3">
+              <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl leading-none">{teamsByCode['BR']?.flag}</span>
                   <div>
-                    <div className="text-sm font-bold">If your champion pick wins it all</div>
-                    <div className="text-[11px] text-neutral-400 font-body">e.g. You picked Brazil &rarr; Brazil wins the final &rarr; +10 bonus points</div>
+                    <div className="text-sm font-bold">Champion pick wins the Final</div>
+                    <div className="text-[11px] text-neutral-400 font-body">+10 on top of the +6 you already get for picking a finalist.</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none">{teamsByCode['DE']?.flag}</span>
+                  <div>
+                    <div className="text-sm font-bold">3rd-place pick wins the match</div>
+                    <div className="text-[11px] text-neutral-400 font-body">+4 on top of the +3 you already get for picking a 3rd-place finalist.</div>
                   </div>
                 </div>
               </div>
@@ -313,29 +322,38 @@ export default function PreviewPage() {
             {/* Points summary table */}
             <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
               <div className="px-4 py-3 border-b border-white/5">
-                <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Points per Round</span>
+                <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Points per Stage</span>
               </div>
               <div className="divide-y divide-white/5">
                 {[
-                  { round: 'Group Stage', desc: 'Correct result (W/D/L)', pts: 1 },
-                  { round: 'Round of 32', desc: 'Correct winner', pts: 2 },
-                  { round: 'Round of 16', desc: 'Correct winner', pts: 3 },
-                  { round: 'Quarterfinals', desc: 'Correct winner', pts: 4 },
-                  { round: 'Semifinals', desc: 'Correct winner', pts: 5 },
-                  { round: 'Final', desc: 'Correct finalist', pts: 6 },
-                  { round: 'Champion', desc: 'Correct champion', pts: 10 },
-                ].map((row, i) => {
-                  const isChampion = i === 6;
+                  { round: 'Group Stage', desc: 'Correct result (W/D/L)', pts: '+1', max: 72 },
+                  { round: 'Round of 32', desc: 'Per team that reaches R32', pts: '+2', max: 64 },
+                  { round: 'Round of 16', desc: 'Per team that advances to R16', pts: '+3', max: 48 },
+                  { round: 'Quarterfinals', desc: 'Per team that advances to QF', pts: '+4', max: 32 },
+                  { round: 'Semifinals', desc: 'Per team that advances to SF', pts: '+5', max: 20 },
+                  { round: '3rd-place finalists', desc: 'Per team that makes the 3rd-place match', pts: '+3', max: 6 },
+                  { round: '3rd-place winner', desc: 'Bonus for picking the actual winner', pts: '+4', max: 4 },
+                  { round: 'Finalists', desc: 'Per team that reaches the Final', pts: '+6', max: 12 },
+                  { round: 'Champion', desc: 'Bonus for picking the actual champion', pts: '+10', max: 10 },
+                ].map((row) => {
+                  const isHighlight = row.round === 'Champion';
                   return (
-                    <div key={row.round} className={`flex items-center px-4 py-2.5 ${isChampion ? 'bg-primary/5' : ''}`}>
+                    <div key={row.round} className={`flex items-center px-4 py-2.5 ${isHighlight ? 'bg-primary/5' : ''}`}>
                       <div className="flex-grow">
-                        <div className={`text-sm font-semibold ${isChampion ? 'text-primary' : 'text-white'}`}>{row.round}</div>
+                        <div className={`text-sm font-semibold ${isHighlight ? 'text-primary' : 'text-white'}`}>{row.round}</div>
                         <div className="text-[11px] text-neutral-500 font-body">{row.desc}</div>
                       </div>
-                      <div className={`font-black text-lg tabular-nums ${isChampion ? 'text-primary' : 'text-white'}`}>+{row.pts}</div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[10px] text-neutral-500 font-body tabular-nums">max {row.max}</span>
+                        <span className={`font-black text-lg tabular-nums ${isHighlight ? 'text-primary' : 'text-white'}`}>{row.pts}</span>
+                      </div>
                     </div>
                   );
                 })}
+                <div className="flex items-center px-4 py-2.5 bg-neutral-800">
+                  <div className="flex-grow text-sm font-black uppercase tracking-wider">Grand Total</div>
+                  <span className="font-black text-lg tabular-nums text-primary">268</span>
+                </div>
               </div>
             </div>
           </div>

@@ -1,12 +1,17 @@
 'use client';
 
 import { useMemo } from 'react';
-import { LeaderboardPrediction, LiveMatch, GroupLetter } from '@/types';
+import { LeaderboardPrediction, LiveMatch, GroupLetter, KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
 import { teamsByCode, groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { generateBracket } from '@/lib/logic/bracket';
-import { KNOCKOUT_POINTS, GROUP_POINTS, CHAMPION_POINTS } from '@/lib/logic/scoring';
-import type { KnockoutRound } from '@/types';
+import {
+  GROUP_POINTS,
+  QUALIFIER_POINTS,
+  WINNER_POINTS,
+  getPredictedQualifiers,
+  type Qualifiers,
+} from '@/lib/logic/scoring';
 
 interface Props {
   prediction: LeaderboardPrediction;
@@ -44,16 +49,112 @@ function TeamName({ code, flagsByCode }: { code: string; flagsByCode?: Record<st
   );
 }
 
+function TeamPill({
+  code,
+  state,
+  flagsByCode,
+}: {
+  code: string;
+  state: 'hit' | 'miss' | 'pending';
+  flagsByCode?: Record<string, string>;
+}) {
+  const team = teamsByCode[code];
+  const flagUrl = flagsByCode?.[code];
+  const tone =
+    state === 'hit'
+      ? 'border-wc-green/40 bg-wc-green/10 text-wc-green'
+      : state === 'miss'
+        ? 'border-wc-red/30 bg-wc-red/10 text-wc-red'
+        : 'border-white/10 bg-neutral-900 text-neutral-300';
+  return (
+    <div className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tone}`}>
+      {flagUrl ? (
+        <img src={flagUrl} alt="" className="w-4 h-3 object-cover rounded-[2px]" />
+      ) : team ? (
+        <span className="text-xs leading-none">{team.flag}</span>
+      ) : null}
+      <span className="font-body">{team?.name ?? code}</span>
+      {state === 'hit' && (
+        <span className="material-symbols-outlined text-[12px] font-variation-fill">check</span>
+      )}
+      {state === 'miss' && (
+        <span className="material-symbols-outlined text-[12px] font-variation-fill">close</span>
+      )}
+    </div>
+  );
+}
+
+function pillState(code: string, actualSet: Set<string>, hasActualSignal: boolean): 'hit' | 'miss' | 'pending' {
+  if (!hasActualSignal) return 'pending';
+  return actualSet.has(code) ? 'hit' : 'miss';
+}
+
+function actualQualifiersFromLive(
+  bracket: KnockoutMatch[],
+  liveMatches: Record<string, LiveMatch> | undefined,
+): { qualifiers: Qualifiers; hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> } {
+  const R32 = new Set<string>();
+  const R16 = new Set<string>();
+  const QF = new Set<string>();
+  const SF = new Set<string>();
+  const thirdParticipants = new Set<string>();
+  const finalParticipants = new Set<string>();
+  let thirdWinner: string | null = null;
+  let finalWinner: string | null = null;
+
+  const hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> = {
+    R32: false, R16: false, QF: false, SF: false, '3RD': false, FIN: false,
+    thirdWinner: false, finalWinner: false,
+  };
+
+  for (const m of bracket) {
+    const live = liveMatches?.[m.id];
+    if (!live || live.status !== 'FINISHED' || !live.homeCode || !live.awayCode || !live.actualResult) continue;
+    const winner = live.actualResult === 'home' ? live.homeCode : live.actualResult === 'away' ? live.awayCode : null;
+    const loser = live.actualResult === 'home' ? live.awayCode : live.actualResult === 'away' ? live.homeCode : null;
+    if (!winner) continue;
+
+    if (m.round === 'R32') {
+      R32.add(live.homeCode);
+      R32.add(live.awayCode);
+      R16.add(winner);
+      hasSignal.R32 = true;
+      hasSignal.R16 = true;
+    } else if (m.round === 'R16') {
+      QF.add(winner);
+      hasSignal.QF = true;
+    } else if (m.round === 'QF') {
+      SF.add(winner);
+      hasSignal.SF = true;
+    } else if (m.round === 'SF') {
+      finalParticipants.add(winner);
+      if (loser) thirdParticipants.add(loser);
+      hasSignal.FIN = true;
+      hasSignal['3RD'] = true;
+    } else if (m.round === '3RD') {
+      thirdWinner = winner;
+      hasSignal.thirdWinner = true;
+    } else if (m.round === 'FIN') {
+      finalWinner = winner;
+      hasSignal.finalWinner = true;
+    }
+  }
+
+  return {
+    qualifiers: { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner },
+    hasSignal,
+  };
+}
+
 export default function UserPredictionsModal({ prediction, rank, onClose, liveMatches, teamFlagsByCode }: Props) {
   const championTeam = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
   const championFlagUrl = prediction.champion_code && teamFlagsByCode ? teamFlagsByCode[prediction.champion_code] : undefined;
 
-  // Compute bracket for knockout
   const bracket = useMemo(() => {
     try {
       return generateBracket(
-        prediction.group_matches,
-        prediction.knockout_matches,
+        prediction.group_matches as Record<string, MatchResult>,
+        prediction.knockout_matches as Record<string, KnockoutResult>,
         prediction.third_place_tiebreaker ?? undefined,
       );
     } catch {
@@ -61,54 +162,73 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
     }
   }, [prediction.group_matches, prediction.knockout_matches, prediction.third_place_tiebreaker]);
 
-  // Calculate points summary
+  const predicted = useMemo<Qualifiers>(() => {
+    try {
+      return getPredictedQualifiers({
+        user_id: '',
+        group_matches: prediction.group_matches,
+        knockout_matches: prediction.knockout_matches,
+        champion_code: prediction.champion_code,
+        third_place_tiebreaker: prediction.third_place_tiebreaker ?? null,
+      });
+    } catch {
+      return {
+        R32: new Set(), R16: new Set(), QF: new Set(), SF: new Set(),
+        thirdParticipants: new Set(), thirdWinner: null,
+        finalParticipants: new Set(), finalWinner: null,
+      };
+    }
+  }, [prediction]);
+
+  const { qualifiers: actual, hasSignal } = useMemo(
+    () => actualQualifiersFromLive(bracket, liveMatches),
+    [bracket, liveMatches],
+  );
+
   const pointsSummary = useMemo(() => {
     let groupCorrect = 0;
     let groupTotal = 0;
-    const knockoutByRound: Record<string, { correct: number; total: number; points: number }> = {};
-
-    // Group matches
     for (const match of allGroupMatches) {
-      const predicted = prediction.group_matches[match.id];
       const live = liveMatches?.[match.id];
       if (live?.status === 'FINISHED' && live.actualResult) {
         groupTotal++;
-        if (predicted === live.actualResult) groupCorrect++;
+        if (prediction.group_matches[match.id] === live.actualResult) groupCorrect++;
       }
     }
-
-    // Knockout matches
-    for (const match of bracket) {
-      const live = liveMatches?.[match.id];
-      if (live?.status === 'FINISHED' && live.actualResult) {
-        const round = match.round;
-        if (!knockoutByRound[round]) knockoutByRound[round] = { correct: 0, total: 0, points: 0 };
-        knockoutByRound[round].total++;
-        if (match.result === live.actualResult) {
-          knockoutByRound[round].correct++;
-          knockoutByRound[round].points += KNOCKOUT_POINTS[round] ?? 0;
-        }
-      }
-    }
-
     const groupPoints = groupCorrect * GROUP_POINTS;
-    const knockoutPoints = Object.values(knockoutByRound).reduce((sum, r) => sum + r.points, 0);
 
-    // Champion check
-    let championCorrect = false;
-    // If final is finished, check champion
-    const finalMatch = liveMatches?.['FIN-1'];
-    if (finalMatch?.status === 'FINISHED' && finalMatch.actualResult) {
-      const winnerCode = finalMatch.actualResult === 'home' ? finalMatch.homeCode : finalMatch.awayCode;
-      if (winnerCode && prediction.champion_code === winnerCode) championCorrect = true;
-    }
+    const intersect = (a: Set<string>, b: Set<string>) => {
+      let n = 0;
+      for (const x of a) if (b.has(x)) n++;
+      return n;
+    };
 
-    const totalPoints = groupPoints + knockoutPoints + (championCorrect ? CHAMPION_POINTS : 0);
+    const r32Pts = intersect(predicted.R32, actual.R32) * QUALIFIER_POINTS.R32;
+    const r16Pts = intersect(predicted.R16, actual.R16) * QUALIFIER_POINTS.R16;
+    const qfPts = intersect(predicted.QF, actual.QF) * QUALIFIER_POINTS.QF;
+    const sfPts = intersect(predicted.SF, actual.SF) * QUALIFIER_POINTS.SF;
+    const thirdPartPts = intersect(predicted.thirdParticipants, actual.thirdParticipants) * QUALIFIER_POINTS['3RD'];
+    const thirdWinPts = predicted.thirdWinner && actual.thirdWinner && predicted.thirdWinner === actual.thirdWinner
+      ? WINNER_POINTS['3RD']
+      : 0;
+    const finPartPts = intersect(predicted.finalParticipants, actual.finalParticipants) * QUALIFIER_POINTS.FIN;
+    const finWinPts = predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner
+      ? WINNER_POINTS.FIN
+      : 0;
 
-    return { groupCorrect, groupTotal, groupPoints, knockoutByRound, knockoutPoints, championCorrect, totalPoints };
-  }, [prediction, liveMatches, bracket]);
+    const knockoutPoints = r32Pts + r16Pts + qfPts + sfPts + thirdPartPts + thirdWinPts + finPartPts + finWinPts;
+    const championCorrect = Boolean(predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner);
 
-  // Group matches organized by group letter
+    return {
+      groupCorrect, groupTotal, groupPoints,
+      r32Pts, r16Pts, qfPts, sfPts,
+      thirdPartPts, thirdWinPts, finPartPts, finWinPts,
+      knockoutPoints,
+      championCorrect,
+      totalPoints: groupPoints + knockoutPoints,
+    };
+  }, [predicted, actual, liveMatches, prediction.group_matches]);
+
   const matchesByGroup = useMemo(() => {
     const map: Record<GroupLetter, typeof allGroupMatches> = {} as Record<GroupLetter, typeof allGroupMatches>;
     for (const g of groups) map[g] = [];
@@ -116,18 +236,53 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
     return map;
   }, []);
 
-  // Knockout matches by round
-  const knockoutByRound = useMemo(() => {
-    const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
-    const map: Partial<Record<KnockoutRound, typeof bracket>> = {};
-    for (const r of rounds) {
-      const matches = bracket.filter(m => m.round === r);
-      if (matches.length > 0) map[r] = matches;
-    }
-    return map;
-  }, [bracket]);
-
   const hasAnyResults = liveMatches && Object.values(liveMatches).some(m => m.status === 'FINISHED');
+
+  const sortedTeams = (set: Set<string>): string[] =>
+    Array.from(set).sort((a, b) => {
+      const an = teamsByCode[a]?.name ?? a;
+      const bn = teamsByCode[b]?.name ?? b;
+      return an.localeCompare(bn);
+    });
+
+  type QualifierRoundProps = {
+    title: string;
+    perPick: number;
+    predictedSet: Set<string>;
+    actualSet: Set<string>;
+    hasSignal: boolean;
+    earned: number;
+  };
+  const QualifierRound = ({ title, perPick, predictedSet, actualSet, hasSignal: signal, earned }: QualifierRoundProps) => {
+    const teams = sortedTeams(predictedSet);
+    const max = teams.length * perPick;
+    return (
+      <div>
+        <div className="px-4 sm:px-5 pt-3 pb-1 flex items-center justify-between sticky top-0 z-10 bg-background-dark">
+          <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">{title}</span>
+          <span className="text-[11px] font-bold text-primary/70 uppercase tracking-wide tabular-nums">
+            +{perPick} / team · {signal ? `${earned} / ${max}` : `max ${max}`}
+          </span>
+        </div>
+        <div className="px-4 sm:px-5 pb-2">
+          <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2.5 flex flex-wrap gap-1.5">
+            {teams.length === 0 ? (
+              <span className="text-[11px] text-neutral-500 italic">No picks yet</span>
+            ) : (
+              teams.map((code) => (
+                <TeamPill
+                  key={code}
+                  code={code}
+                  state={pillState(code, actualSet, signal)}
+                  flagsByCode={teamFlagsByCode}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -179,7 +334,6 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
               <h3 className="font-black text-base">Score Breakdown</h3>
             </div>
             <div className="rounded-xl border border-white/10 bg-neutral-900/80 overflow-hidden">
-              {/* Top row: Total Points + Rank */}
               <div className="flex items-end justify-between px-4 py-3">
                 <div>
                   <div className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide">Total Points</div>
@@ -192,36 +346,16 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
                   </div>
                 )}
               </div>
-              {/* Bottom row: Group / Knockout / Champion */}
-              <div className="grid grid-cols-3 border-t border-white/10">
+              <div className="grid grid-cols-2 border-t border-white/10">
                 <div className="flex flex-col items-center py-3 border-r border-white/10">
                   <div className="text-xl font-black text-wc-green tabular-nums">{pointsSummary.groupPoints}</div>
                   <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Group</div>
                   <div className="text-[10px] text-neutral-500 font-body">{pointsSummary.groupCorrect}/{pointsSummary.groupTotal} correct</div>
                 </div>
-                <div className="flex flex-col items-center py-3 border-r border-white/10">
-                  {(() => {
-                    const koCorrect = Object.values(pointsSummary.knockoutByRound).reduce((s, r) => s + r.correct, 0);
-                    const koTotal = Object.values(pointsSummary.knockoutByRound).reduce((s, r) => s + r.total, 0);
-                    return (
-                      <>
-                        <div className="text-xl font-black text-blue-400 tabular-nums">{pointsSummary.knockoutPoints}</div>
-                        <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Knockout</div>
-                        <div className="text-[10px] text-neutral-500 font-body">{koCorrect}/{koTotal} correct</div>
-                      </>
-                    );
-                  })()}
-                </div>
                 <div className="flex flex-col items-center py-3">
-                  {pointsSummary.championCorrect ? (
-                    <div className="text-xl font-black text-primary tabular-nums">+{CHAMPION_POINTS}</div>
-                  ) : (
-                    <span className="material-symbols-outlined text-xl text-neutral-600">block</span>
-                  )}
-                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Champion</div>
-                  <div className="text-[10px] text-neutral-500 font-body">
-                    {pointsSummary.championCorrect ? 'Correct!' : liveMatches?.['FIN-1']?.status === 'FINISHED' ? 'Wrong' : 'TBD'}
-                  </div>
+                  <div className="text-xl font-black text-blue-400 tabular-nums">{pointsSummary.knockoutPoints}</div>
+                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mt-0.5">Knockout</div>
+                  <div className="text-[10px] text-neutral-500 font-body">qualifier + winner bonuses</div>
                 </div>
               </div>
             </div>
@@ -241,23 +375,22 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
                 </div>
                 <div className="bg-neutral-900/50 rounded-xl border border-white/5 overflow-hidden">
                   {matchesByGroup[group].map(match => {
-                    const predicted = prediction.group_matches[match.id];
+                    const predictedPick = prediction.group_matches[match.id];
                     const live = liveMatches?.[match.id];
                     const isFinished = live?.status === 'FINISHED';
                     const isLive = live?.status === 'IN_PLAY' || live?.status === 'PAUSED';
-                    const correct = isFinished && predicted && live?.actualResult ? predicted === live.actualResult : null;
+                    const correct = isFinished && predictedPick && live?.actualResult ? predictedPick === live.actualResult : null;
 
-                    const pickedLabel = predicted === 'home'
+                    const pickedLabel = predictedPick === 'home'
                       ? teamsByCode[match.home]?.name ?? match.home
-                      : predicted === 'away'
+                      : predictedPick === 'away'
                         ? teamsByCode[match.away]?.name ?? match.away
-                        : predicted === 'draw'
+                        : predictedPick === 'draw'
                           ? 'Draw'
                           : null;
 
                     return (
                       <div key={match.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5 last:border-0">
-                        {/* Teams stacked + score */}
                         <div className="flex-1 min-w-0 text-sm">
                           <div className="flex items-center gap-1.5 text-neutral-300 font-medium">
                             <TeamName code={match.home} flagsByCode={teamFlagsByCode} />
@@ -273,7 +406,6 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
                           </div>
                         </div>
 
-                        {/* Prediction + result */}
                         <div className="flex items-center gap-1.5 flex-shrink-0 text-[11px] ml-2">
                           {pickedLabel ? (
                             <>
@@ -302,125 +434,134 @@ export default function UserPredictionsModal({ prediction, rank, onClose, liveMa
             ))}
           </div>
 
-          {/* ── KNOCKOUT BRACKET ── */}
-          {Object.keys(knockoutByRound).length > 0 && (
-            <>
-              {(['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'] as KnockoutRound[]).map(round => {
-                const matches = knockoutByRound[round];
-                if (!matches || matches.length === 0) return null;
-                const pts = KNOCKOUT_POINTS[round] ?? 0;
+          {/* ── KNOCKOUT QUALIFIERS ── */}
+          <QualifierRound
+            title={ROUND_LABELS.R32}
+            perPick={QUALIFIER_POINTS.R32}
+            predictedSet={predicted.R32}
+            actualSet={actual.R32}
+            hasSignal={hasSignal.R32}
+            earned={pointsSummary.r32Pts}
+          />
+          <QualifierRound
+            title={ROUND_LABELS.R16}
+            perPick={QUALIFIER_POINTS.R16}
+            predictedSet={predicted.R16}
+            actualSet={actual.R16}
+            hasSignal={hasSignal.R16}
+            earned={pointsSummary.r16Pts}
+          />
+          <QualifierRound
+            title={ROUND_LABELS.QF}
+            perPick={QUALIFIER_POINTS.QF}
+            predictedSet={predicted.QF}
+            actualSet={actual.QF}
+            hasSignal={hasSignal.QF}
+            earned={pointsSummary.qfPts}
+          />
+          <QualifierRound
+            title={ROUND_LABELS.SF}
+            perPick={QUALIFIER_POINTS.SF}
+            predictedSet={predicted.SF}
+            actualSet={actual.SF}
+            hasSignal={hasSignal.SF}
+            earned={pointsSummary.sfPts}
+          />
 
-                return (
-                  <div key={round}>
-                    <div className="px-4 sm:px-5 pt-3 pb-1 flex items-center justify-between sticky top-0 z-10 bg-background-dark">
-                      <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">{ROUND_LABELS[round]}</span>
-                      <span className="text-[11px] font-bold text-primary/70 uppercase tracking-wide">+{pts} pts per correct winner</span>
-                    </div>
-                    <div className="px-4 sm:px-5 pb-2">
-                      <div className="bg-neutral-900/50 rounded-xl border border-white/5 overflow-hidden">
-                        {matches.map(match => {
-                          const live = liveMatches?.[match.id];
-                          const isFinished = live?.status === 'FINISHED';
-                          const isLive = live?.status === 'IN_PLAY' || live?.status === 'PAUSED';
-                          const correct = isFinished && match.result && live?.actualResult
-                            ? match.result === live.actualResult
-                            : null;
-
-                          const pickedCode = match.result === 'home' ? match.home : match.result === 'away' ? match.away : null;
-                          const pickedTeam = pickedCode ? teamsByCode[pickedCode] : null;
-
-                          const homeCode = match.home;
-                          const awayCode = match.away;
-
-                          const isHomePicked = match.result === 'home';
-                          const isAwayPicked = match.result === 'away';
-
-                          return (
-                            <div key={match.id} className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5 last:border-0">
-                              {/* Teams stacked + score */}
-                              <div className="flex-1 min-w-0 text-sm">
-                                <div className="flex items-center gap-1.5 text-neutral-300 font-medium">
-                                  {homeCode ? (
-                                    <TeamName code={homeCode} flagsByCode={teamFlagsByCode} />
-                                  ) : (
-                                    <span className="text-neutral-500 italic">TBD</span>
-                                  )}
-                                  {(isFinished || isLive) && live?.score && (
-                                    <span className={`ml-auto tabular-nums font-black ${isLive ? 'text-wc-green' : 'text-white'}`}>{live.score.home}</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-0.5 text-neutral-300 font-medium">
-                                  {awayCode ? (
-                                    <TeamName code={awayCode} flagsByCode={teamFlagsByCode} />
-                                  ) : (
-                                    <span className="text-neutral-500 italic">TBD</span>
-                                  )}
-                                  {(isFinished || isLive) && live?.score && (
-                                    <span className={`ml-auto tabular-nums font-black ${isLive ? 'text-wc-green' : 'text-white'}`}>{live.score.away}</span>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Prediction + result */}
-                              <div className="flex items-center gap-1.5 flex-shrink-0 text-[11px] ml-2">
-                                {pickedTeam ? (
-                                  <>
-                                    <span className={`font-semibold truncate max-w-[72px] ${correct === true ? 'text-wc-green' : correct === false ? 'text-wc-red' : 'text-neutral-400'}`}>
-                                      {pickedTeam.name}
-                                    </span>
-                                    {correct === true && (
-                                      <span className="inline-flex items-center gap-0.5">
-                                        <span className="material-symbols-outlined text-[14px] font-variation-fill text-wc-green">check_circle</span>
-                                        <span className="text-[10px] font-bold text-wc-green">+{pts}</span>
-                                      </span>
-                                    )}
-                                    {correct === false && (
-                                      <span className="material-symbols-outlined text-[14px] font-variation-fill text-wc-red">cancel</span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-neutral-600 italic">—</span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {/* ── CHAMPION BONUS ── */}
-          {championTeam && (
-            <div className="px-4 sm:px-5 pt-2 pb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">Champion Pick</span>
-                <span className="text-[11px] font-bold text-primary/70 uppercase tracking-wide">+{CHAMPION_POINTS} pts bonus</span>
-              </div>
-              <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold text-neutral-300">
-                  <TeamName code={prediction.champion_code!} flagsByCode={teamFlagsByCode} />
-                </span>
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  {pointsSummary.championCorrect ? (
-                    <span className="inline-flex items-center gap-0.5">
-                      <span className="material-symbols-outlined text-[14px] font-variation-fill text-wc-green">check_circle</span>
-                      <span className="text-[10px] font-bold text-wc-green">+{CHAMPION_POINTS}</span>
-                    </span>
-                  ) : liveMatches?.['FIN-1']?.status === 'FINISHED' ? (
-                    <span className="material-symbols-outlined text-[14px] font-variation-fill text-wc-red">cancel</span>
-                  ) : null}
-                </div>
-              </div>
+          {/* ── 3RD PLACE ── */}
+          <div>
+            <div className="px-4 sm:px-5 pt-3 pb-1 flex items-center justify-between sticky top-0 z-10 bg-background-dark">
+              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">{ROUND_LABELS['3RD']}</span>
+              <span className="text-[11px] font-bold text-primary/70 uppercase tracking-wide">
+                +{QUALIFIER_POINTS['3RD']} finalist · +{WINNER_POINTS['3RD']} winner
+              </span>
             </div>
-          )}
+            <div className="px-4 sm:px-5 pb-2 space-y-1.5">
+              <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2.5 flex flex-wrap gap-1.5">
+                {sortedTeams(predicted.thirdParticipants).map(code => (
+                  <TeamPill
+                    key={code}
+                    code={code}
+                    state={pillState(code, actual.thirdParticipants, hasSignal['3RD'])}
+                    flagsByCode={teamFlagsByCode}
+                  />
+                ))}
+                {predicted.thirdParticipants.size === 0 && (
+                  <span className="text-[11px] text-neutral-500 italic">No picks yet</span>
+                )}
+              </div>
+              {predicted.thirdWinner && (
+                <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[11px] text-neutral-400">
+                    <span className="font-bold uppercase tracking-wider">Winner pick</span>
+                    <TeamPill
+                      code={predicted.thirdWinner}
+                      state={
+                        hasSignal.thirdWinner
+                          ? actual.thirdWinner === predicted.thirdWinner ? 'hit' : 'miss'
+                          : 'pending'
+                      }
+                      flagsByCode={teamFlagsByCode}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-primary/70 tabular-nums">
+                    {hasSignal.thirdWinner && actual.thirdWinner === predicted.thirdWinner
+                      ? `+${WINNER_POINTS['3RD']}`
+                      : `max +${WINNER_POINTS['3RD']}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── FINAL ── */}
+          <div className="pb-4">
+            <div className="px-4 sm:px-5 pt-3 pb-1 flex items-center justify-between sticky top-0 z-10 bg-background-dark">
+              <span className="text-[11px] font-black text-white/60 uppercase tracking-widest">{ROUND_LABELS.FIN}</span>
+              <span className="text-[11px] font-bold text-primary/70 uppercase tracking-wide">
+                +{QUALIFIER_POINTS.FIN} finalist · +{WINNER_POINTS.FIN} champion
+              </span>
+            </div>
+            <div className="px-4 sm:px-5 pb-2 space-y-1.5">
+              <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2.5 flex flex-wrap gap-1.5">
+                {sortedTeams(predicted.finalParticipants).map(code => (
+                  <TeamPill
+                    key={code}
+                    code={code}
+                    state={pillState(code, actual.finalParticipants, hasSignal.FIN)}
+                    flagsByCode={teamFlagsByCode}
+                  />
+                ))}
+                {predicted.finalParticipants.size === 0 && (
+                  <span className="text-[11px] text-neutral-500 italic">No picks yet</span>
+                )}
+              </div>
+              {predicted.finalWinner && (
+                <div className="bg-neutral-900/50 rounded-xl border border-white/5 px-3 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[11px] text-neutral-400">
+                    <span className="font-bold uppercase tracking-wider">Champion pick</span>
+                    <TeamPill
+                      code={predicted.finalWinner}
+                      state={
+                        hasSignal.finalWinner
+                          ? actual.finalWinner === predicted.finalWinner ? 'hit' : 'miss'
+                          : 'pending'
+                      }
+                      flagsByCode={teamFlagsByCode}
+                    />
+                  </div>
+                  <span className="text-[10px] font-bold text-primary/70 tabular-nums">
+                    {hasSignal.finalWinner && actual.finalWinner === predicted.finalWinner
+                      ? `+${WINNER_POINTS.FIN}`
+                      : `max +${WINNER_POINTS.FIN}`}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Backdrop click handler */}
       <div className="absolute inset-0 -z-10" onClick={onClose} />
     </div>
   );

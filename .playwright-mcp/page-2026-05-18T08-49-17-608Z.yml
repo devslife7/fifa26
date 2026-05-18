@@ -1,0 +1,105 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic:
+      - generic: check_circle
+      - text: Saved
+    - main [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e8]:
+            - img "FIFA World Cup 2026" [ref=e10]
+            - generic [ref=e12]:
+              - generic [ref=e13]:
+                - generic [ref=e14]:
+                  - paragraph [ref=e15]: Jun 11, 2026
+                  - paragraph [ref=e16]: Estadio Azteca · Mexico City
+                - generic [ref=e17]: Counting Down
+              - generic [ref=e18]:
+                - generic [ref=e19]:
+                  - generic [ref=e20]: "23"
+                  - generic [ref=e21]: days
+                - generic [ref=e22]:
+                  - generic [ref=e23]: "15"
+                  - generic [ref=e24]: hrs
+                - generic [ref=e25]:
+                  - generic [ref=e26]: "10"
+                  - generic [ref=e27]: min
+                - generic [ref=e28]:
+                  - generic [ref=e29]: "42"
+                  - generic [ref=e30]: sec
+          - button "emoji_events Start My Picks Start with group-stage picks. arrow_forward" [ref=e31]:
+            - generic [ref=e33]: emoji_events
+            - generic [ref=e34]:
+              - generic [ref=e35]: Start My Picks
+              - generic [ref=e36]: Start with group-stage picks.
+            - generic [ref=e37]: arrow_forward
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: Your Predictions
+              - paragraph [ref=e43]: About 5 minutes. 88 picks. Then watch your bracket play out.
+            - generic [ref=e44]:
+              - generic [ref=e46]:
+                - generic [ref=e47]: Groups
+                - generic [ref=e48]:
+                  - text: "0"
+                  - generic [ref=e49]: /72
+              - generic [ref=e52]:
+                - generic [ref=e53]: Bracket
+                - generic [ref=e54]:
+                  - text: "0"
+                  - generic [ref=e55]: /32
+            - generic [ref=e57]:
+              - generic [ref=e59]: —
+              - generic [ref=e60]:
+                - paragraph [ref=e61]: Champion
+                - paragraph [ref=e62]: Not selected
+          - button "leaderboard Sign in to join the leaderboard Compare your picks with everyone else. arrow_forward" [ref=e63]:
+            - generic [ref=e65]: leaderboard
+            - generic [ref=e66]:
+              - generic [ref=e67]: Sign in to join the leaderboard
+              - generic [ref=e68]: Compare your picks with everyone else.
+            - generic [ref=e69]: arrow_forward
+          - generic [ref=e70]:
+            - generic [ref=e71]:
+              - generic [ref=e73]: cloud_done
+              - generic [ref=e74]:
+                - paragraph [ref=e75]: Save picks across devices
+                - paragraph [ref=e76]: Use a one-time email code.
+            - button "login Sign In" [ref=e77]:
+              - generic [ref=e78]: login
+              - text: Sign In
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]: history
+              - paragraph [ref=e82]: Past Seasons
+            - list [ref=e83]:
+              - listitem [ref=e84]:
+                - link "2024 Copa America 2024 open_in_new" [ref=e85] [cursor=pointer]:
+                  - /url: https://copaamerica24.vercel.app/
+                  - generic [ref=e86]: "2024"
+                  - generic [ref=e87]: Copa America 2024
+                  - generic [ref=e88]: open_in_new
+              - listitem [ref=e89]:
+                - link "2022 Qatar World Cup 2022 open_in_new" [ref=e90] [cursor=pointer]:
+                  - /url: https://main.d311px3iblll1g.amplifyapp.com/
+                  - generic [ref=e91]: "2022"
+                  - generic [ref=e92]: Qatar World Cup 2022
+                  - generic [ref=e93]: open_in_new
+    - navigation [ref=e94]:
+      - generic [ref=e95]:
+        - button "home Home" [ref=e96]:
+          - generic [ref=e97]: home
+          - generic [ref=e98]: Home
+        - button "emoji_events Predictions" [ref=e99]:
+          - generic [ref=e100]: emoji_events
+          - generic [ref=e101]: Predictions
+        - button "leaderboard Ranking" [ref=e102]:
+          - generic [ref=e103]: leaderboard
+          - generic [ref=e104]: Ranking
+        - button "newspaper News" [ref=e105]:
+          - generic [ref=e106]: newspaper
+          - generic [ref=e107]: News
+  - button "Open Next.js Dev Tools" [ref=e113] [cursor=pointer]:
+    - img [ref=e114]
+  - alert [ref=e117]

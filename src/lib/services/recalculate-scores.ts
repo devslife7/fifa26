@@ -13,9 +13,6 @@ export async function recalculateScores(): Promise<RecalculateResult> {
     .select('*');
   if (resultsError) return { ok: false, error: resultsError.message };
 
-  const finalResult = actualResults?.find(r => r.match_id.startsWith('F-') || r.match_id.startsWith('FIN-'));
-  const actualChampion = finalResult?.winning_team ?? null;
-
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
     .select('user_id, group_matches, knockout_matches, champion_code, third_place_tiebreaker, profiles(display_name)')
@@ -37,7 +34,6 @@ export async function recalculateScores(): Promise<RecalculateResult> {
         third_place_tiebreaker: (pred.third_place_tiebreaker as string[] | null) ?? null,
       },
       actualResults ?? [],
-      actualChampion,
     );
 
     const profile = pred.profiles as unknown as { display_name: string } | null;

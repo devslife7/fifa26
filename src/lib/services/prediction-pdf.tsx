@@ -8,8 +8,8 @@ import {
 } from '@react-pdf/renderer';
 import { allGroupMatches } from '@/data/matches';
 import { teamsByCode } from '@/data/teams';
-import { generateBracket } from '@/lib/logic/bracket';
-import { CHAMPION_POINTS, GROUP_POINTS, KNOCKOUT_POINTS } from '@/lib/logic/scoring';
+import { generateBracket, getMatchWinner } from '@/lib/logic/bracket';
+import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
 import type { KnockoutResult, MatchResult } from '@/types';
 
 interface GeneratePredictionPdfParams {
@@ -228,19 +228,18 @@ function PredictionPdfDocument({
     return roundDiff || a.position - b.position;
   });
 
-  const finalMatch = orderedKnockout.find((m) => m.round === 'FIN');
-  const championCode = finalMatch?.result
-    ? finalMatch.result === 'home'
-      ? finalMatch.home
-      : finalMatch.away
-    : undefined;
+  const finalMatch = orderedKnockout.find((m) => m.id === 'FIN-1');
+  const thirdMatch = orderedKnockout.find((m) => m.id === '3RD-1');
+  const championCode = finalMatch ? getMatchWinner(finalMatch) : undefined;
+  const thirdWinnerCode = thirdMatch ? getMatchWinner(thirdMatch) : undefined;
 
   const knockoutMaxPoints = orderedKnockout.reduce(
-    (sum, m) => sum + (KNOCKOUT_POINTS[m.round] ?? 0),
+    (sum, m) => sum + (QUALIFIER_POINTS[m.round] ?? 0),
     0,
   );
   const groupMaxPoints = allGroupMatches.length * GROUP_POINTS;
-  const grandTotalMax = groupMaxPoints + knockoutMaxPoints + CHAMPION_POINTS;
+  const knockoutSectionMax = knockoutMaxPoints + WINNER_POINTS['3RD'] + WINNER_POINTS.FIN;
+  const grandTotalMax = groupMaxPoints + knockoutSectionMax;
 
   const metaPrefix = predictionNumber ? `Snapshot #${predictionNumber} · ` : '';
 
@@ -305,7 +304,7 @@ function PredictionPdfDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
           <Text style={styles.sectionSubtitle}>
-            Points awarded per round when your pick advances. Champion match adds a separate +{CHAMPION_POINTS} bonus.
+            Earn the round&apos;s points for every team in your bracket that actually qualifies for that round. The 3rd-place match (+{WINNER_POINTS['3RD']}) and Final (+{WINNER_POINTS.FIN}) each pay a bonus when you pick the actual winner.
           </Text>
 
           <View style={styles.table}>
@@ -328,7 +327,7 @@ function PredictionPdfDocument({
                   {knockoutPickCode(match.home, match.away, match.result)}
                 </Text>
                 <Text style={[styles.cell, { width: '6%' }]}>
-                  +{KNOCKOUT_POINTS[match.round] ?? 0}
+                  +{QUALIFIER_POINTS[match.round] ?? 0}
                 </Text>
                 <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
                   <View style={styles.checkbox} />
@@ -336,23 +335,32 @@ function PredictionPdfDocument({
               </View>
             ))}
             <View style={styles.row} wrap={false}>
-              <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>Champion</Text>
+              <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>3rd-place winner</Text>
+              <Text style={[styles.cell, { width: '60%' }]}>{teamName(thirdWinnerCode)}</Text>
+              <Text style={[styles.cell, { width: '7%' }]}>{thirdWinnerCode ?? '—'}</Text>
+              <Text style={[styles.cell, { width: '6%' }]}>+{WINNER_POINTS['3RD']}</Text>
+              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
+                <View style={styles.checkbox} />
+              </View>
+            </View>
+            <View style={styles.row} wrap={false}>
+              <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>Final winner</Text>
               <Text style={[styles.cell, { width: '60%' }]}>{teamName(championCode)}</Text>
               <Text style={[styles.cell, { width: '7%' }]}>{championCode ?? '—'}</Text>
-              <Text style={[styles.cell, { width: '6%' }]}>+{CHAMPION_POINTS}</Text>
+              <Text style={[styles.cell, { width: '6%' }]}>+{WINNER_POINTS.FIN}</Text>
               <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '7%' }]}>
                 <View style={styles.checkbox} />
               </View>
             </View>
             <View style={styles.totalRow} wrap={false}>
               <Text style={[styles.totalLabel, { width: '70%' }]}>Knockout Picks Total</Text>
-              <Text style={[styles.totalValue, { width: '30%' }]}>_____ / {knockoutMaxPoints + CHAMPION_POINTS}</Text>
+              <Text style={[styles.totalValue, { width: '30%' }]}>_____ / {knockoutSectionMax}</Text>
             </View>
           </View>
 
           <View style={styles.grandTotalRow} wrap={false}>
             <Text style={[styles.grandTotalLabel, { width: '70%' }]}>
-              GRAND TOTAL (group + knockout + champion)
+              GRAND TOTAL (group + knockout)
             </Text>
             <Text style={[styles.grandTotalValue, { width: '30%' }]}>
               _____ / {grandTotalMax}

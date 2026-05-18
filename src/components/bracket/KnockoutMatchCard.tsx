@@ -2,7 +2,16 @@
 
 import { KnockoutResult, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
-import { KNOCKOUT_POINTS } from '@/lib/logic/scoring';
+import { QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
+
+const POINTS_FOR_MATCH_WIN: Record<string, number> = {
+  R32: QUALIFIER_POINTS.R16,
+  R16: QUALIFIER_POINTS.QF,
+  QF: QUALIFIER_POINTS.SF,
+  SF: QUALIFIER_POINTS.FIN,
+  '3RD': WINNER_POINTS['3RD'],
+  FIN: WINNER_POINTS.FIN,
+};
 import { isPlaceholder, placeholderLabel } from '@/lib/logic/bracket';
 
 interface Props {
@@ -79,10 +88,12 @@ export default function KnockoutMatchCard({
   }) => {
     // Placeholder team from incomplete group
     if (code && isPlaceholder(code)) {
+      const label = placeholderLabel(code);
+      const isBest3 = code.startsWith('PH:BEST3-');
       return (
-        <div className="w-full flex items-center px-3 py-3 rounded-full">
-          <span className="font-body font-semibold text-sm text-neutral-500 italic">
-            {placeholderLabel(code)}
+        <div className="w-full flex items-center px-3 py-3 rounded-full" title={label}>
+          <span className={`font-body font-semibold text-neutral-500 italic ${isBest3 ? 'text-xs' : 'text-sm'}`}>
+            {label}
           </span>
         </div>
       );
@@ -168,7 +179,7 @@ export default function KnockoutMatchCard({
               </span>
               {predictionCorrect && (
                 <span className="text-[11px] font-bold text-wc-green font-body">
-                  +{KNOCKOUT_POINTS[matchId.split('-')[0]] ?? 0}
+                  +{POINTS_FOR_MATCH_WIN[matchId.split('-')[0]] ?? 0}
                 </span>
               )}
             </span>

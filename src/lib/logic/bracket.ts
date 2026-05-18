@@ -1,44 +1,198 @@
 import { KnockoutMatch, KnockoutRound, GroupLetter, MatchResult, KnockoutResult } from '@/types';
 import { getGroupQualifiers, getBestThirdPlaceTeams, areAllGroupsComplete } from './standings';
+import { lookupAnnexC, WINNER_SLOTS, type AnnexCAssignment, type WinnerSlot } from './annexC';
 
-// FIFA 2026 Round of 32 bracket structure
-// 32 teams: 12 group winners + 12 runners-up + 8 best third-place teams
-// The R32 pairings follow the official FIFA structure
+// FIFA World Cup 26 bracket structure — codified from the official Regulations
+// (https://digitalhub.fifa.com/m/636f5c9c6f29771f/original/FWC2026_regulations_EN.pdf):
+//   Article 12.6  → R32 pairings (M73–M88)
+//   Article 12.7  → R16 pairings (M89–M96)
+//   Article 12.8  → QF pairings  (M97–M100)
+//   Article 12.9  → SF pairings  (M101–M102)
+//   Article 12.10 → Third-place match (M103)
+//   Article 12.11 → Final (M104)
+//   Annexe C      → 495-row table mapping {8 qualifying third-place groups} →
+//                    which third-place team faces which group winner.
+//
+// Internal IDs use the existing `R32-N`, `R16-N`, `QF-N`, `SF-N`, `3RD-1`, `FIN-1`
+// scheme. The numeric suffix follows FIFA M-numbering (R32-1 = M73, R16-1 = M89,
+// QF-1 = M97, SF-1 = M101) so position is stable across consumers.
+//
+// `generateBracket()` returns matches in *display order* — consecutive pairs of
+// matches in each round are the two feeders of the next round's match at the
+// same pair-index, so the UI can pair `matches[i*2]` with `matches[i*2+1]`
+// without knowing the feeder map.
 
-// --- R32 Source Mapping ---
+// --- R32 Sources (Article 12.6) ---
 
 type TeamSource =
   | { type: 'winner'; group: GroupLetter }
   | { type: 'runnerUp'; group: GroupLetter }
-  | { type: 'third'; slot: number };
+  | { type: 'best3From'; candidates: readonly GroupLetter[] };
 
 interface R32SourceDef {
   id: string;
   position: number;
+  fifaMatchNumber: number;
   home: TeamSource;
   away: TeamSource;
 }
 
-export const R32_SOURCES: R32SourceDef[] = [
-  { id: 'R32-1',  position: 1,  home: { type: 'winner', group: 'A' }, away: { type: 'runnerUp', group: 'F' } },
-  { id: 'R32-2',  position: 2,  home: { type: 'winner', group: 'B' }, away: { type: 'runnerUp', group: 'E' } },
-  { id: 'R32-3',  position: 3,  home: { type: 'winner', group: 'C' }, away: { type: 'runnerUp', group: 'D' } },
-  { id: 'R32-4',  position: 4,  home: { type: 'winner', group: 'D' }, away: { type: 'runnerUp', group: 'C' } },
-  { id: 'R32-5',  position: 5,  home: { type: 'winner', group: 'E' }, away: { type: 'runnerUp', group: 'B' } },
-  { id: 'R32-6',  position: 6,  home: { type: 'winner', group: 'F' }, away: { type: 'runnerUp', group: 'A' } },
-  { id: 'R32-7',  position: 7,  home: { type: 'winner', group: 'G' }, away: { type: 'runnerUp', group: 'L' } },
-  { id: 'R32-8',  position: 8,  home: { type: 'winner', group: 'H' }, away: { type: 'runnerUp', group: 'K' } },
-  { id: 'R32-9',  position: 9,  home: { type: 'winner', group: 'I' }, away: { type: 'runnerUp', group: 'J' } },
-  { id: 'R32-10', position: 10, home: { type: 'winner', group: 'J' }, away: { type: 'runnerUp', group: 'I' } },
-  { id: 'R32-11', position: 11, home: { type: 'winner', group: 'K' }, away: { type: 'runnerUp', group: 'H' } },
-  { id: 'R32-12', position: 12, home: { type: 'winner', group: 'L' }, away: { type: 'runnerUp', group: 'G' } },
-  { id: 'R32-13', position: 13, home: { type: 'third', slot: 0 }, away: { type: 'third', slot: 7 } },
-  { id: 'R32-14', position: 14, home: { type: 'third', slot: 1 }, away: { type: 'third', slot: 6 } },
-  { id: 'R32-15', position: 15, home: { type: 'third', slot: 2 }, away: { type: 'third', slot: 5 } },
-  { id: 'R32-16', position: 16, home: { type: 'third', slot: 3 }, away: { type: 'third', slot: 4 } },
-];
+const R32_BY_M_NUMBER: Record<number, R32SourceDef> = (() => {
+  const defs: Omit<R32SourceDef, 'id' | 'position'>[] = [
+    { fifaMatchNumber: 73, home: { type: 'runnerUp', group: 'A' }, away: { type: 'runnerUp', group: 'B' } },
+    { fifaMatchNumber: 74, home: { type: 'winner', group: 'E' }, away: { type: 'best3From', candidates: ['A','B','C','D','F'] } },
+    { fifaMatchNumber: 75, home: { type: 'winner', group: 'F' }, away: { type: 'runnerUp', group: 'C' } },
+    { fifaMatchNumber: 76, home: { type: 'winner', group: 'C' }, away: { type: 'runnerUp', group: 'F' } },
+    { fifaMatchNumber: 77, home: { type: 'winner', group: 'I' }, away: { type: 'best3From', candidates: ['C','D','F','G','H'] } },
+    { fifaMatchNumber: 78, home: { type: 'runnerUp', group: 'E' }, away: { type: 'runnerUp', group: 'I' } },
+    { fifaMatchNumber: 79, home: { type: 'winner', group: 'A' }, away: { type: 'best3From', candidates: ['C','E','F','H','I'] } },
+    { fifaMatchNumber: 80, home: { type: 'winner', group: 'L' }, away: { type: 'best3From', candidates: ['E','H','I','J','K'] } },
+    { fifaMatchNumber: 81, home: { type: 'winner', group: 'D' }, away: { type: 'best3From', candidates: ['B','E','F','I','J'] } },
+    { fifaMatchNumber: 82, home: { type: 'winner', group: 'G' }, away: { type: 'best3From', candidates: ['A','E','H','I','J'] } },
+    { fifaMatchNumber: 83, home: { type: 'runnerUp', group: 'K' }, away: { type: 'runnerUp', group: 'L' } },
+    { fifaMatchNumber: 84, home: { type: 'winner', group: 'H' }, away: { type: 'runnerUp', group: 'J' } },
+    { fifaMatchNumber: 85, home: { type: 'winner', group: 'B' }, away: { type: 'best3From', candidates: ['E','F','G','I','J'] } },
+    { fifaMatchNumber: 86, home: { type: 'winner', group: 'J' }, away: { type: 'runnerUp', group: 'H' } },
+    { fifaMatchNumber: 87, home: { type: 'winner', group: 'K' }, away: { type: 'best3From', candidates: ['D','E','I','J','L'] } },
+    { fifaMatchNumber: 88, home: { type: 'runnerUp', group: 'D' }, away: { type: 'runnerUp', group: 'G' } },
+  ];
+  const out: Record<number, R32SourceDef> = {};
+  defs.forEach((d, i) => {
+    const id = `R32-${i + 1}`;
+    out[d.fifaMatchNumber] = { ...d, id, position: i + 1 };
+  });
+  return out;
+})();
 
-// --- Placeholder Helpers ---
+export const R32_SOURCES: readonly R32SourceDef[] = Object.values(R32_BY_M_NUMBER).sort(
+  (a, b) => a.position - b.position
+);
+
+// --- Feeder tables (Articles 12.7–12.11) ---
+//
+// Each entry: this round's match is fed by the winners (or losers) of two
+// upstream matches identified by FIFA M-number. We translate M-numbers to
+// internal R32/R16/QF/SF IDs at build time.
+
+interface FeederDef {
+  id: string;
+  position: number;
+  fifaMatchNumber: number;
+  homeFromFifa: number;
+  awayFromFifa: number;
+}
+
+// Article 12.7 — Round of 16
+const R16_FEEDERS_RAW = [
+  { fifaMatchNumber: 89, homeFromFifa: 74, awayFromFifa: 77 },
+  { fifaMatchNumber: 90, homeFromFifa: 73, awayFromFifa: 75 },
+  { fifaMatchNumber: 91, homeFromFifa: 76, awayFromFifa: 78 },
+  { fifaMatchNumber: 92, homeFromFifa: 79, awayFromFifa: 80 },
+  { fifaMatchNumber: 93, homeFromFifa: 83, awayFromFifa: 84 },
+  { fifaMatchNumber: 94, homeFromFifa: 81, awayFromFifa: 82 },
+  { fifaMatchNumber: 95, homeFromFifa: 86, awayFromFifa: 88 },
+  { fifaMatchNumber: 96, homeFromFifa: 85, awayFromFifa: 87 },
+] as const;
+
+// Article 12.8 — Quarter-finals
+const QF_FEEDERS_RAW = [
+  { fifaMatchNumber: 97,  homeFromFifa: 89, awayFromFifa: 90 },
+  { fifaMatchNumber: 98,  homeFromFifa: 93, awayFromFifa: 94 },
+  { fifaMatchNumber: 99,  homeFromFifa: 91, awayFromFifa: 92 },
+  { fifaMatchNumber: 100, homeFromFifa: 95, awayFromFifa: 96 },
+] as const;
+
+// Article 12.9 — Semi-finals
+const SF_FEEDERS_RAW = [
+  { fifaMatchNumber: 101, homeFromFifa: 97, awayFromFifa: 98 },
+  { fifaMatchNumber: 102, homeFromFifa: 99, awayFromFifa: 100 },
+] as const;
+
+// Article 12.10 — Third-place (losers of SF) — M103
+// Article 12.11 — Final (winners of SF) — M104
+const FINAL_FROM_FIFA: readonly [number, number] = [101, 102];
+const THIRD_FROM_FIFA: readonly [number, number] = [101, 102];
+
+// Build the feeder tables once, keyed by ID, using the chosen ID scheme.
+function buildFeeders(
+  prefix: 'R16' | 'QF' | 'SF',
+  raw: readonly { fifaMatchNumber: number; homeFromFifa: number; awayFromFifa: number }[],
+  upstreamPrefix: 'R32' | 'R16' | 'QF',
+  upstreamMByPos: Record<number, number>
+): FeederDef[] {
+  const upstreamIdFromFifa = (fifa: number): string => {
+    // upstreamMByPos maps upstream position → fifa M-number; invert.
+    const pos = Object.entries(upstreamMByPos).find(([, m]) => m === fifa)?.[0];
+    if (!pos) throw new Error(`No ${upstreamPrefix} position for M${fifa}`);
+    return `${upstreamPrefix}-${pos}`;
+  };
+  return raw.map((r, i) => ({
+    id: `${prefix}-${i + 1}`,
+    position: i + 1,
+    fifaMatchNumber: r.fifaMatchNumber,
+    homeFromFifa: r.homeFromFifa,
+    awayFromFifa: r.awayFromFifa,
+    // Stored as IDs for runtime use:
+    _homeId: upstreamIdFromFifa(r.homeFromFifa),
+    _awayId: upstreamIdFromFifa(r.awayFromFifa),
+  })) as unknown as FeederDef[];
+}
+
+// Position → FIFA M# inversions (built from R32_BY_M_NUMBER / feeder tables)
+const R32_M_BY_POS: Record<number, number> = (() => {
+  const out: Record<number, number> = {};
+  R32_SOURCES.forEach(s => { out[s.position] = s.fifaMatchNumber; });
+  return out;
+})();
+
+const R16_FEEDERS = buildFeeders('R16', R16_FEEDERS_RAW, 'R32', R32_M_BY_POS) as (FeederDef & { _homeId: string; _awayId: string })[];
+
+const R16_M_BY_POS: Record<number, number> = (() => {
+  const out: Record<number, number> = {};
+  R16_FEEDERS.forEach(f => { out[f.position] = f.fifaMatchNumber; });
+  return out;
+})();
+
+const QF_FEEDERS = buildFeeders('QF', QF_FEEDERS_RAW, 'R16', R16_M_BY_POS) as (FeederDef & { _homeId: string; _awayId: string })[];
+
+const QF_M_BY_POS: Record<number, number> = (() => {
+  const out: Record<number, number> = {};
+  QF_FEEDERS.forEach(f => { out[f.position] = f.fifaMatchNumber; });
+  return out;
+})();
+
+const SF_FEEDERS = buildFeeders('SF', SF_FEEDERS_RAW, 'QF', QF_M_BY_POS) as (FeederDef & { _homeId: string; _awayId: string })[];
+
+// Helper: SF IDs that feed FIN-1 / 3RD-1
+const SF_FEED_IDS: [string, string] = (() => {
+  const inv = (fifa: number) => SF_FEEDERS.find(f => f.fifaMatchNumber === fifa)!.id;
+  return [inv(FINAL_FROM_FIFA[0]), inv(FINAL_FROM_FIFA[1])];
+})();
+const SF_THIRD_IDS: [string, string] = (() => {
+  const inv = (fifa: number) => SF_FEEDERS.find(f => f.fifaMatchNumber === fifa)!.id;
+  return [inv(THIRD_FROM_FIFA[0]), inv(THIRD_FROM_FIFA[1])];
+})();
+
+// --- Display ordering ---
+//
+// To let `BracketView` pair `matches[i*2]` with `matches[i*2+1]` naturally,
+// each round's matches are returned in an order where consecutive pairs feed
+// the same next-round match.
+
+function displayOrder<T extends { id: string; position: number }>(
+  matches: T[],
+  feeders: readonly (FeederDef & { _homeId: string; _awayId: string })[]
+): T[] {
+  const byId = new Map(matches.map(m => [m.id, m] as const));
+  const out: T[] = [];
+  for (const f of feeders) {
+    out.push(byId.get(f._homeId)!);
+    out.push(byId.get(f._awayId)!);
+  }
+  return out;
+}
+
+// --- Placeholders ---
 
 export function isPlaceholder(code: string | undefined): boolean {
   return !!code && code.startsWith('PH:');
@@ -49,67 +203,69 @@ export function placeholderLabel(code: string): string {
   const inner = code.slice(3);
   if (inner.startsWith('W-')) return `Winner ${inner.slice(2)}`;
   if (inner.startsWith('RU-')) return `Runner-up ${inner.slice(3)}`;
+  if (inner.startsWith('BEST3-')) {
+    const cands = inner.slice(6);
+    return `3rd of ${cands.split('').join('/')}`;
+  }
   if (inner.startsWith('3RD-')) return '3rd Place';
   return 'TBD';
 }
 
-// --- Dependency Helpers ---
+// --- Dependency helpers ---
 
 export function getAffectedR32Matches(groupLetter: GroupLetter): string[] {
   const affected = new Set<string>();
-
   for (const source of R32_SOURCES) {
-    const homeRef = source.home.type !== 'third' && source.home.group === groupLetter;
-    const awayRef = source.away.type !== 'third' && source.away.group === groupLetter;
-    if (homeRef || awayRef) {
+    const refsHome =
+      (source.home.type === 'winner' && source.home.group === groupLetter) ||
+      (source.home.type === 'runnerUp' && source.home.group === groupLetter);
+    const refsAway =
+      (source.away.type === 'winner' && source.away.group === groupLetter) ||
+      (source.away.type === 'runnerUp' && source.away.group === groupLetter);
+    if (refsHome || refsAway) affected.add(source.id);
+    // Any group change can reshuffle which 8 third-placed teams qualify,
+    // which in turn changes the Annex C row → 8 winner-vs-best-3rd matches.
+    if (source.home.type === 'best3From' || source.away.type === 'best3From') {
       affected.add(source.id);
     }
   }
-
-  // Conservative: any group change can shift third-place rankings
-  for (const source of R32_SOURCES) {
-    if (source.home.type === 'third' || source.away.type === 'third') {
-      affected.add(source.id);
-    }
-  }
-
   return Array.from(affected);
 }
 
+// Reverse adjacency: for each upstream match ID, the downstream match IDs it feeds into.
+const FEEDS_INTO: Record<string, string[]> = (() => {
+  const map: Record<string, string[]> = {};
+  const add = (from: string, to: string) => {
+    (map[from] ??= []).push(to);
+  };
+  for (const f of R16_FEEDERS) { add(f._homeId, f.id); add(f._awayId, f.id); }
+  for (const f of QF_FEEDERS)  { add(f._homeId, f.id); add(f._awayId, f.id); }
+  for (const f of SF_FEEDERS)  { add(f._homeId, f.id); add(f._awayId, f.id); }
+  // SF -> both FIN and 3RD
+  add(SF_FEED_IDS[0], 'FIN-1');
+  add(SF_FEED_IDS[1], 'FIN-1');
+  add(SF_THIRD_IDS[0], '3RD-1');
+  add(SF_THIRD_IDS[1], '3RD-1');
+  return map;
+})();
+
 export function getDownstreamMatchIds(matchId: string): string[] {
-  const [round, posStr] = matchId.split('-');
-  const pos = parseInt(posStr, 10);
-
-  if (round === 'FIN' || round === '3RD') return [];
-
-  const downstream: string[] = [];
-  const roundChain = ['R32', 'R16', 'QF', 'SF'];
-  const startIdx = roundChain.indexOf(round);
-  if (startIdx === -1) return [];
-
-  let currentPos = pos;
-  for (let i = startIdx + 1; i < roundChain.length; i++) {
-    currentPos = Math.ceil(currentPos / 2);
-    downstream.push(`${roundChain[i]}-${currentPos}`);
+  const result: string[] = [];
+  const seen = new Set<string>();
+  const queue: string[] = [matchId];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const next of FEEDS_INTO[cur] ?? []) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      result.push(next);
+      queue.push(next);
+    }
   }
-
-  downstream.push('FIN-1', '3RD-1');
-  return downstream;
+  return result;
 }
 
-// --- Third Place Assignment ---
-
-function assignThirdPlaceToSlots(
-  thirdPlaceTeams: { team: string; group: GroupLetter }[]
-): Record<number, string> {
-  const slots: Record<number, string> = {};
-  thirdPlaceTeams.forEach((tp, i) => {
-    slots[i] = tp.team;
-  });
-  return slots;
-}
-
-// --- Match Winner/Loser Resolution ---
+// --- Match winner/loser resolution ---
 
 export function getMatchWinner(match: KnockoutMatch): string | undefined {
   if (!match.home || !match.away) return undefined;
@@ -125,123 +281,155 @@ function getMatchLoser(match: KnockoutMatch): string | undefined {
   return match.result === 'home' ? match.away : match.home;
 }
 
-// --- Source Resolution ---
+// --- Source resolution ---
+
+function winnerSlotOf(source: TeamSource): WinnerSlot | undefined {
+  if (source.type !== 'winner') return undefined;
+  return (WINNER_SLOTS as readonly string[]).includes(source.group)
+    ? (source.group as WinnerSlot)
+    : undefined;
+}
 
 function resolveSource(
   source: TeamSource,
   winners: Record<string, string>,
   runnersUp: Record<string, string>,
-  thirdSlots: Record<number, string>,
-  thirdsResolved: boolean
+  thirdByGroup: Partial<Record<GroupLetter, string>>,
+  annexC: AnnexCAssignment | undefined,
+  pairedWinnerSlot: WinnerSlot | undefined
 ): string {
   if (source.type === 'winner') {
     return winners[source.group] ?? `PH:W-${source.group}`;
-  } else if (source.type === 'runnerUp') {
-    return runnersUp[source.group] ?? `PH:RU-${source.group}`;
-  } else {
-    return thirdsResolved && thirdSlots[source.slot] !== undefined
-      ? thirdSlots[source.slot]
-      : `PH:3RD-${source.slot}`;
   }
+  if (source.type === 'runnerUp') {
+    return runnersUp[source.group] ?? `PH:RU-${source.group}`;
+  }
+  // best3From
+  if (!annexC || !pairedWinnerSlot) {
+    return `PH:BEST3-${source.candidates.join('')}`;
+  }
+  const thirdGroup = annexC[pairedWinnerSlot];
+  const team = thirdByGroup[thirdGroup];
+  return team ?? `PH:BEST3-${source.candidates.join('')}`;
 }
 
-// --- Bracket Generation ---
+// --- Bracket generation ---
 
 export function generateBracket(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker?: string[]
 ): KnockoutMatch[] {
-  const matches: KnockoutMatch[] = [];
   const allGroupsDone = areAllGroupsComplete(groupPredictions);
   const { winners, runnersUp } = getGroupQualifiers(groupPredictions);
 
-  // Third place — only available when all groups complete + ties resolved
-  let thirdSlots: Record<number, string> = {};
+  // Resolve third-place qualifiers via Annex C (only when all groups done + ties resolved).
   const bestThirds = allGroupsDone ? getBestThirdPlaceTeams(groupPredictions, thirdPlaceTiebreaker) : [];
-  const thirdsResolved = bestThirds.length >= 8;
+  const thirdsResolved = bestThirds.length === 8;
+  const thirdByGroup: Partial<Record<GroupLetter, string>> = {};
+  let annexC: AnnexCAssignment | undefined;
   if (thirdsResolved) {
-    thirdSlots = assignThirdPlaceToSlots(bestThirds);
+    const qualifierGroups: GroupLetter[] = [];
+    for (const t of bestThirds) {
+      thirdByGroup[t.group] = t.team;
+      qualifierGroups.push(t.group);
+    }
+    annexC = lookupAnnexC(qualifierGroups);
+    if (!annexC && typeof console !== 'undefined') {
+      // Should be impossible: 12-choose-8 = 495 and ANNEX_C has all 495 keys.
+      console.error('Annex C miss for qualifier groups', qualifierGroups);
+    }
   }
 
-  // Round of 32 — partial data with placeholders for incomplete groups
-  const allR32: KnockoutMatch[] = R32_SOURCES.map(source => ({
-    id: source.id,
-    round: 'R32' as KnockoutRound,
-    position: source.position,
-    home: resolveSource(source.home, winners, runnersUp, thirdSlots, thirdsResolved),
-    away: resolveSource(source.away, winners, runnersUp, thirdSlots, thirdsResolved),
-    result: knockoutPredictions[source.id],
-  }));
+  // R32: resolve each match.
+  const r32ById = new Map<string, KnockoutMatch>();
+  for (const def of R32_SOURCES) {
+    // For best3From sides, the paired winner slot lives on the opposite side.
+    const homeSlot = def.away.type === 'best3From' ? winnerSlotOf(def.home) : undefined;
+    const awaySlot = def.home.type === 'best3From' ? winnerSlotOf(def.away) : undefined;
 
-  matches.push(...allR32);
+    const home = resolveSource(def.home, winners, runnersUp, thirdByGroup, annexC, awaySlot);
+    const away = resolveSource(def.away, winners, runnersUp, thirdByGroup, annexC, homeSlot);
 
-  // Round of 16 (8 matches) — only propagate when both source teams are real
-  for (let i = 0; i < 8; i++) {
-    const m1 = allR32[i * 2];
-    const m2 = allR32[i * 2 + 1];
-    matches.push({
-      id: `R16-${i + 1}`,
-      round: 'R16',
-      position: i + 1,
-      home: getMatchWinner(m1),
-      away: getMatchWinner(m2),
-      result: knockoutPredictions[`R16-${i + 1}`],
+    r32ById.set(def.id, {
+      id: def.id,
+      round: 'R32',
+      position: def.position,
+      home,
+      away,
+      result: knockoutPredictions[def.id],
     });
   }
 
-  // Quarterfinals (4 matches)
-  const r16 = matches.filter(m => m.round === 'R16');
-  for (let i = 0; i < 4; i++) {
-    const m1 = r16[i * 2];
-    const m2 = r16[i * 2 + 1];
-    matches.push({
-      id: `QF-${i + 1}`,
-      round: 'QF',
-      position: i + 1,
-      home: getMatchWinner(m1),
-      away: getMatchWinner(m2),
-      result: knockoutPredictions[`QF-${i + 1}`],
-    });
-  }
+  // Downstream rounds: forward pass via feeder tables.
+  const all = new Map<string, KnockoutMatch>(r32ById);
 
-  // Semifinals (2 matches)
-  const qf = matches.filter(m => m.round === 'QF');
-  for (let i = 0; i < 2; i++) {
-    const m1 = qf[i * 2];
-    const m2 = qf[i * 2 + 1];
-    matches.push({
-      id: `SF-${i + 1}`,
-      round: 'SF',
-      position: i + 1,
-      home: getMatchWinner(m1),
-      away: getMatchWinner(m2),
-      result: knockoutPredictions[`SF-${i + 1}`],
-    });
-  }
+  const buildRound = (
+    feeders: readonly (FeederDef & { _homeId: string; _awayId: string })[],
+    round: KnockoutRound
+  ) => {
+    for (const f of feeders) {
+      const home = all.get(f._homeId);
+      const away = all.get(f._awayId);
+      const match: KnockoutMatch = {
+        id: f.id,
+        round,
+        position: f.position,
+        home: home ? getMatchWinner(home) : undefined,
+        away: away ? getMatchWinner(away) : undefined,
+        result: knockoutPredictions[f.id],
+      };
+      all.set(f.id, match);
+    }
+  };
 
-  // Third place match
-  const sf = matches.filter(m => m.round === 'SF');
-  matches.push({
+  buildRound(R16_FEEDERS, 'R16');
+  buildRound(QF_FEEDERS, 'QF');
+  buildRound(SF_FEEDERS, 'SF');
+
+  // 3rd-place and Final from the two semi-finals.
+  const sf1 = all.get(SF_THIRD_IDS[0])!;
+  const sf2 = all.get(SF_THIRD_IDS[1])!;
+  const thirdMatch: KnockoutMatch = {
     id: '3RD-1',
     round: '3RD',
     position: 1,
-    home: getMatchLoser(sf[0]),
-    away: getMatchLoser(sf[1]),
+    home: getMatchLoser(sf1),
+    away: getMatchLoser(sf2),
     result: knockoutPredictions['3RD-1'],
-  });
-
-  // Final
-  matches.push({
+  };
+  const finSf1 = all.get(SF_FEED_IDS[0])!;
+  const finSf2 = all.get(SF_FEED_IDS[1])!;
+  const finalMatch: KnockoutMatch = {
     id: 'FIN-1',
     round: 'FIN',
     position: 1,
-    home: getMatchWinner(sf[0]),
-    away: getMatchWinner(sf[1]),
+    home: getMatchWinner(finSf1),
+    away: getMatchWinner(finSf2),
     result: knockoutPredictions['FIN-1'],
-  });
+  };
+  all.set('3RD-1', thirdMatch);
+  all.set('FIN-1', finalMatch);
 
-  return matches;
+  // Return in display order. R32 ordered by R16 feeder adjacency,
+  // R16 ordered by QF feeder adjacency, QF ordered by SF feeder adjacency.
+  const r32List = [...r32ById.values()];
+  const r16List = R16_FEEDERS.map(f => all.get(f.id)!);
+  const qfList  = QF_FEEDERS.map(f => all.get(f.id)!);
+  const sfList  = SF_FEEDERS.map(f => all.get(f.id)!);
+
+  const r32Display = displayOrder(r32List, R16_FEEDERS);
+  const r16Display = displayOrder(r16List, QF_FEEDERS);
+  const qfDisplay  = displayOrder(qfList, SF_FEEDERS);
+
+  return [
+    ...r32Display,
+    ...r16Display,
+    ...qfDisplay,
+    ...sfList,
+    thirdMatch,
+    finalMatch,
+  ];
 }
 
 export function generateRandomKnockoutPredictions(
@@ -251,42 +439,21 @@ export function generateRandomKnockoutPredictions(
   const predictions: Record<string, KnockoutResult> = {};
   const pick = (): KnockoutResult => Math.random() < 0.5 ? 'home' : 'away';
 
-  const bracket = generateBracket(groupPredictions, {}, thirdPlaceTiebreaker);
-  const r32 = bracket.filter(m => m.round === 'R32');
-
-  for (const m of r32) {
-    if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
-      predictions[m.id] = pick();
+  const fillRound = (round: KnockoutRound) => {
+    const bracket = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
+    for (const m of bracket.filter(m => m.round === round)) {
+      if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
+        predictions[m.id] = pick();
+      }
     }
-  }
+  };
 
-  const afterR32 = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
-  for (const m of afterR32.filter(m => m.round === 'R16')) {
-    if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
-      predictions[m.id] = pick();
-    }
-  }
-
-  const afterR16 = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
-  for (const m of afterR16.filter(m => m.round === 'QF')) {
-    if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
-      predictions[m.id] = pick();
-    }
-  }
-
-  const afterQF = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
-  for (const m of afterQF.filter(m => m.round === 'SF')) {
-    if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
-      predictions[m.id] = pick();
-    }
-  }
-
-  const afterSF = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
-  for (const m of afterSF.filter(m => m.round === '3RD' || m.round === 'FIN')) {
-    if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
-      predictions[m.id] = pick();
-    }
-  }
+  fillRound('R32');
+  fillRound('R16');
+  fillRound('QF');
+  fillRound('SF');
+  fillRound('3RD');
+  fillRound('FIN');
 
   return predictions;
 }

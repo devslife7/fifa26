@@ -1,4 +1,4 @@
-import { CHAMPION_POINTS, GROUP_POINTS, KNOCKOUT_POINTS } from '@/lib/logic/scoring';
+import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
 
 type Variant = 'full' | 'knockout-only';
 
@@ -13,30 +13,31 @@ interface Row {
 }
 
 const KNOCKOUT_ROWS: Row[] = [
-  { label: 'Round of 32', pts: KNOCKOUT_POINTS.R32 },
-  { label: 'Round of 16', pts: KNOCKOUT_POINTS.R16 },
-  { label: 'Quarterfinals', pts: KNOCKOUT_POINTS.QF },
-  { label: 'Semifinals', pts: KNOCKOUT_POINTS.SF },
-  { label: 'Third Place', pts: KNOCKOUT_POINTS['3RD'] },
-  { label: 'Final', pts: KNOCKOUT_POINTS.FIN },
-  { label: 'Champion Bonus', pts: CHAMPION_POINTS },
+  { label: 'Round of 32 (per team)', pts: QUALIFIER_POINTS.R32 },
+  { label: 'Round of 16 (per team)', pts: QUALIFIER_POINTS.R16 },
+  { label: 'Quarterfinals (per team)', pts: QUALIFIER_POINTS.QF },
+  { label: 'Semifinals (per team)', pts: QUALIFIER_POINTS.SF },
+  { label: 'Third Place (per finalist)', pts: QUALIFIER_POINTS['3RD'] },
+  { label: 'Third Place winner bonus', pts: WINNER_POINTS['3RD'] },
+  { label: 'Final (per finalist)', pts: QUALIFIER_POINTS.FIN },
+  { label: 'Champion bonus', pts: WINNER_POINTS.FIN },
 ];
 
 export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
   const rows: Row[] =
     variant === 'full'
-      ? [{ label: 'Group Stage', pts: GROUP_POINTS }, ...KNOCKOUT_ROWS]
+      ? [{ label: 'Group Stage (per match)', pts: GROUP_POINTS }, ...KNOCKOUT_ROWS]
       : KNOCKOUT_ROWS;
   const intro =
     variant === 'full'
       ? (
         <>
-          <span className="font-bold text-white">How to earn points.</span> Group matches give +{GROUP_POINTS} for each correct result: home win, draw, or away win. In knockout rounds, you earn the round&apos;s points when the team you picked to advance from that match actually advances in real life.
+          <span className="font-bold text-white">How to earn points.</span> Group matches give +{GROUP_POINTS} for each correct result (home win, draw, or away win). Knockout rounds award points for every team in your bracket that actually qualifies for that round. The 3rd-place match and Final each pay a bonus when you pick the actual winner.
         </>
       )
       : (
         <>
-          <span className="font-bold text-white">How knockout points work.</span> Your bracket pick is a bet on which team advances. If the team you picked to win a match actually makes it past that round in real life, you earn the round&apos;s points — the opponent in your bracket doesn&apos;t have to match reality.
+          <span className="font-bold text-white">How knockout points work.</span> You earn the round&apos;s points for every team in your bracket that actually reaches that round — the matchup itself doesn&apos;t have to match reality. The 3rd-place match and Final each pay an extra bonus when you pick the winner.
         </>
       );
 
@@ -67,7 +68,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
                   <div key={j} className="w-[3px] h-[10px] rounded-full bg-primary/30" />
                 ))}
               </div>
-              <span className="text-[13px] font-black tabular-nums text-neutral-200 w-5 text-right">
+              <span className="text-[13px] font-black tabular-nums text-neutral-200 w-6 text-right">
                 +{row.pts}
               </span>
             </div>
@@ -77,7 +78,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
 
       <div className={`${surface === 'card' ? 'px-4 pt-1 pb-4' : 'pt-3'} border-t border-white/[0.04]`}>
         <p className="text-[12px] leading-relaxed text-neutral-400 font-body">
-          Champion bonus is all-or-nothing: your predicted champion must win the tournament.
+          Maximum 268 points across the whole tournament.
         </p>
       </div>
     </>

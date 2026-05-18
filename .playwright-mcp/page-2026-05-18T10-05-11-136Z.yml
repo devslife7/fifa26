@@ -1,0 +1,163 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic:
+      - generic: check_circle
+      - text: Saved
+    - main [ref=e4]:
+      - generic [ref=e136]:
+        - generic [ref=e138]:
+          - heading "Leaderboard" [level=1] [ref=e139]
+          - button "Refresh leaderboard" [ref=e140]:
+            - generic [ref=e141]: refresh
+            - text: Refresh
+        - generic [ref=e142]:
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - generic [ref=e146]:
+                - generic [ref=e147]: assignment
+                - heading "Predictions" [level=2] [ref=e148]
+              - generic [ref=e149]:
+                - generic [ref=e150]:
+                  - img [ref=e151]
+                  - generic [ref=e153]: Approved
+                - button "Test 143#143— Marcos Velasco prediction name 🇦🇷 Argentina · Mar 24, 2026, 12:41 AM expand_content" [ref=e155] [cursor=pointer]:
+                  - generic [ref=e156]:
+                    - generic [ref=e157]:
+                      - text: Test 143
+                      - generic [ref=e158]: "#143"
+                      - generic [ref=e159]: — Marcos Velasco prediction name
+                    - generic [ref=e160]:
+                      - generic [ref=e161]: 🇦🇷 Argentina
+                      - generic [ref=e162]: ·
+                      - generic [ref=e163]: Mar 24, 2026, 12:41 AM
+                  - generic [ref=e164]: expand_content
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - img [ref=e167]
+                  - generic [ref=e169]: Pending
+                - generic [ref=e170]:
+                  - button "Mike#151 🇲🇽 Mexico · May 18, 2026, 4:25 AM expand_content" [ref=e171] [cursor=pointer]:
+                    - generic [ref=e172]:
+                      - generic [ref=e173]:
+                        - text: Mike
+                        - generic [ref=e174]: "#151"
+                      - generic [ref=e175]:
+                        - generic [ref=e176]: 🇲🇽 Mexico
+                        - generic [ref=e177]: ·
+                        - generic [ref=e178]: May 18, 2026, 4:25 AM
+                    - generic [ref=e179]: expand_content
+                  - button "Mike#150 🇲🇽 Mexico · May 17, 2026, 2:47 AM expand_content" [ref=e180] [cursor=pointer]:
+                    - generic [ref=e181]:
+                      - generic [ref=e182]:
+                        - text: Mike
+                        - generic [ref=e183]: "#150"
+                      - generic [ref=e184]:
+                        - generic [ref=e185]: 🇲🇽 Mexico
+                        - generic [ref=e186]: ·
+                        - generic [ref=e187]: May 17, 2026, 2:47 AM
+                    - generic [ref=e188]: expand_content
+                  - button "Nikkie#149 🇪🇨 Ecuador · May 15, 2026, 3:45 AM expand_content" [ref=e189] [cursor=pointer]:
+                    - generic [ref=e190]:
+                      - generic [ref=e191]:
+                        - text: Nikkie
+                        - generic [ref=e192]: "#149"
+                      - generic [ref=e193]:
+                        - generic [ref=e194]: 🇪🇨 Ecuador
+                        - generic [ref=e195]: ·
+                        - generic [ref=e196]: May 15, 2026, 3:45 AM
+                    - generic [ref=e197]: expand_content
+                  - button "Test 148#148— Mike Jon 🇪🇸 Spain · May 15, 2026, 3:39 AM expand_content" [ref=e198] [cursor=pointer]:
+                    - generic [ref=e199]:
+                      - generic [ref=e200]:
+                        - text: Test 148
+                        - generic [ref=e201]: "#148"
+                        - generic [ref=e202]: — Mike Jon
+                      - generic [ref=e203]:
+                        - generic [ref=e204]: 🇪🇸 Spain
+                        - generic [ref=e205]: ·
+                        - generic [ref=e206]: May 15, 2026, 3:39 AM
+                    - generic [ref=e207]: expand_content
+                  - button "Marcos Velasco prediction name#144 🇺🇸 United States · Mar 24, 2026, 12:42 AM expand_content" [ref=e208] [cursor=pointer]:
+                    - generic [ref=e209]:
+                      - generic [ref=e210]:
+                        - text: Marcos Velasco prediction name
+                        - generic [ref=e211]: "#144"
+                      - generic [ref=e212]:
+                        - generic [ref=e213]: 🇺🇸 United States
+                        - generic [ref=e214]: ·
+                        - generic [ref=e215]: Mar 24, 2026, 12:42 AM
+                    - generic [ref=e216]: expand_content
+            - generic [ref=e217]:
+              - generic [ref=e218]: emoji_events
+              - heading "Rankings" [level=2] [ref=e219]
+            - button "emoji_events Test 143 remove Predicted 🇦🇷 Argentina as Champion +1 Points" [active] [ref=e220]:
+              - generic [ref=e222]: emoji_events
+              - generic [ref=e223]:
+                - generic [ref=e224]:
+                  - text: Test 143
+                  - generic "No change" [ref=e225]:
+                    - generic [ref=e226]: remove
+                - generic [ref=e227]: Predicted 🇦🇷 Argentina as Champion
+              - generic [ref=e229]:
+                - generic [ref=e230]: "+1"
+                - generic [ref=e231]: Points
+            - button "emoji_events Test 148 remove Predicted 🇪🇸 Spain as Champion 0 Points" [ref=e232]:
+              - generic [ref=e234]: emoji_events
+              - generic [ref=e235]:
+                - generic [ref=e236]:
+                  - text: Test 148
+                  - generic "No change" [ref=e237]:
+                    - generic [ref=e238]: remove
+                - generic [ref=e239]: Predicted 🇪🇸 Spain as Champion
+              - generic [ref=e241]:
+                - generic [ref=e242]: "0"
+                - generic [ref=e243]: Points
+          - generic [ref=e245]:
+            - heading "Scoring" [level=2] [ref=e248]
+            - paragraph [ref=e250]: How to earn points. Group matches give +1 for each correct result (home win, draw, or away win). Knockout rounds award points for every team in your bracket that actually qualifies for that round. The 3rd-place match and Final each pay a bonus when you pick the actual winner.
+            - generic [ref=e251]:
+              - generic [ref=e252]:
+                - generic [ref=e253]: Group Stage (per match)
+                - generic [ref=e257]: "+1"
+              - generic [ref=e258]:
+                - generic [ref=e259]: Round of 32 (per team)
+                - generic [ref=e264]: "+2"
+              - generic [ref=e265]:
+                - generic [ref=e266]: Round of 16 (per team)
+                - generic [ref=e272]: "+3"
+              - generic [ref=e273]:
+                - generic [ref=e274]: Quarterfinals (per team)
+                - generic [ref=e281]: "+4"
+              - generic [ref=e282]:
+                - generic [ref=e283]: Semifinals (per team)
+                - generic [ref=e291]: "+5"
+              - generic [ref=e292]:
+                - generic [ref=e293]: Third Place (per finalist)
+                - generic [ref=e299]: "+3"
+              - generic [ref=e300]:
+                - generic [ref=e301]: Third Place winner bonus
+                - generic [ref=e308]: "+4"
+              - generic [ref=e309]:
+                - generic [ref=e310]: Final (per finalist)
+                - generic [ref=e319]: "+6"
+              - generic [ref=e320]:
+                - generic [ref=e321]: Champion bonus
+                - generic [ref=e334]: "+10"
+            - paragraph [ref=e336]: Maximum 268 points across the whole tournament.
+    - navigation [ref=e112]:
+      - generic [ref=e113]:
+        - button "home Home" [ref=e114]:
+          - generic [ref=e115]: home
+          - generic [ref=e116]: Home
+        - button "emoji_events Predictions" [ref=e117]:
+          - generic [ref=e118]: emoji_events
+          - generic [ref=e119]: Predictions
+        - button "leaderboard Ranking" [ref=e120]:
+          - generic [ref=e121]: leaderboard
+          - generic [ref=e122]: Ranking
+        - button "newspaper News" [ref=e123]:
+          - generic [ref=e124]: newspaper
+          - generic [ref=e125]: News
+  - button "Open Next.js Dev Tools" [ref=e131] [cursor=pointer]:
+    - img [ref=e132]
+  - alert [ref=e135]

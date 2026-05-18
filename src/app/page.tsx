@@ -271,11 +271,37 @@ export default function Home() {
     [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [userRank, setUserRank] = useState<number | null>(null);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
 
   useEffect(() => {
     if (!mounted) return;
     setIsSubmitted(getSubmittedForSnapshot(predictionSnapshot));
   }, [mounted, predictionSnapshot]);
+
+  useEffect(() => {
+    if (!user || !isSubmitted) {
+      setUserRank(null);
+      setTotalUsers(null);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/leaderboard')
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error('failed'))))
+      .then((data: { leaderboard?: Array<{ user_id: string }> }) => {
+        if (cancelled) return;
+        const entries = data.leaderboard ?? [];
+        const idx = entries.findIndex(e => e.user_id === user.id);
+        setTotalUsers(entries.length || null);
+        setUserRank(idx >= 0 ? idx + 1 : null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setUserRank(null);
+        setTotalUsers(null);
+      });
+    return () => { cancelled = true; };
+  }, [user, isSubmitted]);
 
   const navigateTo = useCallback((tab: TabId) => {
     const prev = activeTabRef.current;
@@ -390,6 +416,19 @@ export default function Home() {
     });
   }, [liveMatchesByLocalId]);
 
+  const { liveMatch, nextMatch, userPickForNextMatch } = useMemo(() => {
+    const entries = Object.values(liveMatchesByLocalId ?? {});
+    const live = entries
+      .filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED')
+      .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
+    const upcoming = entries
+      .filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED')
+      .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
+    const pickTarget = upcoming?.localMatchId;
+    const pick = pickTarget ? groupPredictions[pickTarget] : undefined;
+    return { liveMatch: live, nextMatch: upcoming, userPickForNextMatch: pick };
+  }, [liveMatchesByLocalId, groupPredictions]);
+
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -422,6 +461,7 @@ export default function Home() {
         activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
         activeTab === 'profile' ? 'max-w-md px-3 sm:px-4' :
+        activeTab === 'home' ? 'max-w-md md:max-w-5xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
       }`}>
         {activeTab === 'home' && (
@@ -429,9 +469,14 @@ export default function Home() {
             flowState={flowState}
             champion={champion ?? null}
             teamFlagsByCode={teamFlagsByCode ?? {}}
+            liveMatch={liveMatch}
+            nextMatch={nextMatch}
+            userPickForNextMatch={userPickForNextMatch}
+            isSubmitted={isSubmitted}
+            userRank={userRank}
+            totalUsers={totalUsers}
             onNavigate={navigateTo}
             onManagePredictions={() => navigateTo('profile')}
-            onClear={handleClearGroups}
           />
         )}
 

@@ -9,6 +9,7 @@ import {
 import { allGroupMatches } from '@/data/matches';
 import { teamsByCode } from '@/data/teams';
 import { generateBracket } from '@/lib/logic/bracket';
+import { CHAMPION_POINTS, GROUP_POINTS, KNOCKOUT_POINTS } from '@/lib/logic/scoring';
 import type { KnockoutResult, MatchResult } from '@/types';
 
 interface GeneratePredictionPdfParams {
@@ -33,9 +34,11 @@ const roundLabels: Record<string, string> = {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 24,
+    paddingTop: 18,
+    paddingBottom: 18,
+    paddingHorizontal: 22,
     fontFamily: 'Helvetica',
-    fontSize: 8,
+    fontSize: 9,
     color: '#1f2937',
     backgroundColor: '#ffffff',
   },
@@ -43,7 +46,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   title: {
     fontSize: 18,
@@ -64,14 +67,73 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 0,
+    marginBottom: 6,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 13,
     fontFamily: 'Helvetica-Bold',
     color: '#111827',
     marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 8,
+    color: '#6b7280',
+    marginTop: -2,
+    marginBottom: 6,
+  },
+  bonusRow: {
+    flexDirection: 'row',
+    border: '1px solid #d1d5db',
+    borderRadius: 4,
+    backgroundColor: '#fef3c7',
+    marginBottom: 6,
+    minHeight: 22,
+    alignItems: 'stretch',
+  },
+  bonusLabel: {
+    width: '28%',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRight: '1px solid #d1d5db',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 9,
+    color: '#92400e',
+  },
+  bonusPick: {
+    flex: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRight: '1px solid #d1d5db',
+    fontSize: 9,
+  },
+  bonusCheckCell: {
+    width: '12%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    borderBottom: '1px solid #d1d5db',
+    backgroundColor: '#f3f4f6',
+    minHeight: 22,
+  },
+  totalLabel: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRight: '1px solid #e5e7eb',
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 10,
+    color: '#111827',
+    textAlign: 'right',
+  },
+  totalValue: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 10,
+    color: '#111827',
+    textAlign: 'center',
   },
   groupColumns: {
     flexDirection: 'row',
@@ -87,21 +149,21 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottom: '1px solid #e5e7eb',
-    minHeight: 16,
+    minHeight: 18,
   },
   tableHeaderRow: {
     backgroundColor: '#f3f4f6',
   },
   cell: {
-    paddingVertical: 2,
-    paddingHorizontal: 3,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
     borderRight: '1px solid #e5e7eb',
   },
   lastCell: {
     borderRight: 0,
   },
   headerCell: {
-    fontSize: 6,
+    fontSize: 7,
     color: '#374151',
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
@@ -111,8 +173,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkbox: {
-    width: 9,
-    height: 9,
+    width: 11,
+    height: 11,
     border: '1px solid #6b7280',
     borderRadius: 2,
   },
@@ -172,6 +234,18 @@ function PredictionPdfDocument({
     return roundDiff || a.position - b.position;
   });
 
+  const finalMatch = orderedKnockout.find((m) => m.round === 'FIN');
+  const championCode = finalMatch?.result
+    ? finalMatch.result === 'home'
+      ? finalMatch.home
+      : finalMatch.away
+    : undefined;
+
+  const knockoutMaxPoints = orderedKnockout.reduce(
+    (sum, m) => sum + (KNOCKOUT_POINTS[m.round] ?? 0),
+    0,
+  );
+
   const metaPrefix = predictionNumber ? `Snapshot #${predictionNumber} · ` : '';
 
   return (
@@ -180,7 +254,7 @@ function PredictionPdfDocument({
       author="FIFA 26 Predictions"
       subject="Submitted prediction snapshot"
     >
-      <Page size="A4" style={styles.page} wrap>
+      <Page size="A4" style={styles.page}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>FIFA 26 Predictions</Text>
           <View style={styles.identity}>
@@ -200,62 +274,82 @@ function PredictionPdfDocument({
               return (
                 <View key={colIdx} style={[styles.groupColumn, styles.table]}>
                   <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
-                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Match</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '9%' }]}>Match</Text>
                     <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Home</Text>
                     <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Away</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Pick</Text>
-                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '16%' }]}>Correct</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '13%' }]}>Pick</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '10%' }]}>Pts</Text>
+                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '12%' }]}>Correct</Text>
                   </View>
                   {slice.map((match) => (
                     <View key={match.id} style={styles.row} wrap={false}>
-                      <Text style={[styles.cell, { width: '14%' }]}>{match.id}</Text>
+                      <Text style={[styles.cell, { width: '9%' }]}>{match.id}</Text>
                       <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.home)}</Text>
                       <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.away)}</Text>
-                      <Text style={[styles.cell, { width: '14%' }]}>{groupPickCode(match.id, groupMatches[match.id])}</Text>
-                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '16%' }]}>
+                      <Text style={[styles.cell, { width: '13%' }]}>{groupPickCode(match.id, groupMatches[match.id])}</Text>
+                      <Text style={[styles.cell, { width: '10%' }]}>+{GROUP_POINTS}</Text>
+                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '12%' }]}>
                         <View style={styles.checkbox} />
                       </View>
                     </View>
                   ))}
+                  <View style={styles.totalRow} wrap={false}>
+                    <Text style={[styles.totalLabel, { width: '70%' }]}>TOTAL</Text>
+                    <Text style={[styles.totalValue, { width: '30%' }]}>_____ / {slice.length * GROUP_POINTS}</Text>
+                  </View>
                 </View>
               );
             })}
           </View>
         </View>
 
+      </Page>
+      <Page size="A4" style={styles.page}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
-          <View style={styles.groupColumns}>
-            {[0, 1].map((colIdx) => {
-              const half = Math.ceil(orderedKnockout.length / 2);
-              const slice = orderedKnockout.slice(colIdx * half, (colIdx + 1) * half);
-              return (
-                <View key={colIdx} style={[styles.groupColumn, styles.table]}>
-                  <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
-                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Match</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '18%' }]}>Round</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '22%' }]}>Home</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '22%' }]}>Away</Text>
-                    <Text style={[styles.cell, styles.headerCell, { width: '10%' }]}>Win</Text>
-                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '14%' }]}>Correct</Text>
-                  </View>
-                  {slice.map((match) => (
-                    <View key={match.id} style={styles.row} wrap={false}>
-                      <Text style={[styles.cell, { width: '14%' }]}>{match.id}</Text>
-                      <Text style={[styles.cell, { width: '18%' }]}>{roundLabels[match.round]}</Text>
-                      <Text style={[styles.cell, { width: '22%' }]}>{teamName(match.home)}</Text>
-                      <Text style={[styles.cell, { width: '22%' }]}>{teamName(match.away)}</Text>
-                      <Text style={[styles.cell, { width: '10%' }]}>
-                        {knockoutPickCode(match.home, match.away, match.result)}
-                      </Text>
-                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '14%' }]}>
-                        <View style={styles.checkbox} />
-                      </View>
-                    </View>
-                  ))}
+          <Text style={styles.sectionSubtitle}>
+            Points awarded per round when your pick advances. Champion match adds a separate +{CHAMPION_POINTS} bonus.
+          </Text>
+
+          <View style={styles.bonusRow} wrap={false}>
+            <Text style={styles.bonusLabel}>Champion (+{CHAMPION_POINTS})</Text>
+            <Text style={styles.bonusPick}>{teamName(championCode)}</Text>
+            <View style={styles.bonusCheckCell}>
+              <View style={styles.checkbox} />
+            </View>
+          </View>
+
+          <View style={styles.table}>
+            <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
+              <Text style={[styles.cell, styles.headerCell, { width: '6%' }]}>Match</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '12%' }]}>Round</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Home</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '30%' }]}>Away</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '7%' }]}>Pick</Text>
+              <Text style={[styles.cell, styles.headerCell, { width: '6%' }]}>Pts</Text>
+              <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '9%' }]}>Correct</Text>
+            </View>
+            {orderedKnockout.map((match) => (
+              <View key={match.id} style={styles.row} wrap={false}>
+                <Text style={[styles.cell, { width: '6%' }]}>{match.id}</Text>
+                <Text style={[styles.cell, { width: '12%' }]}>{roundLabels[match.round]}</Text>
+                <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.home)}</Text>
+                <Text style={[styles.cell, { width: '30%' }]}>{teamName(match.away)}</Text>
+                <Text style={[styles.cell, { width: '7%' }]}>
+                  {knockoutPickCode(match.home, match.away, match.result)}
+                </Text>
+                <Text style={[styles.cell, { width: '6%' }]}>
+                  +{KNOCKOUT_POINTS[match.round] ?? 0}
+                </Text>
+                <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '9%' }]}>
+                  <View style={styles.checkbox} />
                 </View>
-              );
-            })}
+              </View>
+            ))}
+            <View style={styles.totalRow} wrap={false}>
+              <Text style={[styles.totalLabel, { width: '75%' }]}>TOTAL (rounds + champion bonus)</Text>
+              <Text style={[styles.totalValue, { width: '25%' }]}>_____ / {knockoutMaxPoints + CHAMPION_POINTS}</Text>
+            </View>
           </View>
         </View>
 

@@ -1,19 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TabId } from '@/types';
+import { LiveMatch, MatchResult, TabId } from '@/types';
 import { BRACKET_TOTAL, GROUP_TOTAL, PredictionFlowState } from '@/lib/logic/prediction-flow';
 import { teamsByCode } from '@/data/teams';
 import { useAuth } from '@/components/providers/AuthProvider';
 import AuthModal from '@/components/auth/AuthModal';
+import NextMatchCard from '@/components/home/NextMatchCard';
+import SocialLoopCard from '@/components/home/SocialLoopCard';
 
 interface HomeViewProps {
   flowState: PredictionFlowState;
   champion: string | null;
   teamFlagsByCode: Record<string, string>;
+  liveMatch: LiveMatch | null;
+  nextMatch: LiveMatch | null;
+  userPickForNextMatch: MatchResult | undefined;
+  isSubmitted: boolean;
+  userRank: number | null;
+  totalUsers: number | null;
   onNavigate: (tab: TabId) => void;
   onManagePredictions: () => void;
-  onClear?: () => void;
 }
 
 type TimeRemaining = {
@@ -161,40 +168,165 @@ function HeroCountUnit({ value, label }: { value: number; label: string }) {
   );
 }
 
-function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
-  const live = !timeLeft;
+const HERO_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+function MatchupPanel({
+  match,
+  teamFlagsByCode,
+  badge,
+  isLive,
+}: {
+  match: LiveMatch;
+  teamFlagsByCode: Record<string, string>;
+  badge: 'live' | 'next';
+  isLive: boolean;
+}) {
+  const homeFlag = (match.homeCode ? teamFlagsByCode[match.homeCode] : null) ?? match.homeFlag ?? null;
+  const awayFlag = (match.awayCode ? teamFlagsByCode[match.awayCode] : null) ?? match.awayFlag ?? null;
+  const homeLabel = match.homeShortName || (match.homeCode ? teamsByCode[match.homeCode]?.name ?? match.homeCode : match.homeName ?? '—');
+  const awayLabel = match.awayShortName || (match.awayCode ? teamsByCode[match.awayCode]?.name ?? match.awayCode : match.awayName ?? '—');
 
   return (
-    <section className="relative -mx-3 pb-3 sm:-mx-4">
+    <div className="relative flex w-full items-center justify-center bg-gradient-to-b from-neutral-900 via-[#101010] to-[#0a0a0a] min-h-[260px] [height:calc(100svh-300px)] [max-height:560px] px-4">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(249,212,6,0.18),transparent_60%)]"
+      />
+
+      <div className="absolute inset-x-4 top-4 flex items-center justify-between">
+        <span className="font-body text-[9px] font-black uppercase tracking-[0.22em] text-neutral-500">
+          {match.stage?.replace(/_/g, ' ').toLowerCase() ?? ''}
+        </span>
+        {badge === 'live' ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
+            <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
+            <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-wc-green">
+              Live
+            </span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
+            <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-primary">
+              Up next
+            </span>
+          </span>
+        )}
+      </div>
+
+      <div className="relative z-10 flex w-full max-w-[420px] items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-3">
+          <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-black/30 ring-1 ring-white/10">
+            {homeFlag ? (
+              <img src={homeFlag} alt={homeLabel} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-4xl">{match.homeCode ? teamsByCode[match.homeCode]?.flag ?? '' : '—'}</span>
+            )}
+          </div>
+          <span className="truncate text-center text-sm font-black text-neutral-100">{homeLabel}</span>
+        </div>
+
+        <div className="shrink-0 text-center">
+          {isLive && match.score ? (
+            <span className="font-display text-[40px] font-black leading-none tabular-nums text-cup-gold drop-shadow-[0_2px_12px_rgba(249,212,6,0.22)]">
+              {match.score.home}<span className="px-1 text-neutral-500">–</span>{match.score.away}
+            </span>
+          ) : (
+            <span className="font-display text-[28px] font-black leading-none text-neutral-600">vs</span>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-3">
+          <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-black/30 ring-1 ring-white/10">
+            {awayFlag ? (
+              <img src={awayFlag} alt={awayLabel} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-4xl">{match.awayCode ? teamsByCode[match.awayCode]?.flag ?? '' : '—'}</span>
+            )}
+          </div>
+          <span className="truncate text-center text-sm font-black text-neutral-100">{awayLabel}</span>
+        </div>
+      </div>
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-t from-[#0a0a0a] to-transparent"
+      />
+    </div>
+  );
+}
+
+function HomeHeader({
+  timeLeft,
+  liveMatch,
+  nextMatch,
+  teamFlagsByCode,
+}: {
+  timeLeft: TimeRemaining | null;
+  liveMatch: LiveMatch | null;
+  nextMatch: LiveMatch | null;
+  teamFlagsByCode: Record<string, string>;
+}) {
+  const tournamentStarted = !timeLeft;
+  const showLive = tournamentStarted && !!liveMatch;
+  const showUpNext = tournamentStarted && !liveMatch && !!nextMatch;
+  const fallback = tournamentStarted && !showLive && !showUpNext;
+
+  const titleLine: string = showLive
+    ? 'Live now'
+    : showUpNext
+      ? 'Up next'
+      : 'Jun 11, 2026';
+  const subtitleLine: string = showLive
+    ? `${liveMatch!.venue ?? 'Match in progress'}`
+    : showUpNext
+      ? `${HERO_DATE_FORMATTER.format(new Date(nextMatch!.utcDate))}${nextMatch!.venue ? ` · ${nextMatch!.venue}` : ''}`
+      : 'Estadio Azteca · Mexico City';
+  const statusPill: string = showLive
+    ? 'Live'
+    : tournamentStarted
+      ? 'In Progress'
+      : 'Counting Down';
+
+  return (
+    <section className="relative -mx-3 pb-3 sm:-mx-4 md:mx-0">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[55vh] bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.22),rgba(249,212,6,0.05)_40%,transparent_72%)]"
       />
 
-      <div className="relative mx-auto w-full sm:max-w-[440px]">
+      <div className="relative mx-auto w-full sm:max-w-[440px] md:max-w-full">
         <div className="relative overflow-hidden shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:rounded-b-[32px]">
-          <img
-            src="/images/promotional-image-hero.png"
-            alt="FIFA World Cup 2026"
-            className="block w-full object-cover object-[50%_32%] min-h-[260px] max-h-[400px] [max-height:42svh]"
-          />
-
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"
-          />
-
-          <div className="absolute inset-x-4 top-4 flex items-center justify-end">
-            {live && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
-                <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
-                <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-wc-green">
-                  Live
-                </span>
-              </span>
-            )}
-          </div>
-
+          {showLive && liveMatch ? (
+            <MatchupPanel match={liveMatch} teamFlagsByCode={teamFlagsByCode} badge="live" isLive />
+          ) : showUpNext && nextMatch ? (
+            <MatchupPanel match={nextMatch} teamFlagsByCode={teamFlagsByCode} badge="next" isLive={false} />
+          ) : (
+            <>
+              <img
+                src="/images/promotional-image-hero.png"
+                alt="FIFA World Cup 2026"
+                className="block w-full object-cover object-[50%_15%] min-h-[260px] [height:calc(100svh-300px)] [max-height:560px]"
+              />
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent"
+              />
+              {fallback && (
+                <div className="absolute inset-x-4 top-4 flex items-center justify-end">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-black/50 px-2.5 py-1 backdrop-blur-md">
+                    <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
+                    <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-wc-green">
+                      Live
+                    </span>
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         <div className="relative mt-3 px-3 sm:px-4">
@@ -206,13 +338,15 @@ function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
 
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-black text-neutral-100">Jun 11, 2026</p>
+                <p className="text-sm font-black text-neutral-100">{titleLine}</p>
                 <p className="mt-0.5 font-body text-[11px] font-semibold text-neutral-500">
-                  Estadio Azteca · Mexico City
+                  {subtitleLine}
                 </p>
               </div>
-              <span className="font-body text-[9px] font-black uppercase tracking-[0.2em] text-primary/85">
-                {live ? 'In Progress' : 'Counting Down'}
+              <span className={`font-body text-[9px] font-black uppercase tracking-[0.2em] ${
+                showLive ? 'text-wc-green' : 'text-primary/85'
+              }`}>
+                {statusPill}
               </span>
             </div>
 
@@ -222,6 +356,20 @@ function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
                 <HeroCountUnit value={timeLeft.hours} label="hrs" />
                 <HeroCountUnit value={timeLeft.minutes} label="min" />
                 <HeroCountUnit value={timeLeft.seconds} label="sec" />
+              </div>
+            ) : showLive && liveMatch ? (
+              <div className="flex items-center justify-center gap-3 py-1">
+                <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+                <span className="font-display text-[24px] font-black tabular-nums text-cup-gold">
+                  {liveMatch.score?.home ?? 0}<span className="px-1 text-neutral-600">–</span>{liveMatch.score?.away ?? 0}
+                </span>
+              </div>
+            ) : showUpNext && nextMatch ? (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <span className="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                <span className="font-body text-sm font-bold text-neutral-200">
+                  Kickoff {HERO_DATE_FORMATTER.format(new Date(nextMatch.utcDate))}
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2 py-2">
@@ -318,55 +466,6 @@ function PredictionDashboard({
   );
 }
 
-function ClearPredictionsAction({
-  confirmingClear,
-  onClear,
-  onConfirmingChange,
-}: {
-  confirmingClear: boolean;
-  onClear: () => void;
-  onConfirmingChange: (value: boolean) => void;
-}) {
-  return (
-    <button
-      onClick={() => {
-        if (confirmingClear) {
-          onClear();
-          onConfirmingChange(false);
-          return;
-        }
-        onConfirmingChange(true);
-        setTimeout(() => onConfirmingChange(false), 3000);
-      }}
-      className={`flex w-full items-center gap-3 rounded-[22px] px-4 py-3 text-left transition-transform active:scale-[0.99] ${
-        confirmingClear
-          ? 'bg-wc-red/10'
-          : 'bg-white/[0.018]'
-      }`}
-    >
-      <span
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl border ${
-          confirmingClear
-            ? 'border-wc-red/20 bg-wc-red/10 text-wc-red'
-            : 'border-white/5 bg-white/[0.025] text-neutral-500'
-        }`}
-      >
-        <span className="material-symbols-outlined block translate-y-[1px] text-[22px] leading-none">
-          {confirmingClear ? 'warning' : 'restart_alt'}
-        </span>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block text-sm font-black ${confirmingClear ? 'text-wc-red' : 'text-neutral-100'}`}>
-          {confirmingClear ? 'Tap again to confirm' : 'Start New Predictions'}
-        </span>
-        <span className="mt-0.5 block font-body text-xs font-semibold text-neutral-500">
-          {confirmingClear ? 'Your current picks will be cleared' : 'Clear your picks and begin fresh'}
-        </span>
-      </span>
-    </button>
-  );
-}
-
 const PAST_SEASONS = [
   { year: '2024', label: 'Copa America 2024', href: 'https://copaamerica24.vercel.app/' },
   { year: '2022', label: 'Qatar World Cup 2022', href: 'https://main.d311px3iblll1g.amplifyapp.com/' },
@@ -456,12 +555,6 @@ function AccountPanel({
           <p className="text-sm font-black text-neutral-100">Save picks across devices</p>
           <p className="mt-0.5 font-body text-xs font-semibold text-neutral-500">Use a one-time email code.</p>
         </div>
-        <button
-          onClick={onManagePredictions}
-          className="shrink-0 rounded-xl border border-white/10 bg-white/6 px-3 py-2 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/10"
-        >
-          Manage
-        </button>
       </div>
       <button
         onClick={onSignIn}
@@ -474,10 +567,21 @@ function AccountPanel({
   );
 }
 
-export default function HomeView({ flowState, champion, teamFlagsByCode, onNavigate, onManagePredictions, onClear }: HomeViewProps) {
+export default function HomeView({
+  flowState,
+  champion,
+  teamFlagsByCode,
+  liveMatch,
+  nextMatch,
+  userPickForNextMatch,
+  isSubmitted,
+  userRank,
+  totalUsers,
+  onNavigate,
+  onManagePredictions,
+}: HomeViewProps) {
   const { user, signOut } = useAuth();
   const [timeLeft, setTimeLeft] = useState(getTimeRemaining);
-  const [confirmingClear, setConfirmingClear] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
@@ -487,39 +591,54 @@ export default function HomeView({ flowState, champion, teamFlagsByCode, onNavig
 
   const action = getHomeAction(flowState);
   const { groupCount, knockoutCount } = flowState;
-  const hasPicks = groupCount > 0 || knockoutCount > 0;
 
   return (
-    <div className="flex flex-col gap-3 pt-0 pb-8">
-      <HomeHeader timeLeft={timeLeft} />
-
-      <PrimaryAction action={action} onNavigate={onNavigate} />
-
-      <PredictionDashboard
-        groupCount={groupCount}
-        knockoutCount={knockoutCount}
-        champion={champion}
-        teamFlagsByCode={teamFlagsByCode}
-        onNavigate={onNavigate}
-        nextTab={flowState.nextPredictionTab}
-      />
-
-      {onClear && hasPicks && (
-        <ClearPredictionsAction
-          confirmingClear={confirmingClear}
-          onClear={onClear}
-          onConfirmingChange={setConfirmingClear}
+    <div className="flex flex-col gap-3 pt-0 pb-8 md:grid md:grid-cols-2 md:items-start md:gap-6">
+      <div className="flex flex-col gap-3 md:col-start-1">
+        <HomeHeader
+          timeLeft={timeLeft}
+          liveMatch={liveMatch}
+          nextMatch={nextMatch}
+          teamFlagsByCode={teamFlagsByCode}
         />
-      )}
+        <PrimaryAction action={action} onNavigate={onNavigate} />
+      </div>
 
-      <AccountPanel
-        user={user}
-        onSignIn={() => setShowAuth(true)}
-        onSignOut={() => signOut()}
-        onManagePredictions={onManagePredictions}
-      />
+      <div className="flex flex-col gap-3 md:col-start-2">
+        <PredictionDashboard
+          groupCount={groupCount}
+          knockoutCount={knockoutCount}
+          champion={champion}
+          teamFlagsByCode={teamFlagsByCode}
+        />
 
-      <PastSeasonsPanel />
+        <NextMatchCard
+          liveMatch={liveMatch}
+          nextMatch={nextMatch}
+          userPickForNextMatch={userPickForNextMatch}
+          teamFlagsByCode={teamFlagsByCode}
+          onNavigate={onNavigate}
+        />
+
+        <SocialLoopCard
+          isSignedIn={!!user}
+          isSubmitted={isSubmitted}
+          userRank={userRank}
+          totalUsers={totalUsers}
+          nextPredictionTab={flowState.nextPredictionTab}
+          onNavigate={onNavigate}
+          onSignIn={() => setShowAuth(true)}
+        />
+
+        <AccountPanel
+          user={user}
+          onSignIn={() => setShowAuth(true)}
+          onSignOut={() => signOut()}
+          onManagePredictions={onManagePredictions}
+        />
+
+        <PastSeasonsPanel />
+      </div>
 
       {showAuth && (
         <AuthModal

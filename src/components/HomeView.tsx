@@ -176,7 +176,7 @@ function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
           <img
             src="/images/promotional-image-hero.png"
             alt="FIFA World Cup 2026"
-            className="block aspect-[4/5] w-full object-cover object-[50%_32%]"
+            className="block w-full object-cover object-[50%_32%] min-h-[260px] max-h-[400px] [max-height:42svh]"
           />
 
           <div
@@ -197,8 +197,8 @@ function HomeHeader({ timeLeft }: { timeLeft: TimeRemaining | null }) {
 
         </div>
 
-        <div className="relative -mt-12 px-3 sm:px-4">
-          <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015] px-4 py-3.5 backdrop-blur-2xl shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]">
+        <div className="relative mt-3 px-3 sm:px-4">
+          <div className="relative overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.015] px-4 py-3 backdrop-blur-2xl shadow-[0_18px_50px_-20px_rgba(0,0,0,0.9)]">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent"
@@ -265,30 +265,26 @@ function PredictionDashboard({
   knockoutCount,
   champion,
   teamFlagsByCode,
-  onNavigate,
-  nextTab,
 }: {
   groupCount: number;
   knockoutCount: number;
   champion: string | null;
   teamFlagsByCode: Record<string, string>;
-  onNavigate: (tab: TabId) => void;
-  nextTab: TabId;
 }) {
-  const target: TabId = nextTab;
   const championName = champion ? teamsByCode[champion]?.name ?? champion : 'Not selected';
   const championFlag = champion ? teamsByCode[champion]?.flag ?? '' : '';
+  const isEmpty = groupCount === 0 && knockoutCount === 0 && !champion;
+  const subtitle = isEmpty
+    ? 'About 5 minutes. 88 picks. Then watch your bracket play out.'
+    : 'Groups, bracket, and champion status';
 
   return (
-    <button
-      onClick={() => onNavigate(target)}
-      className="w-full rounded-[24px] bg-white/[0.025] px-4 py-5 text-left transition-transform active:scale-[0.99]"
-    >
+    <div className="w-full rounded-[24px] bg-white/[0.025] px-4 py-5 text-left">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <p className="text-[15px] font-black text-neutral-100">Your Predictions</p>
           <p className="mt-0.5 font-body text-xs font-semibold text-neutral-500">
-            Groups, bracket, and champion status
+            {subtitle}
           </p>
         </div>
         {champion && groupCount === GROUP_TOTAL && knockoutCount === BRACKET_TOTAL && (
@@ -317,9 +313,8 @@ function PredictionDashboard({
             {championName}
           </p>
         </div>
-        <span className="material-symbols-outlined text-[20px] text-neutral-700">chevron_right</span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -369,6 +364,44 @@ function ClearPredictionsAction({
         </span>
       </span>
     </button>
+  );
+}
+
+const PAST_SEASONS = [
+  { year: '2024', label: 'Copa America 2024', href: 'https://copaamerica24.vercel.app/' },
+  { year: '2022', label: 'Qatar World Cup 2022', href: 'https://main.d311px3iblll1g.amplifyapp.com/' },
+];
+
+function PastSeasonsPanel() {
+  return (
+    <section className="rounded-[22px] bg-white/[0.018] p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="material-symbols-outlined text-[18px] text-neutral-500">history</span>
+        <p className="text-sm font-black text-neutral-100">Past Seasons</p>
+      </div>
+      <ul className="space-y-1.5">
+        {PAST_SEASONS.map(s => (
+          <li key={s.year}>
+            <a
+              href={s.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-white/[0.03]"
+            >
+              <span className="font-display text-[15px] font-black tabular-nums text-primary/80">
+                {s.year}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-body text-xs font-bold text-neutral-300">
+                {s.label}
+              </span>
+              <span className="material-symbols-outlined text-[16px] text-neutral-600">
+                open_in_new
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -485,6 +518,8 @@ export default function HomeView({ flowState, champion, teamFlagsByCode, onNavig
         onSignOut={() => signOut()}
         onManagePredictions={onManagePredictions}
       />
+
+      <PastSeasonsPanel />
 
       {showAuth && (
         <AuthModal

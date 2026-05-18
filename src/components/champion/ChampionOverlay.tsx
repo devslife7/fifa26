@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { MatchResult, KnockoutResult } from '@/types';
 import { getChampion, getTopThree } from '@/lib/logic/bracket';
-import { getPredictionFlowState } from '@/lib/logic/prediction-flow';
 import { teamsByCode } from '@/data/teams';
 import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/client/storage';
 import { useAuth, type AppUser } from '@/components/providers/AuthProvider';
@@ -60,7 +59,6 @@ export default function ChampionOverlay({
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const champion = championCode ? teamsByCode[championCode] : null;
-  const flowState = getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? []);
 
   useEffect(() => {
     if (user?.display_name && !name) setName(user.display_name);
@@ -180,32 +178,11 @@ export default function ChampionOverlay({
 
   if (!champion) return null;
 
-  const reviewItems = [
-    { label: 'Groups', value: flowState.groupProgressLabel, complete: flowState.groupsComplete },
-    { label: 'Bracket', value: flowState.bracketProgressLabel, complete: flowState.bracketComplete },
-    { label: 'Champion', value: champion.name, complete: true },
-    { label: user ? 'Account' : 'Email', value: user ? (user.email ?? 'Signed in') : (email || 'Required'), complete: user ? true : !!email },
-  ];
-
   if (isPage) {
     return (
       <div className="w-full max-w-sm mx-auto p-4 pt-6">
         {phase === 'form' ? (
           <div className="flex flex-col items-center">
-            {/* Champion Flag */}
-            <img
-              src={`https://flagcdn.com/w640/${championCode!.toLowerCase()}.png`}
-              alt={champion.name}
-              className="w-56 h-32 object-cover rounded-md mb-4"
-              style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}
-            />
-            <h2 className="text-2xl font-black mb-0.5 font-body">
-              <span className="champion-shimmer">{champion.name}</span>
-            </h2>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/25 font-semibold mb-4">
-              Your Predicted Champion
-            </p>
-
             {/* Podium */}
             <Podium
               championCode={championCode!}
@@ -215,20 +192,6 @@ export default function ChampionOverlay({
 
             {/* Form */}
             <div className="w-full mt-6 space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-                <p className="mb-2 text-[11px] font-black uppercase tracking-[0.14em] text-neutral-500">Review</p>
-                <div className="space-y-2">
-                  {reviewItems.map(item => (
-                    <div key={item.label} className="flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-neutral-400">{item.label}</span>
-                      <span className={`min-w-0 truncate text-right text-xs font-black ${item.complete ? 'text-primary' : 'text-neutral-300'}`}>
-                        {item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {error && (
                 <div className="p-3 bg-wc-red/15 border border-wc-red/30 rounded-lg text-wc-red text-sm">
                   {error}
@@ -236,7 +199,10 @@ export default function ChampionOverlay({
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1 ml-1">Name</label>
+                <label className="block mb-1 ml-1">
+                  <span className="text-xs font-semibold text-neutral-400">Name</span>
+                  <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                </label>
                 <input
                   type="text"
                   value={name}
@@ -244,11 +210,17 @@ export default function ChampionOverlay({
                   placeholder="Your name"
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
                 />
-                <p className="text-[10px] text-neutral-500 mt-1 ml-1">This is how others see you on the leaderboard</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1 ml-1">Email</label>
+                <label className="block mb-1 ml-1">
+                  <span className="text-xs font-semibold text-neutral-400">Email</span>
+                  {emailError ? (
+                    <span className="text-[10px] text-wc-red ml-1.5">({emailError})</span>
+                  ) : (
+                    <span className="text-[10px] text-neutral-500 ml-1.5">{"(we'll send a copy of your predictions)"}</span>
+                  )}
+                </label>
                 <input
                   type="email"
                   value={email}
@@ -258,11 +230,6 @@ export default function ChampionOverlay({
                     emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
                   }`}
                 />
-                {emailError ? (
-                  <p className="text-[10px] text-wc-red mt-1 ml-1">{emailError}</p>
-                ) : (
-                  <p className="text-[10px] text-neutral-500 mt-1 ml-1">{"We'll send a copy of your predictions"}</p>
-                )}
               </div>
 
               <button
@@ -543,7 +510,10 @@ export default function ChampionOverlay({
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1 ml-1">Name</label>
+                <label className="block mb-1 ml-1">
+                  <span className="text-xs font-semibold text-neutral-400">Name</span>
+                  <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                </label>
                 <input
                   type="text"
                   value={name}
@@ -551,11 +521,17 @@ export default function ChampionOverlay({
                   placeholder="Your name"
                   className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
                 />
-                <p className="text-[10px] text-neutral-500 mt-1 ml-1">This is how others see you on the leaderboard</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1 ml-1">Email</label>
+                <label className="block mb-1 ml-1">
+                  <span className="text-xs font-semibold text-neutral-400">Email</span>
+                  {emailError ? (
+                    <span className="text-[10px] text-wc-red ml-1.5">({emailError})</span>
+                  ) : (
+                    <span className="text-[10px] text-neutral-500 ml-1.5">{"(we'll send a copy of your predictions)"}</span>
+                  )}
+                </label>
                 <input
                   type="email"
                   value={email}
@@ -565,11 +541,6 @@ export default function ChampionOverlay({
                     emailError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
                   }`}
                 />
-                {emailError ? (
-                  <p className="text-[10px] text-wc-red mt-1 ml-1">{emailError}</p>
-                ) : (
-                  <p className="text-[10px] text-neutral-500 mt-1 ml-1">{"We'll send a copy of your predictions"}</p>
-                )}
               </div>
 
               <button

@@ -7,9 +7,8 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer';
 import { allGroupMatches } from '@/data/matches';
-import { teamsByCode, groups } from '@/data/teams';
-import { generateBracket, getTopThree } from '@/lib/logic/bracket';
-import { getGroupQualifiers } from '@/lib/logic/standings';
+import { teamsByCode } from '@/data/teams';
+import { generateBracket } from '@/lib/logic/bracket';
 import type { KnockoutResult, MatchResult } from '@/types';
 
 interface GeneratePredictionPdfParams {
@@ -34,55 +33,52 @@ const roundLabels: Record<string, string> = {
 
 const styles = StyleSheet.create({
   page: {
-    padding: 32,
+    padding: 24,
     fontFamily: 'Helvetica',
-    fontSize: 9,
+    fontSize: 8,
     color: '#1f2937',
     backgroundColor: '#ffffff',
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
   title: {
-    fontSize: 22,
+    fontSize: 18,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+  },
+  identity: {
+    alignItems: 'flex-end',
+  },
+  identityName: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111827',
+  },
+  identityMeta: {
+    fontSize: 9,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  section: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     color: '#111827',
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 9,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  summaryGrid: {
+  groupColumns: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
+    gap: 6,
   },
-  summaryCard: {
+  groupColumn: {
     flex: 1,
-    border: '1px solid #e5e7eb',
-    borderRadius: 6,
-    padding: 9,
-  },
-  label: {
-    fontSize: 7,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 3,
-  },
-  value: {
-    fontSize: 11,
-    color: '#111827',
-    fontFamily: 'Helvetica-Bold',
-  },
-  section: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    color: '#111827',
-    marginBottom: 7,
   },
   table: {
     border: '1px solid #e5e7eb',
@@ -91,30 +87,41 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottom: '1px solid #e5e7eb',
-    minHeight: 21,
+    minHeight: 16,
   },
-  headerRow: {
+  tableHeaderRow: {
     backgroundColor: '#f3f4f6',
   },
   cell: {
-    padding: 5,
+    paddingVertical: 2,
+    paddingHorizontal: 3,
     borderRight: '1px solid #e5e7eb',
   },
   lastCell: {
     borderRight: 0,
   },
   headerCell: {
-    fontSize: 7,
+    fontSize: 6,
     color: '#374151',
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
   },
+  checkboxCell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkbox: {
+    width: 9,
+    height: 9,
+    border: '1px solid #6b7280',
+    borderRadius: 2,
+  },
   footer: {
-    marginTop: 14,
-    paddingTop: 9,
+    marginTop: 10,
+    paddingTop: 6,
     borderTop: '1px solid #e5e7eb',
     color: '#6b7280',
-    fontSize: 8,
+    fontSize: 7,
   },
 });
 
@@ -124,16 +131,18 @@ function teamName(code: string | undefined | null): string {
   return team ? `${team.name} (${team.code})` : code;
 }
 
-function groupPickLabel(matchId: string, result: MatchResult | undefined): string {
+function groupPickCode(matchId: string, result: MatchResult | undefined): string {
   const match = allGroupMatches.find((m) => m.id === matchId);
-  if (!match || !result) return 'Not picked';
+  if (!match || !result) return '—';
   if (result === 'draw') return 'Draw';
-  return teamName(result === 'home' ? match.home : match.away);
+  const code = result === 'home' ? match.home : match.away;
+  return code ?? '—';
 }
 
-function knockoutPickLabel(home: string | undefined, away: string | undefined, result: KnockoutResult | undefined): string {
-  if (!result) return 'Not picked';
-  return teamName(result === 'home' ? home : away);
+function knockoutPickCode(home: string | undefined, away: string | undefined, result: KnockoutResult | undefined): string {
+  if (!result) return '—';
+  const code = result === 'home' ? home : away;
+  return code ?? '—';
 }
 
 function submittedDate(value: string | null | undefined): string {
@@ -157,13 +166,13 @@ function PredictionPdfDocument({
   shareUrl,
 }: GeneratePredictionPdfParams) {
   const bracket = generateBracket(groupMatches, knockoutMatches, thirdPlaceTiebreaker ?? undefined);
-  const topThree = getTopThree(groupMatches, knockoutMatches, thirdPlaceTiebreaker ?? undefined);
-  const qualifiers = getGroupQualifiers(groupMatches);
   const orderedKnockout = bracket.sort((a, b) => {
     const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
     const roundDiff = roundOrder.indexOf(a.round) - roundOrder.indexOf(b.round);
     return roundDiff || a.position - b.position;
   });
+
+  const metaPrefix = predictionNumber ? `Snapshot #${predictionNumber} · ` : '';
 
   return (
     <Document
@@ -172,91 +181,81 @@ function PredictionPdfDocument({
       subject="Submitted prediction snapshot"
     >
       <Page size="A4" style={styles.page} wrap>
-        <Text style={styles.title}>FIFA 26 Predictions</Text>
-        <Text style={styles.subtitle}>
-          Submitted snapshot{predictionNumber ? ` #${predictionNumber}` : ''} - {submittedDate(submittedAt)}
-        </Text>
-
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.label}>Predictor</Text>
-            <Text style={styles.value}>{name}</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.label}>Champion</Text>
-            <Text style={styles.value}>{teamName(topThree.first)}</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.label}>Runner-up</Text>
-            <Text style={styles.value}>{teamName(topThree.second)}</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.label}>Third Place</Text>
-            <Text style={styles.value}>{teamName(topThree.third)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Group Qualifiers</Text>
-          <View style={styles.table}>
-            <View style={[styles.row, styles.headerRow]}>
-              <Text style={[styles.cell, styles.headerCell, { width: '12%' }]}>Group</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '44%' }]}>Winner</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.lastCell, { width: '44%' }]}>Runner-up</Text>
-            </View>
-            {groups.map((group) => (
-              <View key={group} style={styles.row}>
-                <Text style={[styles.cell, { width: '12%', fontFamily: 'Helvetica-Bold' }]}>{group}</Text>
-                <Text style={[styles.cell, { width: '44%' }]}>{teamName(qualifiers.winners[group])}</Text>
-                <Text style={[styles.cell, styles.lastCell, { width: '44%' }]}>{teamName(qualifiers.runnersUp[group])}</Text>
-              </View>
-            ))}
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>FIFA 26 Predictions</Text>
+          <View style={styles.identity}>
+            <Text style={styles.identityName}>{name}</Text>
+            <Text style={styles.identityMeta}>
+              {metaPrefix}{submittedDate(submittedAt)}
+            </Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Group Stage Picks</Text>
-          <View style={styles.table}>
-            <View style={[styles.row, styles.headerRow]}>
-              <Text style={[styles.cell, styles.headerCell, { width: '11%' }]}>Match</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '12%' }]}>Group</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '31%' }]}>Home</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '31%' }]}>Away</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.lastCell, { width: '15%' }]}>Pick</Text>
-            </View>
-            {allGroupMatches.map((match) => (
-              <View key={match.id} style={styles.row} wrap={false}>
-                <Text style={[styles.cell, { width: '11%' }]}>{match.id}</Text>
-                <Text style={[styles.cell, { width: '12%' }]}>{match.group}</Text>
-                <Text style={[styles.cell, { width: '31%' }]}>{teamName(match.home)}</Text>
-                <Text style={[styles.cell, { width: '31%' }]}>{teamName(match.away)}</Text>
-                <Text style={[styles.cell, styles.lastCell, { width: '15%' }]}>{groupPickLabel(match.id, groupMatches[match.id])}</Text>
-              </View>
-            ))}
+          <View style={styles.groupColumns}>
+            {[0, 1].map((colIdx) => {
+              const half = Math.ceil(allGroupMatches.length / 2);
+              const slice = allGroupMatches.slice(colIdx * half, (colIdx + 1) * half);
+              return (
+                <View key={colIdx} style={[styles.groupColumn, styles.table]}>
+                  <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
+                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Match</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Home</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '28%' }]}>Away</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Pick</Text>
+                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '16%' }]}>Correct</Text>
+                  </View>
+                  {slice.map((match) => (
+                    <View key={match.id} style={styles.row} wrap={false}>
+                      <Text style={[styles.cell, { width: '14%' }]}>{match.id}</Text>
+                      <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.home)}</Text>
+                      <Text style={[styles.cell, { width: '28%' }]}>{teamName(match.away)}</Text>
+                      <Text style={[styles.cell, { width: '14%' }]}>{groupPickCode(match.id, groupMatches[match.id])}</Text>
+                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '16%' }]}>
+                        <View style={styles.checkbox} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
-          <View style={styles.table}>
-            <View style={[styles.row, styles.headerRow]}>
-              <Text style={[styles.cell, styles.headerCell, { width: '13%' }]}>Match</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '17%' }]}>Round</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '27%' }]}>Home</Text>
-              <Text style={[styles.cell, styles.headerCell, { width: '27%' }]}>Away</Text>
-              <Text style={[styles.cell, styles.headerCell, styles.lastCell, { width: '16%' }]}>Winner</Text>
-            </View>
-            {orderedKnockout.map((match) => (
-              <View key={match.id} style={styles.row} wrap={false}>
-                <Text style={[styles.cell, { width: '13%' }]}>{match.id}</Text>
-                <Text style={[styles.cell, { width: '17%' }]}>{roundLabels[match.round]}</Text>
-                <Text style={[styles.cell, { width: '27%' }]}>{teamName(match.home)}</Text>
-                <Text style={[styles.cell, { width: '27%' }]}>{teamName(match.away)}</Text>
-                <Text style={[styles.cell, styles.lastCell, { width: '16%' }]}>
-                  {knockoutPickLabel(match.home, match.away, match.result)}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.groupColumns}>
+            {[0, 1].map((colIdx) => {
+              const half = Math.ceil(orderedKnockout.length / 2);
+              const slice = orderedKnockout.slice(colIdx * half, (colIdx + 1) * half);
+              return (
+                <View key={colIdx} style={[styles.groupColumn, styles.table]}>
+                  <View style={[styles.row, styles.tableHeaderRow]} wrap={false}>
+                    <Text style={[styles.cell, styles.headerCell, { width: '14%' }]}>Match</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '18%' }]}>Round</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '22%' }]}>Home</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '22%' }]}>Away</Text>
+                    <Text style={[styles.cell, styles.headerCell, { width: '10%' }]}>Win</Text>
+                    <Text style={[styles.cell, styles.headerCell, styles.lastCell, styles.checkboxCell, { width: '14%' }]}>Correct</Text>
+                  </View>
+                  {slice.map((match) => (
+                    <View key={match.id} style={styles.row} wrap={false}>
+                      <Text style={[styles.cell, { width: '14%' }]}>{match.id}</Text>
+                      <Text style={[styles.cell, { width: '18%' }]}>{roundLabels[match.round]}</Text>
+                      <Text style={[styles.cell, { width: '22%' }]}>{teamName(match.home)}</Text>
+                      <Text style={[styles.cell, { width: '22%' }]}>{teamName(match.away)}</Text>
+                      <Text style={[styles.cell, { width: '10%' }]}>
+                        {knockoutPickCode(match.home, match.away, match.result)}
+                      </Text>
+                      <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '14%' }]}>
+                        <View style={styles.checkbox} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </View>
         </View>
 

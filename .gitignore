@@ -40,3 +40,6 @@ node_modules
 
 # local assets
 /_assets
+
+/.playwright-mcp
+/.claude

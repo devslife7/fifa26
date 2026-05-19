@@ -1,6 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getTopThree } from '@/lib/logic/bracket';
-import { resolveTeam } from '@/lib/services/email-helpers';
 import { sendPredictionEmail } from '@/lib/services/email';
 import { generatePredictionPdf } from '@/lib/services/prediction-pdf';
 import { uploadPredictionPdf } from '@/lib/services/prediction-pdf-storage';
@@ -19,7 +17,6 @@ interface SendPredictionConfirmationParams {
   to: string;
   displayName: string;
   origin: string;
-  championCode: string;
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[] | null;
@@ -36,7 +33,6 @@ export async function sendPredictionConfirmation({
   to,
   displayName,
   origin,
-  championCode,
   groupMatches,
   knockoutMatches,
   thirdPlaceTiebreaker,
@@ -44,10 +40,6 @@ export async function sendPredictionConfirmation({
   if (!prediction.share_token) return;
 
   const shareUrl = `${origin}/shared/${prediction.share_token}`;
-  const champion = resolveTeam(championCode);
-  const topThree = getTopThree(groupMatches, knockoutMatches, thirdPlaceTiebreaker ?? undefined);
-  const second = topThree.second ? resolveTeam(topThree.second) : null;
-  const third = topThree.third ? resolveTeam(topThree.third) : null;
   let pdfBuffer: Buffer | null = null;
 
   try {
@@ -91,19 +83,8 @@ export async function sendPredictionConfirmation({
     await sendPredictionEmail({
       to,
       name: displayName || prediction.name || 'Predictor',
-      predictionId: prediction.id,
       predictionNumber: prediction.prediction_number ?? undefined,
-      shareToken: prediction.share_token,
-      championName: champion.name,
-      championFlag: champion.flag,
       shareUrl,
-      secondName: second?.name,
-      secondFlag: second?.flag,
-      thirdName: third?.name,
-      thirdFlag: third?.flag,
-      groupMatches,
-      knockoutMatches,
-      thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? undefined,
       pdfAttachment: pdfBuffer
         ? {
             filename: prediction.prediction_number

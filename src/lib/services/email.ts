@@ -3,7 +3,6 @@ import { render } from '@react-email/components';
 import { OtpEmail } from '@/emails/OtpEmail';
 import { PredictionEmail } from '@/emails/PredictionEmail';
 import { daysUntilKickoff } from '@/data/tournament';
-import type { MatchResult, KnockoutResult } from '@/types';
 
 const FROM = 'FIFA 26 Predictions <no-reply@contact.marcosvelasco.com>';
 
@@ -30,19 +29,8 @@ export async function sendOtpEmail(to: string, code: string) {
 interface SendPredictionEmailParams {
   to: string;
   name: string;
-  predictionId: string;
   predictionNumber?: number;
-  shareToken: string;
-  championName: string;
-  championFlag: string;
   shareUrl: string;
-  secondName?: string;
-  secondFlag?: string;
-  thirdName?: string;
-  thirdFlag?: string;
-  groupMatches: Record<string, MatchResult>;
-  knockoutMatches: Record<string, KnockoutResult>;
-  thirdPlaceTiebreaker?: string[];
   pdfAttachment?: {
     filename: string;
     content: string;
@@ -53,34 +41,15 @@ export async function sendPredictionEmail({
   to,
   name,
   predictionNumber,
-  championName,
-  championFlag,
   shareUrl,
-  secondName,
-  secondFlag,
-  thirdName,
-  thirdFlag,
-  groupMatches,
-  knockoutMatches,
-  thirdPlaceTiebreaker,
   pdfAttachment,
 }: SendPredictionEmailParams) {
-  // React Email escapes text children automatically; we don't pre-escape here
-  // (escapeHtml in lib/utils is available for future raw-HTML interpolation paths).
   const element = PredictionEmail({
     name,
     predictionNumber,
-    championName,
-    championFlag,
     shareUrl,
-    secondName,
-    secondFlag,
-    thirdName,
-    thirdFlag,
-    groupMatches,
-    knockoutMatches,
-    thirdPlaceTiebreaker,
     daysUntilKickoff: daysUntilKickoff(),
+    pdfFilename: pdfAttachment?.filename,
   });
 
   const [html, text] = await Promise.all([
@@ -89,8 +58,8 @@ export async function sendPredictionEmail({
   ]);
 
   const subject = predictionNumber
-    ? `🏆 Prediction #${predictionNumber} locked in — ${championFlag} ${championName}`
-    : `🏆 Your FIFA 26 Predictions — ${championFlag} ${championName}`;
+    ? `Prediction #${predictionNumber} confirmed · FIFA 26 World Cup`
+    : 'Your FIFA 26 predictions are confirmed';
 
   await getResend().emails.send({
     from: FROM,

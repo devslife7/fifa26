@@ -503,12 +503,12 @@ export default function Home() {
               )}
               <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
                 <button
-                  onClick={handleNextIncompleteGroupMatch}
-                  disabled={groupCount >= 72}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={() => setShowClearConfirm(true)}
+                  disabled={groupCount === 0}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[13px]">my_location</span>
-                  Continue
+                  <span className="material-symbols-outlined text-[13px]">backspace</span>
+                  Clear all predictions
                 </button>
                 <button
                   onClick={handleRandomizeGroups}
@@ -518,12 +518,12 @@ export default function Home() {
                   Randomize
                 </button>
                 <button
-                  onClick={() => setShowClearConfirm(true)}
-                  disabled={groupCount === 0}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={handleNextIncompleteGroupMatch}
+                  disabled={groupCount >= 72}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <span className="material-symbols-outlined text-[13px]">backspace</span>
-                  Clear all predictions
+                  <span className="material-symbols-outlined text-[13px]">my_location</span>
+                  Continue
                 </button>
               </div>
             </div>

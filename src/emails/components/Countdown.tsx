@@ -8,10 +8,7 @@ interface CountdownProps {
 export function Countdown({ daysUntil }: CountdownProps) {
   if (daysUntil <= 0) return null;
 
-  const subtitle =
-    daysUntil === 1
-      ? '1 day away · Edit picks anytime until then'
-      : `${daysUntil} days away · Edit picks anytime until then`;
+  const subtitle = daysUntil === 1 ? '1 day away' : `${daysUntil} days away`;
 
   return (
     <tr>

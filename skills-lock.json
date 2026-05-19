@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "cmux": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux/SKILL.md",
+      "computedHash": "f83a74295fb40f6c0f0abad386b9fa7e0305aed6789c1a94e635b367f206d94c"
+    },
+    "cmux-browser": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-browser/SKILL.md",
+      "computedHash": "7206737c08f3ce8efd87fcf450b6bfe4ed69dfb8c8861ab8d7d9e078732136d3"
+    },
+    "cmux-customization": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-customization/SKILL.md",
+      "computedHash": "2c0c7a754a738742da6b62735a5d56197bc971074a1a492a80293b058be1c7a2"
+    },
+    "cmux-diagnostics": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-diagnostics/SKILL.md",
+      "computedHash": "f308f1ef2f3d65a1a0fd57797a0b31caa8c788798be023151033a2a20c8926cc"
+    },
+    "cmux-markdown": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-markdown/SKILL.md",
+      "computedHash": "5cd75e51d5d576dffcce54abf391165005e6b0f70ab89133f4fe432cc8a00f63"
+    },
+    "cmux-settings": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-settings/SKILL.md",
+      "computedHash": "34ce8f25ace9a73e7b87bbb38da148eedf17e07bedca14d1691b5c79a616a94b"
+    },
+    "cmux-workspace": {
+      "source": "manaflow-ai/cmux",
+      "sourceType": "github",
+      "skillPath": "skills/cmux-workspace/SKILL.md",
+      "computedHash": "92aafcdb32fa2f410f7a669cbd7c9a5caf765d4a01595c35a3bf08823409fd41"
+    }
+  }
+}

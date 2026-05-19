@@ -23,6 +23,7 @@ import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
 import NewsView from '@/components/news/NewsView';
 import ProfileView from '@/components/profile/ProfileView';
+import TrackerView from '@/components/tracker/TrackerView';
 
 export default function Home() {
   const { user } = useAuth();
@@ -37,6 +38,7 @@ export default function Home() {
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
   const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [userExpandedGroups, setUserExpandedGroups] = useState<Set<GroupLetter>>(new Set());
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const toggleGroupExpanded = useCallback((group: GroupLetter) => {
     setUserExpandedGroups(prev => {
@@ -506,7 +508,7 @@ export default function Home() {
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-primary/20 text-primary font-semibold text-[11px] hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[13px]">my_location</span>
-                  Next
+                  Continue
                 </button>
                 <button
                   onClick={handleRandomizeGroups}
@@ -516,12 +518,12 @@ export default function Home() {
                   Randomize
                 </button>
                 <button
-                  onClick={handleClearGroups}
+                  onClick={() => setShowClearConfirm(true)}
                   disabled={groupCount === 0}
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[13px]">backspace</span>
-                  Clear
+                  Clear all predictions
                 </button>
               </div>
             </div>
@@ -618,6 +620,14 @@ export default function Home() {
           />
         )}
 
+        {activeTab === 'tracker' && (
+          <TrackerView
+            liveMatches={liveMatchesByLocalId}
+            teamFlagsByCode={teamFlagsByCode}
+            onNavigate={navigateTo}
+          />
+        )}
+
         {activeTab === 'news' && <NewsView />}
 
         {activeTab === 'profile' && (
@@ -658,6 +668,36 @@ export default function Home() {
         nextPredictionTab={lastPredictionTab ?? flowState.nextPredictionTab}
         onTabChange={navigateTo}
       />
+
+      {/* Clear all predictions confirmation */}
+      {showClearConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-6 animate-fade-in"
+          onClick={() => setShowClearConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-neutral-900 border border-white/10 p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-white font-bold text-base">Clear all predictions?</h3>
+            <p className="mt-1 text-neutral-400 text-sm">This will remove every group stage and bracket pick. This can&rsquo;t be undone.</p>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg border border-white/10 text-neutral-200 font-semibold text-sm hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleClearGroups(); setShowClearConfirm(false); }}
+                className="flex-1 py-2.5 rounded-lg bg-wc-red text-white font-semibold text-sm hover:bg-wc-red/90 transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Rate limit toast */}
       {showRateLimitToast && (

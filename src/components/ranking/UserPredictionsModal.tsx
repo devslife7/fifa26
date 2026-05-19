@@ -1,17 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { LeaderboardPrediction, LiveMatch, GroupLetter, KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
+import { LeaderboardPrediction, LiveMatch, GroupLetter, KnockoutRound } from '@/types';
 import { teamsByCode, groups } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { generateBracket } from '@/lib/logic/bracket';
-import {
-  GROUP_POINTS,
-  QUALIFIER_POINTS,
-  WINNER_POINTS,
-  getPredictedQualifiers,
-  type Qualifiers,
-} from '@/lib/logic/scoring';
+import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
+import { usePredictionResults } from '@/hooks/usePredictionResults';
 
 interface Props {
   prediction: LeaderboardPrediction;
@@ -89,145 +83,11 @@ function pillState(code: string, actualSet: Set<string>, hasActualSignal: boolea
   return actualSet.has(code) ? 'hit' : 'miss';
 }
 
-function actualQualifiersFromLive(
-  bracket: KnockoutMatch[],
-  liveMatches: Record<string, LiveMatch> | undefined,
-): { qualifiers: Qualifiers; hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> } {
-  const R32 = new Set<string>();
-  const R16 = new Set<string>();
-  const QF = new Set<string>();
-  const SF = new Set<string>();
-  const thirdParticipants = new Set<string>();
-  const finalParticipants = new Set<string>();
-  let thirdWinner: string | null = null;
-  let finalWinner: string | null = null;
-
-  const hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> = {
-    R32: false, R16: false, QF: false, SF: false, '3RD': false, FIN: false,
-    thirdWinner: false, finalWinner: false,
-  };
-
-  for (const m of bracket) {
-    const live = liveMatches?.[m.id];
-    if (!live || live.status !== 'FINISHED' || !live.homeCode || !live.awayCode || !live.actualResult) continue;
-    const winner = live.actualResult === 'home' ? live.homeCode : live.actualResult === 'away' ? live.awayCode : null;
-    const loser = live.actualResult === 'home' ? live.awayCode : live.actualResult === 'away' ? live.homeCode : null;
-    if (!winner) continue;
-
-    if (m.round === 'R32') {
-      R32.add(live.homeCode);
-      R32.add(live.awayCode);
-      R16.add(winner);
-      hasSignal.R32 = true;
-      hasSignal.R16 = true;
-    } else if (m.round === 'R16') {
-      QF.add(winner);
-      hasSignal.QF = true;
-    } else if (m.round === 'QF') {
-      SF.add(winner);
-      hasSignal.SF = true;
-    } else if (m.round === 'SF') {
-      finalParticipants.add(winner);
-      if (loser) thirdParticipants.add(loser);
-      hasSignal.FIN = true;
-      hasSignal['3RD'] = true;
-    } else if (m.round === '3RD') {
-      thirdWinner = winner;
-      hasSignal.thirdWinner = true;
-    } else if (m.round === 'FIN') {
-      finalWinner = winner;
-      hasSignal.finalWinner = true;
-    }
-  }
-
-  return {
-    qualifiers: { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner },
-    hasSignal,
-  };
-}
-
 export default function UserPredictionsModal({ prediction, rank, onClose, liveMatches, teamFlagsByCode }: Props) {
   const championTeam = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
   const championFlagUrl = prediction.champion_code && teamFlagsByCode ? teamFlagsByCode[prediction.champion_code] : undefined;
 
-  const bracket = useMemo(() => {
-    try {
-      return generateBracket(
-        prediction.group_matches as Record<string, MatchResult>,
-        prediction.knockout_matches as Record<string, KnockoutResult>,
-        prediction.third_place_tiebreaker ?? undefined,
-      );
-    } catch {
-      return [];
-    }
-  }, [prediction.group_matches, prediction.knockout_matches, prediction.third_place_tiebreaker]);
-
-  const predicted = useMemo<Qualifiers>(() => {
-    try {
-      return getPredictedQualifiers({
-        user_id: '',
-        group_matches: prediction.group_matches,
-        knockout_matches: prediction.knockout_matches,
-        champion_code: prediction.champion_code,
-        third_place_tiebreaker: prediction.third_place_tiebreaker ?? null,
-      });
-    } catch {
-      return {
-        R32: new Set(), R16: new Set(), QF: new Set(), SF: new Set(),
-        thirdParticipants: new Set(), thirdWinner: null,
-        finalParticipants: new Set(), finalWinner: null,
-      };
-    }
-  }, [prediction]);
-
-  const { qualifiers: actual, hasSignal } = useMemo(
-    () => actualQualifiersFromLive(bracket, liveMatches),
-    [bracket, liveMatches],
-  );
-
-  const pointsSummary = useMemo(() => {
-    let groupCorrect = 0;
-    let groupTotal = 0;
-    for (const match of allGroupMatches) {
-      const live = liveMatches?.[match.id];
-      if (live?.status === 'FINISHED' && live.actualResult) {
-        groupTotal++;
-        if (prediction.group_matches[match.id] === live.actualResult) groupCorrect++;
-      }
-    }
-    const groupPoints = groupCorrect * GROUP_POINTS;
-
-    const intersect = (a: Set<string>, b: Set<string>) => {
-      let n = 0;
-      for (const x of a) if (b.has(x)) n++;
-      return n;
-    };
-
-    const r32Pts = intersect(predicted.R32, actual.R32) * QUALIFIER_POINTS.R32;
-    const r16Pts = intersect(predicted.R16, actual.R16) * QUALIFIER_POINTS.R16;
-    const qfPts = intersect(predicted.QF, actual.QF) * QUALIFIER_POINTS.QF;
-    const sfPts = intersect(predicted.SF, actual.SF) * QUALIFIER_POINTS.SF;
-    const thirdPartPts = intersect(predicted.thirdParticipants, actual.thirdParticipants) * QUALIFIER_POINTS['3RD'];
-    const thirdWinPts = predicted.thirdWinner && actual.thirdWinner && predicted.thirdWinner === actual.thirdWinner
-      ? WINNER_POINTS['3RD']
-      : 0;
-    const finPartPts = intersect(predicted.finalParticipants, actual.finalParticipants) * QUALIFIER_POINTS.FIN;
-    const finWinPts = predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner
-      ? WINNER_POINTS.FIN
-      : 0;
-
-    const knockoutPoints = r32Pts + r16Pts + qfPts + sfPts + thirdPartPts + thirdWinPts + finPartPts + finWinPts;
-    const championCorrect = Boolean(predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner);
-
-    return {
-      groupCorrect, groupTotal, groupPoints,
-      r32Pts, r16Pts, qfPts, sfPts,
-      thirdPartPts, thirdWinPts, finPartPts, finWinPts,
-      knockoutPoints,
-      championCorrect,
-      totalPoints: groupPoints + knockoutPoints,
-    };
-  }, [predicted, actual, liveMatches, prediction.group_matches]);
+  const { predicted, actual, hasSignal, summary: pointsSummary } = usePredictionResults(prediction, liveMatches);
 
   const matchesByGroup = useMemo(() => {
     const map: Record<GroupLetter, typeof allGroupMatches> = {} as Record<GroupLetter, typeof allGroupMatches>;

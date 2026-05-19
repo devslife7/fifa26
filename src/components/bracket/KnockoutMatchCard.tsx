@@ -71,8 +71,15 @@ export default function KnockoutMatchCard({
   const canPredict = home && away && !homePH && !awayPH;
 
   const isFinished = liveMatch?.status === 'FINISHED';
-  const predictionCorrect = isFinished && result && liveMatch?.actualResult
-    ? result === liveMatch.actualResult
+  // Compare by team code, not by side. The user's pick was a team; the bracket slot
+  // they picked it in may not correspond to the teams that actually played, but their
+  // pick is "correct" if that team really advanced from this match.
+  const pickedTeamCode = result === 'home' ? homeCode : result === 'away' ? awayCode : undefined;
+  const actualWinnerCode = isFinished && liveMatch?.actualResult && liveMatch.homeCode && liveMatch.awayCode
+    ? (liveMatch.actualResult === 'home' ? liveMatch.homeCode : liveMatch.actualResult === 'away' ? liveMatch.awayCode : null)
+    : null;
+  const predictionCorrect = isFinished && pickedTeamCode && actualWinnerCode
+    ? pickedTeamCode === actualWinnerCode
     : null;
 
   const TeamSlot = ({

@@ -34,8 +34,8 @@ const roundLabels: Record<string, string> = {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 18,
-    paddingBottom: 18,
+    paddingTop: 22,
+    paddingBottom: 36,
     paddingHorizontal: 22,
     fontFamily: 'Helvetica',
     fontSize: 9,
@@ -143,13 +143,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottom: '1px solid #e5e7eb',
-    minHeight: 18,
+    minHeight: 16,
   },
   tableHeaderRow: {
     backgroundColor: '#f3f4f6',
   },
   cell: {
-    paddingVertical: 3,
+    paddingVertical: 2,
     paddingHorizontal: 4,
     borderRight: '1px solid #e5e7eb',
   },
@@ -264,7 +264,8 @@ function PredictionPdfDocument({
       author="FIFA 26 Predictions"
       subject="Submitted prediction snapshot"
     >
-      <Page size="A4" style={styles.page} wrap={false}>
+      <Page size="A4" style={styles.page}>
+        <View wrap={false}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>FIFA 26 Predictions</Text>
           <View style={styles.identity}>
@@ -313,9 +314,11 @@ function PredictionPdfDocument({
             <Text style={[styles.totalValue, { width: '15%' }]}>_____ / {groupMaxPoints}</Text>
           </View>
         </View>
+        </View>
 
       </Page>
-      <Page size="A4" style={styles.page} wrap={false}>
+      <Page size="A4" style={styles.page}>
+        <View wrap={false}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
           <Text style={styles.sectionSubtitle}>
@@ -390,6 +393,7 @@ function PredictionPdfDocument({
         <Text style={styles.footer}>
           This PDF is a submitted prediction snapshot. Share link: {shareUrl}
         </Text>
+        </View>
       </Page>
     </Document>
   );

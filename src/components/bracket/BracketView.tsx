@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
-import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, LiveMatch, GroupTiebreakers } from '@/types';
 import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
 import { KNOCKOUT_VENUES } from '@/data/matches';
 import KnockoutMatchCard from './KnockoutMatchCard';
@@ -10,6 +10,7 @@ import ScoringInfoModal from '@/components/scoring/ScoringInfoModal';
 interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];
   onPredict: (matchId: string, result: KnockoutResult) => void;
   onRandomize?: () => void;
@@ -33,14 +34,14 @@ const roundLabels: Record<KnockoutRound, string> = {
 const SCORING_INFO_VIEW_COUNT_KEY = 'fifa26.bracket.scoringInfoViewCount';
 const SCORING_INFO_MAX_AUTO_SHOWS = 2;
 
-export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
+export default function BracketView({ groupPredictions, knockoutPredictions, groupTiebreakers = {}, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
   const [showScoringInfo, setShowScoringInfo] = useState(false);
   const pendingAdvanceRef = useRef<{ matchId: string; round: KnockoutRound } | null>(null);
   const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transitionTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MatchResult, KnockoutResult } from '@/types';
+import { MatchResult, KnockoutResult, GroupTiebreakers } from '@/types';
 import { groups, teamsByCode } from '@/data/teams';
 import GroupSection from '@/components/groups/GroupSection';
 import BracketView from '@/components/bracket/BracketView';
@@ -11,13 +11,14 @@ interface Props {
   championCode: string | null;
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];
 }
 
 type Tab = 'groups' | 'bracket';
 
 export default function SharedPredictionView({
-  displayName, championCode, groupMatches, knockoutMatches, thirdPlaceTiebreaker,
+  displayName, championCode, groupMatches, knockoutMatches, groupTiebreakers = {}, thirdPlaceTiebreaker,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('groups');
   const champion = championCode ? teamsByCode[championCode] : null;
@@ -79,6 +80,7 @@ export default function SharedPredictionView({
             <BracketView
               groupPredictions={groupMatches}
               knockoutPredictions={knockoutMatches}
+              groupTiebreakers={groupTiebreakers}
               thirdPlaceTiebreaker={thirdPlaceTiebreaker}
               onPredict={() => {}}
               readOnly={true}

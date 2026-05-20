@@ -1,5 +1,5 @@
 export const emailTheme = {
-  bg: '#f5f5f5',
+  bg: '#0e0f13',
   card: '#ffffff',
   stadiumBlack: '#05070d',
   gold: '#d4a017',

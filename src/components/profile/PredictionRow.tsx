@@ -37,7 +37,7 @@ export default function PredictionRow({
   const champion = p.champion_code ? teamsByCode[p.champion_code] : null;
 
   const topThree = p.is_complete
-    ? getTopThree(p.group_matches ?? {}, p.knockout_matches ?? {}, p.third_place_tiebreaker ?? undefined)
+    ? getTopThree(p.group_matches ?? {}, p.knockout_matches ?? {}, p.third_place_tiebreaker ?? undefined, p.group_tiebreakers ?? {})
     : null;
   const firstTeam = topThree?.first ? teamsByCode[topThree.first] : null;
   const secondTeam = topThree?.second ? teamsByCode[topThree.second] : null;

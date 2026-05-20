@@ -10,7 +10,7 @@ import { allGroupMatches } from '@/data/matches';
 import { teamsByCode } from '@/data/teams';
 import { generateBracket, getMatchWinner } from '@/lib/logic/bracket';
 import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
-import type { KnockoutResult, MatchResult } from '@/types';
+import type { GroupTiebreakers, KnockoutResult, MatchResult } from '@/types';
 
 interface GeneratePredictionPdfParams {
   predictionId: string;
@@ -19,6 +19,7 @@ interface GeneratePredictionPdfParams {
   submittedAt?: string | null;
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers | null;
   thirdPlaceTiebreaker?: string[] | null;
   shareUrl: string;
 }
@@ -231,10 +232,11 @@ function PredictionPdfDocument({
   submittedAt,
   groupMatches,
   knockoutMatches,
+  groupTiebreakers,
   thirdPlaceTiebreaker,
   shareUrl,
 }: GeneratePredictionPdfParams) {
-  const bracket = generateBracket(groupMatches, knockoutMatches, thirdPlaceTiebreaker ?? undefined);
+  const bracket = generateBracket(groupMatches, knockoutMatches, thirdPlaceTiebreaker ?? undefined, groupTiebreakers ?? {});
   const orderedKnockout = bracket.sort((a, b) => {
     const roundOrder = ['R32', 'R16', 'QF', 'SF', '3RD', 'FIN'];
     const roundDiff = roundOrder.indexOf(a.round) - roundOrder.indexOf(b.round);

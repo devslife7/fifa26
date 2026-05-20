@@ -1,19 +1,20 @@
 'use client';
 
-import { MatchResult } from '@/types';
+import { GroupTiebreakers, MatchResult } from '@/types';
 import { getThirdPlaceRanking, detectThirdPlaceTie } from '@/lib/logic/standings';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {
   predictions: Record<string, MatchResult>;
+  groupTiebreakers?: GroupTiebreakers;
   tiebreakerPicks: string[];
   onTiebreakerChange: (picks: string[]) => void;
   teamFlagsByCode?: Record<string, string>;
 }
 
-export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
-  const ranking = getThirdPlaceRanking(predictions);
-  const tieInfo = detectThirdPlaceTie(predictions);
+export default function ThirdPlaceTable({ predictions, groupTiebreakers = {}, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
+  const ranking = getThirdPlaceRanking(predictions, groupTiebreakers);
+  const tieInfo = detectThirdPlaceTie(predictions, groupTiebreakers);
   const hasTie = tieInfo.slotsToFill > 0;
   const selectableTeams = hasTie ? tieInfo.tied : [];
   const selectableTeamCodes = new Set(selectableTeams.map(entry => entry.team));

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TabId, MatchResult, KnockoutResult, SavedPrediction, GroupLetter } from '@/types';
+import { TabId, MatchResult, KnockoutResult, SavedPrediction, GroupLetter, GroupTiebreakers } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { groups } from '@/data/teams';
 import { generateRandomKnockoutPredictions, getAffectedR32Matches, getDownstreamMatchIds } from '@/lib/logic/bracket';
-import { calculateGroupStandings } from '@/lib/logic/standings';
+import { calculateGroupStandings, getUnresolvedGroupTieBands } from '@/lib/logic/standings';
 import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions, setEditingPrediction } from '@/lib/client/storage';
 import { createPredictionSnapshot, getPredictionFlowState, getSubmittedForSnapshot, markSnapshotSubmitted } from '@/lib/logic/prediction-flow';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -13,6 +13,7 @@ import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/groups/GroupMatchCard';
 import GroupQualifiersStrip from '@/components/groups/GroupQualifiersStrip';
 import ThirdPlaceTable from '@/components/groups/ThirdPlaceTable';
+import GroupTieResolverCard from '@/components/groups/GroupTieResolverCard';
 import BracketView from '@/components/bracket/BracketView';
 import BottomNav from '@/components/layout/BottomNav';
 import StepperBar from '@/components/layout/StepperBar';
@@ -33,6 +34,7 @@ export default function Home() {
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
+  const [groupTiebreakers, setGroupTiebreakers] = useState<GroupTiebreakers>({});
   const [thirdPlaceTiebreaker, setThirdPlaceTiebreaker] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
@@ -55,6 +57,16 @@ export default function Home() {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
+  const scrollToGroupTieResolver = useCallback((group: GroupLetter) => {
+    const scroll = () => {
+      const el = document.getElementById(`group-tie-resolver-${group}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(scroll));
+    window.setTimeout(scroll, 120);
+  }, []);
+
   const triggerAutoAdvance = useCallback((matchId: string) => {
     if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
     setFocusedMatchId(matchId);
@@ -65,11 +77,20 @@ export default function Home() {
     }, 1200);
   }, [scrollToMatch]);
 
+  const clearGroupTiebreakersForGroup = useCallback((current: GroupTiebreakers, group: GroupLetter): GroupTiebreakers => {
+    const next = { ...current };
+    Object.keys(next).forEach(key => {
+      if (key.startsWith(`${group}:`)) delete next[key];
+    });
+    return next;
+  }, []);
+
   // Load local predictions on mount
   useEffect(() => {
     const saved = loadPredictions();
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
+    setGroupTiebreakers(saved.groupTiebreakers ?? {});
     setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
     setMounted(true);
   }, []);
@@ -93,6 +114,7 @@ export default function Home() {
             loadFromServer(toLoad);
             setGroupPredictions(toLoad.group_matches ?? {});
             setKnockoutPredictions(toLoad.knockout_matches ?? {});
+            setGroupTiebreakers(toLoad.group_tiebreakers ?? {});
             setThirdPlaceTiebreaker(toLoad.third_place_tiebreaker ?? []);
           }
         })
@@ -108,6 +130,7 @@ export default function Home() {
 
       // Smart clearing: only clear affected knockout predictions
       const groupLetter = matchId.split('-')[0] as GroupLetter;
+      const nextGroupTiebreakers = clearGroupTiebreakersForGroup(groupTiebreakers, groupLetter);
       const affectedR32 = getAffectedR32Matches(groupLetter);
       const idsToClear = new Set<string>();
       for (const r32Id of affectedR32) {
@@ -125,24 +148,29 @@ export default function Home() {
         const predictions = loadPredictions();
         predictions.groupMatches = next;
         predictions.knockoutMatches = nextKO;
+        predictions.groupTiebreakers = nextGroupTiebreakers;
         predictions.thirdPlaceTiebreaker = [];
         savePredictions(predictions);
         return nextKO;
       });
 
+      setGroupTiebreakers(nextGroupTiebreakers);
       setThirdPlaceTiebreaker([]);
 
       // Auto-advance: when filling an empty slot, focus + scroll to the next undecided match
       if (wasEmpty) {
-        const nextMatch = allGroupMatches.find(m => !next[m.id]);
-        if (nextMatch) {
+        const groupHasUnresolvedTies = getUnresolvedGroupTieBands(groupLetter, next, nextGroupTiebreakers).length > 0;
+        const nextMatch = groupHasUnresolvedTies ? null : allGroupMatches.find(m => !next[m.id]);
+        if (groupHasUnresolvedTies) {
+          scrollToGroupTieResolver(groupLetter);
+        } else if (nextMatch) {
           triggerAutoAdvance(nextMatch.id);
         }
       }
 
       return next;
     });
-  }, [triggerAutoAdvance]);
+  }, [clearGroupTiebreakersForGroup, groupTiebreakers, scrollToGroupTieResolver, triggerAutoAdvance]);
 
   const handleTiebreakerChange = useCallback((picks: string[]) => {
     setThirdPlaceTiebreaker(picks);
@@ -163,12 +191,51 @@ export default function Home() {
         delete nextKO[id];
       }
       const predictions = loadPredictions();
+      predictions.groupTiebreakers = groupTiebreakers;
       predictions.thirdPlaceTiebreaker = picks;
       predictions.knockoutMatches = nextKO;
       savePredictions(predictions);
       return nextKO;
     });
-  }, []);
+  }, [groupTiebreakers]);
+
+  const handleGroupTieOrderChange = useCallback((group: GroupLetter, key: string, order: string[]) => {
+    const affectedR32 = getAffectedR32Matches(group);
+    const idsToClear = new Set<string>();
+    for (const r32Id of affectedR32) {
+      idsToClear.add(r32Id);
+      for (const downId of getDownstreamMatchIds(r32Id)) {
+        idsToClear.add(downId);
+      }
+    }
+
+    setGroupTiebreakers(prev => {
+      const nextTiebreakers = { ...prev, [key]: order };
+      setKnockoutPredictions(prevKO => {
+        const nextKO = { ...prevKO };
+        for (const id of idsToClear) {
+          delete nextKO[id];
+        }
+        const predictions = loadPredictions();
+        predictions.groupTiebreakers = nextTiebreakers;
+        predictions.knockoutMatches = nextKO;
+        predictions.thirdPlaceTiebreaker = [];
+        savePredictions(predictions);
+        return nextKO;
+      });
+      setThirdPlaceTiebreaker([]);
+
+      const unresolved = getUnresolvedGroupTieBands(group, groupPredictions, nextTiebreakers);
+      if (unresolved.length === 0) {
+        const nextMatch = allGroupMatches.find(m => !groupPredictions[m.id]);
+        if (nextMatch) {
+          window.setTimeout(() => triggerAutoAdvance(nextMatch.id), 150);
+        }
+      }
+
+      return nextTiebreakers;
+    });
+  }, [groupPredictions, triggerAutoAdvance]);
 
   const handleRandomizeGroups = useCallback(() => {
     const outcomes: MatchResult[] = ['home', 'draw', 'away'];
@@ -179,10 +246,12 @@ export default function Home() {
     const predictions = loadPredictions();
     predictions.groupMatches = randomized;
     predictions.knockoutMatches = {};
+    predictions.groupTiebreakers = {};
     predictions.thirdPlaceTiebreaker = [];
     savePredictions(predictions);
     setGroupPredictions(randomized);
     setKnockoutPredictions({});
+    setGroupTiebreakers({});
     setThirdPlaceTiebreaker([]);
   }, []);
 
@@ -194,21 +263,24 @@ export default function Home() {
     const predictions = loadPredictions();
     predictions.groupMatches = {};
     predictions.knockoutMatches = {};
+    predictions.groupTiebreakers = {};
     predictions.thirdPlaceTiebreaker = [];
     savePredictions(predictions);
     setGroupPredictions({});
     setKnockoutPredictions({});
+    setGroupTiebreakers({});
     setThirdPlaceTiebreaker([]);
     setUserExpandedGroups(new Set());
   }, []);
 
   const handleRandomizeBracket = useCallback(() => {
-    const randomPredictions = generateRandomKnockoutPredictions(groupPredictions, thirdPlaceTiebreaker);
+    const randomPredictions = generateRandomKnockoutPredictions(groupPredictions, thirdPlaceTiebreaker, groupTiebreakers);
     setKnockoutPredictions(randomPredictions);
     const predictions = loadPredictions();
     predictions.knockoutMatches = randomPredictions;
+    predictions.groupTiebreakers = groupTiebreakers;
     savePredictions(predictions);
-  }, [groupPredictions, thirdPlaceTiebreaker]);
+  }, [groupPredictions, groupTiebreakers, thirdPlaceTiebreaker]);
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
     setKnockoutPredictions(prev => {
@@ -223,6 +295,7 @@ export default function Home() {
         }
         const predictions = loadPredictions();
         predictions.knockoutMatches = next;
+        predictions.groupTiebreakers = groupTiebreakers;
         savePredictions(predictions);
         return next;
       }
@@ -234,6 +307,7 @@ export default function Home() {
       }
       const predictions = loadPredictions();
       predictions.knockoutMatches = next;
+      predictions.groupTiebreakers = groupTiebreakers;
       savePredictions(predictions);
 
       // Auto-navigate to submit tab after picking the final
@@ -243,7 +317,7 @@ export default function Home() {
 
       return next;
     });
-  }, []);
+  }, [groupTiebreakers]);
 
   useEffect(() => {
     if (!rateLimited) return;
@@ -262,15 +336,16 @@ export default function Home() {
   const [lastPredictionTab, setLastPredictionTab] = useState<TabId | null>(null);
 
   const flowState = useMemo(
-    () => getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
-    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
+    () => getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers),
+    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers]
   );
   const groupCount = flowState.groupCount;
-  const tiesResolved = flowState.thirdPlaceComplete;
+  const readyForBracket = flowState.groupsComplete && flowState.thirdPlaceComplete;
+  const needsThirdPlaceInput = flowState.groupsComplete && flowState.thirdPlaceRequired && !flowState.thirdPlaceComplete;
   const champion = flowState.championCode;
   const predictionSnapshot = useMemo(
-    () => createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
-    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
+    () => createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers),
+    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers]
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [userRank, setUserRank] = useState<number | null>(null);
@@ -324,50 +399,59 @@ export default function Home() {
     const prev = prevGroupCountRef.current;
     prevGroupCountRef.current = groupCount;
     if (prev === -1) return; // skip initial load
-    if (prev < 72 && groupCount === 72 && activeTab === 'groups') {
+    if (prev < 72 && groupCount === 72 && activeTab === 'groups' && flowState.groupsComplete) {
       if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
       autoNavTimerRef.current = setTimeout(() => {
         autoNavTimerRef.current = null;
-        if (tiesResolved) {
-          setActiveTab('bracket');
-        } else {
+        if (needsThirdPlaceInput) {
           setActiveTab('thirdplace');
+        } else {
+          setActiveTab('bracket');
         }
         setTimeout(() => window.scrollTo({ top: 0 }), 0);
-      }, tiesResolved ? 400 : 300);
+      }, needsThirdPlaceInput ? 300 : 400);
     }
-  }, [groupCount, mounted, activeTab, tiesResolved]);
+  }, [groupCount, mounted, activeTab, flowState.groupsComplete, needsThirdPlaceInput]);
 
-  // Auto-navigate to bracket when ties are resolved after completing all group matches
+  // Auto-navigate after group and third-place ties are resolved.
   useEffect(() => {
     if (!mounted) return;
     const prev = prevTiesResolvedRef.current;
-    prevTiesResolvedRef.current = tiesResolved;
+    prevTiesResolvedRef.current = readyForBracket;
     if (prev === null) return; // skip initial load
-    if (!prev && tiesResolved && groupCount >= 72 && (activeTab === 'groups' || activeTab === 'thirdplace')) {
+    if (groupCount >= 72 && (activeTab === 'groups' || activeTab === 'thirdplace')) {
+      const target = readyForBracket ? 'bracket' : needsThirdPlaceInput ? 'thirdplace' : null;
+      if (!target || target === activeTab) return;
       if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
       autoNavTimerRef.current = setTimeout(() => {
         autoNavTimerRef.current = null;
-        setActiveTab('bracket');
+        setActiveTab(target);
         setTimeout(() => window.scrollTo({ top: 0 }), 0);
       }, 400);
     }
-  }, [tiesResolved, mounted, groupCount, activeTab]);
+  }, [readyForBracket, needsThirdPlaceInput, mounted, groupCount, activeTab]);
 
   const handleNextIncompleteGroupMatch = useCallback(() => {
+    const unresolvedGroup = groups.find(group => getUnresolvedGroupTieBands(group, groupPredictions, groupTiebreakers).length > 0);
+    if (unresolvedGroup) {
+      scrollToGroupTieResolver(unresolvedGroup);
+      return;
+    }
     const next = allGroupMatches.find(match => !groupPredictions[match.id]);
     if (next) scrollToMatch(next.id);
-  }, [groupPredictions, scrollToMatch]);
+  }, [groupPredictions, groupTiebreakers, scrollToGroupTieResolver, scrollToMatch]);
 
   const handleLoadPrediction = useCallback((prediction: SavedPrediction) => {
     loadFromServer(prediction);
     const nextGroupPredictions = prediction.group_matches ?? {};
     const nextKnockoutPredictions = prediction.knockout_matches ?? {};
+    const nextGroupTiebreakers = prediction.group_tiebreakers ?? {};
     const nextThirdPlaceTiebreaker = prediction.third_place_tiebreaker ?? [];
     setGroupPredictions(nextGroupPredictions);
     setKnockoutPredictions(nextKnockoutPredictions);
+    setGroupTiebreakers(nextGroupTiebreakers);
     setThirdPlaceTiebreaker(nextThirdPlaceTiebreaker);
-    const nextFlow = getPredictionFlowState(nextGroupPredictions, nextKnockoutPredictions, nextThirdPlaceTiebreaker);
+    const nextFlow = getPredictionFlowState(nextGroupPredictions, nextKnockoutPredictions, nextThirdPlaceTiebreaker, nextGroupTiebreakers);
     navigateTo(nextFlow.nextPredictionTab);
   }, [navigateTo]);
 
@@ -377,6 +461,7 @@ export default function Home() {
     localStorage.removeItem('prediction_submitted_snapshot');
     setGroupPredictions({});
     setKnockoutPredictions({});
+    setGroupTiebreakers({});
     setThirdPlaceTiebreaker([]);
     setEditingPrediction(null);
     setIsSubmitted(false);
@@ -533,7 +618,10 @@ export default function Home() {
                 const groupLetter = section.matches[0].group;
                 const picked = section.matches.filter(match => groupPredictions[match.id]).length;
                 const complete = picked === section.matches.length;
-                const collapsed = complete && !userExpandedGroups.has(groupLetter);
+                const standings = calculateGroupStandings(groupLetter, groupPredictions, groupTiebreakers);
+                const unresolvedTieBands = getUnresolvedGroupTieBands(groupLetter, groupPredictions, groupTiebreakers);
+                const hasUnresolvedTies = complete && unresolvedTieBands.length > 0;
+                const collapsed = complete && !hasUnresolvedTies && !userExpandedGroups.has(groupLetter);
                 return (
                   <div key={section.label}>
                     <div className="py-2 mb-2 flex items-center justify-between gap-3">
@@ -547,12 +635,23 @@ export default function Home() {
                     {collapsed ? (
                       <GroupQualifiersStrip
                         group={groupLetter}
-                        standings={calculateGroupStandings(groupLetter, groupPredictions)}
+                        standings={standings}
                         expanded={false}
                         onToggle={() => toggleGroupExpanded(groupLetter)}
                         teamFlagsByCode={teamFlagsByCode}
                         thirdPlaceRelevant={flowState.thirdPlaceRequired}
                       />
+                    ) : hasUnresolvedTies ? (
+                      <div id={`group-tie-resolver-${groupLetter}`} className="scroll-mt-32">
+                        <GroupTieResolverCard
+                          group={groupLetter}
+                          standings={standings}
+                          tieBands={unresolvedTieBands}
+                          groupTiebreakers={groupTiebreakers}
+                          onTieOrderChange={handleGroupTieOrderChange}
+                          teamFlagsByCode={teamFlagsByCode}
+                        />
+                      </div>
                     ) : (
                       <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
                         {complete && (
@@ -595,6 +694,7 @@ export default function Home() {
         {activeTab === 'thirdplace' && (
           <ThirdPlaceTable
             predictions={groupPredictions}
+            groupTiebreakers={groupTiebreakers}
             tiebreakerPicks={thirdPlaceTiebreaker}
             onTiebreakerChange={handleTiebreakerChange}
             teamFlagsByCode={teamFlagsByCode}
@@ -605,6 +705,7 @@ export default function Home() {
           <BracketView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
+            groupTiebreakers={groupTiebreakers}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onPredict={handleKnockoutPredict}
             onRandomize={handleRandomizeBracket}
@@ -634,6 +735,7 @@ export default function Home() {
           <ProfileView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
+            groupTiebreakers={groupTiebreakers}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onNavigate={navigateTo}
             onNavigateToPredictions={handleNavigateToPredictions}
@@ -648,6 +750,7 @@ export default function Home() {
             isPage
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
+            groupTiebreakers={groupTiebreakers}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             user={user ?? null}
             onDismiss={() => setActiveTab('bracket')}

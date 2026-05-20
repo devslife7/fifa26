@@ -3,7 +3,7 @@ import { createServiceClient } from '@/lib/services/supabase/server';
 import { teamsByCode } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
 import { generateBracket, getTopThree } from '@/lib/logic/bracket';
-import type { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
+import type { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, GroupTiebreakers } from '@/types';
 
 const GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 const ROUNDS: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'FIN'];
@@ -52,12 +52,13 @@ export async function GET(
 
   const gp = data.group_matches as Record<string, MatchResult>;
   const kp = data.knockout_matches as Record<string, KnockoutResult>;
+  const gt = (data.group_tiebreakers as GroupTiebreakers | null) ?? {};
   const tp = (data.third_place_tiebreaker as string[] | null) ?? undefined;
   const displayName = data.submitter_name || 'Someone';
 
-  const topThree = getTopThree(gp, kp, tp);
+  const topThree = getTopThree(gp, kp, tp, gt);
   const champ = topThree.first ? teamsByCode[topThree.first] : null;
-  const bracket = generateBracket(gp, kp, tp);
+  const bracket = generateBracket(gp, kp, tp, gt);
 
   return new ImageResponse(
     (

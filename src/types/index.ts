@@ -10,6 +10,7 @@ export interface Team {
 
 export type MatchResult = 'home' | 'draw' | 'away';
 export type KnockoutResult = 'home' | 'away';
+export type GroupTiebreakers = Record<string, string[]>;
 
 export interface GroupMatch {
   id: string;
@@ -53,6 +54,7 @@ export interface GroupStanding {
 export interface Predictions {
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];  // team codes chosen by user to advance from tie zone
   userName?: string;
   userEmail?: string;
@@ -80,6 +82,7 @@ export interface SavedPrediction {
   share_token: string | null;
   group_matches: Record<string, MatchResult>;
   knockout_matches: Record<string, KnockoutResult>;
+  group_tiebreakers?: GroupTiebreakers | null;
   third_place_tiebreaker: string[] | null;
   is_approved?: boolean;
   submitter_name?: string;
@@ -102,6 +105,7 @@ export interface LeaderboardPrediction {
   champion_code: string | null;
   group_matches: Record<string, MatchResult>;
   knockout_matches: Record<string, KnockoutResult>;
+  group_tiebreakers?: GroupTiebreakers | null;
   third_place_tiebreaker?: string[] | null;
   is_approved?: boolean;
   created_at?: string | null;

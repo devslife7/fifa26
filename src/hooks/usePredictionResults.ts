@@ -285,6 +285,7 @@ export function usePredictionResults(
         prediction.group_matches as Record<string, MatchResult>,
         prediction.knockout_matches as Record<string, KnockoutResult>,
         prediction.third_place_tiebreaker ?? undefined,
+        prediction.group_tiebreakers ?? {},
       );
     } catch {
       return [];
@@ -299,6 +300,7 @@ export function usePredictionResults(
         group_matches: prediction.group_matches,
         knockout_matches: prediction.knockout_matches,
         champion_code: prediction.champion_code,
+        group_tiebreakers: prediction.group_tiebreakers ?? null,
         third_place_tiebreaker: prediction.third_place_tiebreaker ?? null,
       });
     } catch {

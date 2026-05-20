@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendPredictionEmail } from '@/lib/services/email';
 import { generatePredictionPdf } from '@/lib/services/prediction-pdf';
 import { uploadPredictionPdf } from '@/lib/services/prediction-pdf-storage';
-import type { KnockoutResult, MatchResult } from '@/types';
+import type { GroupTiebreakers, KnockoutResult, MatchResult } from '@/types';
 
 interface SendPredictionConfirmationParams {
   supabase: SupabaseClient;
@@ -19,12 +19,20 @@ interface SendPredictionConfirmationParams {
   origin: string;
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers | null;
   thirdPlaceTiebreaker?: string[] | null;
 }
 
 function errorMessage(err: unknown): string {
   const message = err instanceof Error ? err.message : 'Unknown error';
   return message.slice(0, 1000);
+}
+
+function buildPdfFilename(predictionNumber: number | null | undefined, fallbackId: string): string {
+  if (predictionNumber != null) {
+    return `FIFA-26-Prediction-${predictionNumber}.pdf`;
+  }
+  return `FIFA-26-Prediction-${fallbackId}.pdf`;
 }
 
 export async function sendPredictionConfirmation({
@@ -35,6 +43,7 @@ export async function sendPredictionConfirmation({
   origin,
   groupMatches,
   knockoutMatches,
+  groupTiebreakers,
   thirdPlaceTiebreaker,
 }: SendPredictionConfirmationParams) {
   if (!prediction.share_token) return;
@@ -50,6 +59,7 @@ export async function sendPredictionConfirmation({
       submittedAt: prediction.completed_at,
       groupMatches,
       knockoutMatches,
+      groupTiebreakers,
       thirdPlaceTiebreaker,
       shareUrl,
     });
@@ -80,16 +90,17 @@ export async function sendPredictionConfirmation({
   }
 
   try {
+    const fullName = displayName || prediction.name || 'Predictor';
     await sendPredictionEmail({
       to,
-      name: displayName || prediction.name || 'Predictor',
+      name: fullName,
       predictionNumber: prediction.prediction_number ?? undefined,
       shareUrl,
+      shareToken: prediction.share_token,
+      issuedAt: prediction.completed_at,
       pdfAttachment: pdfBuffer
         ? {
-            filename: prediction.prediction_number
-              ? `prediction-${prediction.prediction_number}.pdf`
-              : `prediction-${prediction.id}.pdf`,
+            filename: buildPdfFilename(prediction.prediction_number, prediction.id),
             content: pdfBuffer.toString('base64'),
           }
         : undefined,

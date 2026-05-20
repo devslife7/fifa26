@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, GroupTiebreakers } from '@/types';
 import { generateBracket, getChampion, getTopThree } from '@/lib/logic/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
@@ -13,6 +13,7 @@ import Podium from '@/components/champion/Podium';
 interface Props {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];
   onComplete?: () => void;
   onSaved?: () => void;
@@ -116,8 +117,8 @@ function CaptureGroupsGrid({ groupPredictions }: { groupPredictions: Record<stri
   );
 }
 
-function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker }: Props) {
-  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+function CompactBracketView({ groupPredictions, knockoutPredictions, groupTiebreakers = {}, thirdPlaceTiebreaker }: Props) {
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
   const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'FIN'];
 
   const teamRow = (team: { name: string; flag: string } | null, code: string | undefined, isWinner: boolean, hasBorder: boolean) => (
@@ -172,7 +173,7 @@ function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceT
   );
 }
 
-export default function ChampionScreen({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onComplete, onSaved, user, onSignIn, onEdit }: Props) {
+export default function ChampionScreen({ groupPredictions, knockoutPredictions, groupTiebreakers = {}, thirdPlaceTiebreaker, onComplete, onSaved, user, onSignIn, onEdit }: Props) {
   const [saving, setSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -185,9 +186,9 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const [predictionNameInput, setPredictionNameInput] = useState('');
   const captureRef = useRef<HTMLDivElement>(null);
 
-  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
   const champion = championCode ? teamsByCode[championCode] : null;
-  const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
   const secondTeam = topThree.second ? teamsByCode[topThree.second] : null;
   const thirdTeam = topThree.third ? teamsByCode[topThree.third] : null;
 
@@ -244,6 +245,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
           name: predictionName || predictionNameInput.trim() || 'My Predictions',
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
+          groupTiebreakers: local.groupTiebreakers,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
@@ -328,6 +330,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
               <CompactBracketView
                 groupPredictions={groupPredictions}
                 knockoutPredictions={knockoutPredictions}
+                groupTiebreakers={groupTiebreakers}
                 thirdPlaceTiebreaker={thirdPlaceTiebreaker}
               />
             </div>

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, MatchResult, LiveMatch } from '@/types';
+import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, MatchResult, LiveMatch, GroupLetter } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { detectThirdPlaceTie } from '@/lib/logic/standings';
+import { detectThirdPlaceTie, getGroupTieBands } from '@/lib/logic/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from './UserPredictionsModal';
 import ScoringExplainer from '@/components/scoring/ScoringExplainer';
@@ -38,8 +38,13 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
     }
     km['3RD-1'] = ui % 2 === 0 ? 'home' : 'away';
     km['FIN-1'] = (ui + 1) % 2 === 0 ? 'home' : 'away';
+    const groupTiebreakers = Object.fromEntries(
+      'ABCDEFGHIJKL'.split('').flatMap(group =>
+        getGroupTieBands(group as GroupLetter, gm).map(band => [band.key, band.teams])
+      )
+    );
     // Compute third-place tiebreaker so the bracket can resolve
-    const { tied, slotsToFill } = detectThirdPlaceTie(gm);
+    const { tied, slotsToFill } = detectThirdPlaceTie(gm, groupTiebreakers);
     const tiebreaker = slotsToFill > 0 ? tied.slice(0, slotsToFill).map(t => t.team) : null;
     return {
       user_id: u.user_id,
@@ -47,6 +52,7 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
       champion_code: u.champion_code,
       group_matches: gm,
       knockout_matches: km,
+      group_tiebreakers: groupTiebreakers,
       third_place_tiebreaker: tiebreaker,
       is_approved: ui % 2 === 0,
     };
@@ -108,6 +114,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
               champion_code: p.champion_code,
               group_matches: p.group_matches ?? {},
               knockout_matches: p.knockout_matches ?? {},
+              group_tiebreakers: p.group_tiebreakers ?? {},
               third_place_tiebreaker: p.third_place_tiebreaker,
               is_approved: p.is_approved ?? false,
               created_at: p.created_at,
@@ -119,8 +126,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         setPredictions(myLeaderboardPreds);
         setTotalUsers(myLeaderboardPreds.length);
       } else {
-        // Merge user's predictions that aren't already in the leaderboard data
-        const existing = new Set(preds.filter((p: LeaderboardPrediction) => p.user_id === user?.id).map((p: LeaderboardPrediction) => p.prediction_number));
+        // Merge user's predictions that aren't already in the leaderboard data.
+        // preds[].user_id is synthetic (`prediction-<n>`), so dedupe by prediction_number.
+        const existing = new Set(preds.map((p: LeaderboardPrediction) => p.prediction_number));
         const missing = myLeaderboardPreds.filter(p => !existing.has(p.prediction_number));
         setPredictions([...missing, ...preds]);
         setTotalUsers(total || preds.length);
@@ -164,6 +172,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
               champion_code: p.champion_code,
               group_matches: p.group_matches ?? {},
               knockout_matches: p.knockout_matches ?? {},
+              group_tiebreakers: p.group_tiebreakers ?? {},
               third_place_tiebreaker: p.third_place_tiebreaker,
               is_approved: p.is_approved ?? false,
               created_at: p.created_at,
@@ -175,7 +184,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         setPredictions(myLeaderboardPreds);
         setTotalUsers(myLeaderboardPreds.length);
       } else {
-        const existing = new Set(preds.filter(p => p.user_id === user?.id).map(p => p.prediction_number));
+        const existing = new Set(preds.map(p => p.prediction_number));
         const missing = myLeaderboardPreds.filter(p => !existing.has(p.prediction_number));
         setPredictions([...missing, ...preds]);
         setTotalUsers(predsRes.total_users || preds.length);

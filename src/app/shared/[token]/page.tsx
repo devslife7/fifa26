@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/services/supabase/server';
-import { MatchResult, KnockoutResult } from '@/types';
+import { MatchResult, KnockoutResult, GroupTiebreakers } from '@/types';
 import { notFound } from 'next/navigation';
 import SharedPredictionView from '@/components/shared/SharedPredictionView';
 
@@ -13,7 +13,7 @@ export default async function SharedBracketPage({ params }: Props) {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
+    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, group_tiebreakers, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
     .eq('share_token', token)
     .eq('is_complete', true)
     .single();
@@ -31,6 +31,7 @@ export default async function SharedBracketPage({ params }: Props) {
       championCode={data.champion_code}
       groupMatches={data.group_matches as Record<string, MatchResult>}
       knockoutMatches={data.knockout_matches as Record<string, KnockoutResult>}
+      groupTiebreakers={(data.group_tiebreakers as GroupTiebreakers | null) ?? {}}
       thirdPlaceTiebreaker={(data.third_place_tiebreaker as string[] | null) ?? undefined}
     />
   );

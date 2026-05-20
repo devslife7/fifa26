@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MatchResult, KnockoutResult } from '@/types';
+import { MatchResult, KnockoutResult, GroupTiebreakers } from '@/types';
 import { getChampion, getTopThree } from '@/lib/logic/bracket';
 import { teamsByCode } from '@/data/teams';
 import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/client/storage';
@@ -11,6 +11,7 @@ import Podium from '@/components/champion/Podium';
 interface ChampionOverlayProps {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];
   user: AppUser | null;
   onDismiss: () => void;
@@ -22,6 +23,7 @@ interface ChampionOverlayProps {
 export default function ChampionOverlay({
   groupPredictions,
   knockoutPredictions,
+  groupTiebreakers = {},
   thirdPlaceTiebreaker,
   user,
   onDismiss,
@@ -56,8 +58,8 @@ export default function ChampionOverlay({
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
 
-  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
-  const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
   const champion = championCode ? teamsByCode[championCode] : null;
 
   useEffect(() => {
@@ -116,6 +118,7 @@ export default function ChampionOverlay({
         name: predictionName || name.trim() || 'My Predictions',
         groupMatches: local.groupMatches,
         knockoutMatches: local.knockoutMatches,
+        groupTiebreakers: local.groupTiebreakers,
         thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
         championCode,
         isComplete: true,

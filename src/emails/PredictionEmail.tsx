@@ -8,8 +8,15 @@ export interface PredictionEmailProps {
   name: string;
   predictionNumber?: number;
   shareUrl: string;
+  shareToken?: string;
   daysUntilKickoff: number;
   pdfFilename?: string;
+  issuedAt?: Date | string;
+}
+
+function formatIssuedDate(value?: Date | string): string {
+  const d = value ? new Date(value) : new Date();
+  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 }
 
 const LOGO_URL = 'https://fifacup26.vercel.app/images/fifa_logov2_transparent.png';
@@ -18,12 +25,15 @@ export function PredictionEmail({
   name,
   predictionNumber,
   shareUrl,
+  shareToken,
   daysUntilKickoff,
   pdfFilename,
+  issuedAt,
 }: PredictionEmailProps) {
   const previewText = predictionNumber
     ? `Prediction #${predictionNumber} confirmed · full bracket attached`
     : 'Your FIFA 26 predictions are confirmed · full bracket attached';
+  const issuedDate = formatIssuedDate(issuedAt);
 
   return (
     <Html>
@@ -66,14 +76,26 @@ export function PredictionEmail({
                           >
                             <tbody>
                               <tr>
-                                <td align="center" style={{ padding: '24px 32px' }}>
+                                <td align="center" style={{ padding: '48px 32px 44px' }}>
                                   <Img
                                     src={LOGO_URL}
                                     alt="FIFA 26"
-                                    width="56"
-                                    height="56"
+                                    width="140"
+                                    height="140"
                                     style={{ display: 'block', margin: '0 auto' }}
                                   />
+                                  <div
+                                    style={{
+                                      marginTop: '14px',
+                                      fontSize: '10px',
+                                      fontWeight: 800,
+                                      letterSpacing: '0.3em',
+                                      textTransform: 'uppercase',
+                                      color: 'rgba(255,255,255,0.5)',
+                                    }}
+                                  >
+                                    FIFA 26 Predictions
+                                  </div>
                                 </td>
                               </tr>
                             </tbody>
@@ -83,7 +105,7 @@ export function PredictionEmail({
 
                       {/* Title block */}
                       <tr>
-                        <td style={{ padding: '32px 32px 4px', textAlign: 'center' }}>
+                        <td style={{ padding: '36px 32px 4px', textAlign: 'center' }}>
                           <div
                             style={{
                               fontSize: '11px',
@@ -98,33 +120,117 @@ export function PredictionEmail({
                           <h1
                             style={{
                               margin: '12px 0 0',
-                              fontSize: '24px',
+                              fontSize: '26px',
                               lineHeight: 1.2,
                               fontWeight: 800,
                               color: t.ink,
-                              letterSpacing: '-0.01em',
+                              letterSpacing: '-0.015em',
                             }}
                           >
                             Your predictions are locked in
                           </h1>
-                          {predictionNumber ? (
-                            <div
-                              style={{
-                                marginTop: '14px',
-                                display: 'inline-block',
-                                padding: '4px 10px',
-                                borderRadius: '999px',
-                                backgroundColor: 'rgba(0,0,0,0.05)',
-                                fontFamily: "'SF Mono', Menlo, Consolas, monospace",
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: t.inkMuted,
-                                letterSpacing: '0.05em',
-                              }}
-                            >
-                              PREDICTION #{String(predictionNumber).padStart(3, '0')}
-                            </div>
-                          ) : null}
+                          {/* Gold accent */}
+                          <div
+                            style={{
+                              width: '44px',
+                              height: '3px',
+                              backgroundColor: t.gold,
+                              margin: '16px auto 0',
+                              borderRadius: '2px',
+                            }}
+                          />
+                          <div
+                            style={{
+                              marginTop: '14px',
+                              fontSize: '12px',
+                              color: t.inkMuted,
+                            }}
+                          >
+                            Saved by <span style={{ color: t.ink, fontWeight: 600 }}>{name}</span>
+                            <span style={{ margin: '0 6px', color: t.inkFaint }}>·</span>
+                            {issuedDate}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Receipt-style metadata block */}
+                      <tr>
+                        <td style={{ padding: '20px 32px 8px' }}>
+                          <table
+                            width="100%"
+                            cellPadding={0}
+                            cellSpacing={0}
+                            role="presentation"
+                            style={{
+                              borderTop: '1px solid rgba(0,0,0,0.08)',
+                              borderBottom: '1px solid rgba(0,0,0,0.08)',
+                            }}
+                          >
+                            <tbody>
+                              {predictionNumber ? (
+                                <tr>
+                                  <td
+                                    style={{
+                                      padding: '10px 0',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      letterSpacing: '0.12em',
+                                      textTransform: 'uppercase',
+                                      color: t.inkMuted,
+                                      width: '40%',
+                                    }}
+                                  >
+                                    Prediction No.
+                                  </td>
+                                  <td
+                                    align="right"
+                                    style={{
+                                      padding: '10px 0',
+                                      fontFamily:
+                                        "'SF Mono', Menlo, Consolas, monospace",
+                                      fontSize: '13px',
+                                      fontWeight: 700,
+                                      color: t.ink,
+                                    }}
+                                  >
+                                    #{String(predictionNumber).padStart(3, '0')}
+                                  </td>
+                                </tr>
+                              ) : null}
+                              {shareToken ? (
+                                <tr>
+                                  <td
+                                    style={{
+                                      padding: '10px 0',
+                                      borderTop: '1px dashed rgba(0,0,0,0.08)',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      letterSpacing: '0.12em',
+                                      textTransform: 'uppercase',
+                                      color: t.inkMuted,
+                                    }}
+                                  >
+                                    Share Code
+                                  </td>
+                                  <td
+                                    align="right"
+                                    style={{
+                                      padding: '10px 0',
+                                      borderTop: '1px dashed rgba(0,0,0,0.08)',
+                                      fontFamily:
+                                        "'SF Mono', Menlo, Consolas, monospace",
+                                      fontSize: '13px',
+                                      fontWeight: 700,
+                                      color: t.ink,
+                                      wordBreak: 'break-all',
+                                    }}
+                                  >
+                                    {shareToken}
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </tbody>
+                          </table>
                         </td>
                       </tr>
 

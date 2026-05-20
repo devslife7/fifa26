@@ -14,15 +14,16 @@ interface Props {
 export default function PredictionDetailCard({ prediction: p, darkMode: d }: Props) {
   const groupPredictions = p.group_matches ?? {};
   const knockoutPredictions = p.knockout_matches ?? {};
+  const groupTiebreakers = p.group_tiebreakers ?? {};
 
   const qualifiers = useMemo(
-    () => getGroupQualifiers(groupPredictions),
-    [groupPredictions]
+    () => getGroupQualifiers(groupPredictions, groupTiebreakers),
+    [groupPredictions, groupTiebreakers]
   );
 
   const bracket = useMemo(
-    () => generateBracket(groupPredictions, knockoutPredictions, p.third_place_tiebreaker ?? undefined),
-    [groupPredictions, knockoutPredictions, p.third_place_tiebreaker]
+    () => generateBracket(groupPredictions, knockoutPredictions, p.third_place_tiebreaker ?? undefined, groupTiebreakers),
+    [groupPredictions, knockoutPredictions, p.third_place_tiebreaker, groupTiebreakers]
   );
 
   const completedGroups = useMemo(

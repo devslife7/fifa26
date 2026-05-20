@@ -56,6 +56,7 @@ export function loadFromServer(prediction: SavedPrediction): void {
   const hydrated: Predictions = {
     groupMatches: prediction.group_matches ?? {},
     knockoutMatches: prediction.knockout_matches ?? {},
+    groupTiebreakers: prediction.group_tiebreakers ?? {},
     thirdPlaceTiebreaker: prediction.third_place_tiebreaker ?? undefined,
   };
   savePredictions(hydrated);

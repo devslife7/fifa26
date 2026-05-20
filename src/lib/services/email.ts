@@ -31,6 +31,8 @@ interface SendPredictionEmailParams {
   name: string;
   predictionNumber?: number;
   shareUrl: string;
+  shareToken?: string;
+  issuedAt?: string | null;
   pdfAttachment?: {
     filename: string;
     content: string;
@@ -42,12 +44,16 @@ export async function sendPredictionEmail({
   name,
   predictionNumber,
   shareUrl,
+  shareToken,
+  issuedAt,
   pdfAttachment,
 }: SendPredictionEmailParams) {
   const element = PredictionEmail({
     name,
     predictionNumber,
     shareUrl,
+    shareToken,
+    issuedAt: issuedAt ?? undefined,
     daysUntilKickoff: daysUntilKickoff(),
     pdfFilename: pdfAttachment?.filename,
   });
@@ -57,9 +63,10 @@ export async function sendPredictionEmail({
     render(element, { plainText: true }),
   ]);
 
+  const firstName = name.trim().split(/\s+/)[0];
   const subject = predictionNumber
-    ? `Prediction #${predictionNumber} confirmed · FIFA 26 World Cup`
-    : 'Your FIFA 26 predictions are confirmed';
+    ? `${firstName}, prediction #${predictionNumber} is locked in`
+    : `${firstName}, your FIFA 26 predictions are confirmed`;
 
   await getResend().emails.send({
     from: FROM,

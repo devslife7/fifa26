@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef } from 'react';
-import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, SavedPrediction } from '@/types';
+import { MatchResult, KnockoutResult, KnockoutRound, GroupLetter, SavedPrediction, GroupTiebreakers } from '@/types';
 import { generateBracket } from '@/lib/logic/bracket';
 import { teamsByCode, groups } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
@@ -92,12 +92,13 @@ function CaptureGroupsGrid({ groupPredictions }: { groupPredictions: Record<stri
   );
 }
 
-function CompactBracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker }: {
+function CompactBracketView({ groupPredictions, knockoutPredictions, groupTiebreakers, thirdPlaceTiebreaker }: {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
+  groupTiebreakers?: GroupTiebreakers | null;
   thirdPlaceTiebreaker?: string[] | null;
 }) {
-  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? undefined);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? undefined, groupTiebreakers ?? {});
   const rounds: KnockoutRound[] = ['R32', 'R16', 'QF', 'SF', 'FIN'];
 
   const teamRow = (team: { name: string; flag: string } | null, code: string | undefined, isWinner: boolean, hasBorder: boolean) => (
@@ -192,6 +193,7 @@ const PredictionCapture = forwardRef<HTMLDivElement, Props>(function PredictionC
             <CompactBracketView
               groupPredictions={groupPredictions}
               knockoutPredictions={knockoutPredictions}
+              groupTiebreakers={prediction.group_tiebreakers}
               thirdPlaceTiebreaker={prediction.third_place_tiebreaker}
             />
           </div>

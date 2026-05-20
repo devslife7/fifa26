@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import type { LiveMatch, MatchResult, KnockoutResult, KnockoutRound, TabId, LeaderboardPrediction } from '@/types';
+import { useEffect, useMemo, useState } from 'react';
+import type { LiveMatch, MatchResult, KnockoutResult, KnockoutRound, TabId, LeaderboardPrediction, LeaderboardEntry } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { useActivePrediction } from '@/hooks/useActivePrediction';
 import { usePredictionResults, type PerMatchOutcome, type MatchOutcomeState } from '@/hooks/usePredictionResults';
 import { groupItemsByDate, formatMatchTime } from '@/lib/utils/match-dates';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
+import PredictionLockedView from './PredictionLockedView';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -157,8 +158,125 @@ function MatchRow({ outcome, flagsByCode }: { outcome: PerMatchOutcome; flagsByC
   );
 }
 
+interface RankInfo {
+  rank: number;
+  total: number;
+  gap: number; // points behind leader (or, if rank===1, points ahead of #2)
+  leaderName: string | null;
+}
+
+function RankLine({ info, onNavigate }: { info: RankInfo; onNavigate: (tab: TabId) => void }) {
+  const { rank, total, gap, leaderName } = info;
+  let detail: React.ReactNode;
+  if (rank === 1) {
+    detail = total === 1
+      ? <span className="text-neutral-400">You&apos;re the only one on the board</span>
+      : gap > 0
+        ? <><span className="text-wc-green font-black">+{gap}</span> <span className="text-neutral-400">ahead of #2</span></>
+        : <span className="text-neutral-400">Tied for the lead</span>;
+  } else {
+    detail = (
+      <>
+        <span className="text-wc-amber font-black">{gap}</span>
+        <span className="text-neutral-400">{' '}pts behind {leaderName ?? 'leader'}</span>
+      </>
+    );
+  }
+  return (
+    <button
+      onClick={() => onNavigate('ranking')}
+      className="w-full px-4 py-2 border-t border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition-colors flex items-center justify-between gap-2 text-left"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="material-symbols-outlined text-primary text-[16px] font-variation-fill">leaderboard</span>
+        <span className="text-[12px] font-bold text-neutral-100 font-body">
+          You&apos;re <span className="text-primary font-black">#{rank}</span>
+          <span className="text-neutral-500"> of {total}</span>
+          <span className="text-neutral-600 mx-1.5">·</span>
+          {detail}
+        </span>
+      </div>
+      <span className="material-symbols-outlined text-neutral-500 text-[14px]">chevron_right</span>
+    </button>
+  );
+}
+
+type ChampionStatus = 'confirmed' | 'alive' | 'eliminated' | 'awaiting';
+
+interface StakeInfo {
+  championStatus: ChampionStatus;
+  championCode: string | null;
+  r16Alive: number;
+  r16Total: number;
+  showR16: boolean;
+}
+
+function StakeStrip({ stake, flagsByCode }: { stake: StakeInfo; flagsByCode: Record<string, string> }) {
+  const { championStatus, championCode, r16Alive, r16Total, showR16 } = stake;
+  const team = championCode ? teamsByCode[championCode] : null;
+  const flagUrl = championCode ? flagsByCode[championCode] : undefined;
+
+  const championPill = (() => {
+    if (!championCode || !team) return null;
+    const tone = championStatus === 'confirmed' ? 'wc-green'
+      : championStatus === 'alive' ? 'wc-green'
+      : championStatus === 'eliminated' ? 'wc-red'
+      : 'neutral';
+    const ring = tone === 'wc-green' ? 'border-wc-green/30 bg-wc-green/5'
+      : tone === 'wc-red' ? 'border-wc-red/30 bg-wc-red/5'
+      : 'border-white/10 bg-white/[0.02]';
+    const dot = tone === 'wc-green' ? 'bg-wc-green'
+      : tone === 'wc-red' ? 'bg-wc-red'
+      : 'bg-neutral-500';
+    const label = championStatus === 'confirmed' ? 'Champion confirmed'
+      : championStatus === 'alive' ? 'Still alive'
+      : championStatus === 'eliminated' ? 'Eliminated'
+      : 'Awaiting knockouts';
+    const labelTone = tone === 'wc-green' ? 'text-wc-green'
+      : tone === 'wc-red' ? 'text-wc-red'
+      : 'text-neutral-400';
+    return (
+      <div className={`flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${ring}`}>
+        {flagUrl ? (
+          <img src={flagUrl} alt="" className="w-7 h-5 object-cover rounded-sm flex-shrink-0" />
+        ) : (
+          <span className="text-xl leading-none flex-shrink-0">{team.flag}</span>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-neutral-500">Champion</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-sm font-black text-white truncate">{team.name}</span>
+            <span className={`size-1.5 rounded-full ${dot} ${championStatus === 'alive' ? 'animate-pulse' : ''}`} />
+          </div>
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${labelTone}`}>{label}</div>
+        </div>
+      </div>
+    );
+  })();
+
+  if (!championPill && !showR16) return null;
+
+  return (
+    <div className="flex items-stretch gap-2">
+      {championPill}
+      {showR16 && (
+        <div className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.02]">
+          <span className="material-symbols-outlined text-blue-400 text-[20px] font-variation-fill flex-shrink-0">account_tree</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] font-black uppercase tracking-[0.16em] text-neutral-500">Bracket alive</div>
+            <div className="text-sm font-black text-white tabular-nums mt-0.5">
+              {r16Alive}<span className="text-neutral-500 text-xs font-bold">/{r16Total}</span>
+            </div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">R16 picks</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Dashboard({
-  totalPoints, groupCorrect, groupTotal, knockoutPoints, pendingCount, pointsToday, hasAnyResults, onOpenBreakdown,
+  totalPoints, groupCorrect, groupTotal, knockoutPoints, pendingCount, pointsToday, hasAnyResults, rankInfo, onOpenBreakdown, onNavigate,
 }: {
   totalPoints: number;
   groupCorrect: number;
@@ -167,7 +285,9 @@ function Dashboard({
   pendingCount: number;
   pointsToday: number;
   hasAnyResults: boolean;
+  rankInfo: RankInfo | null;
   onOpenBreakdown: () => void;
+  onNavigate: (tab: TabId) => void;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-neutral-900/80 overflow-hidden">
@@ -197,6 +317,7 @@ function Dashboard({
           <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Pending</div>
         </div>
       </div>
+      {rankInfo && <RankLine info={rankInfo} onNavigate={onNavigate} />}
       <button
         onClick={onOpenBreakdown}
         disabled={!hasAnyResults}
@@ -212,9 +333,96 @@ function Dashboard({
 export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }: Props) {
   const { user } = useAuth();
   const { prediction: active, loading: loadingActive } = useActivePrediction();
-  const { perMatch, summary } = usePredictionResults(active, liveMatches);
+  const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(active, liveMatches);
   const [filter, setFilter] = useState<FilterId>('all');
   const [showBreakdown, setShowBreakdown] = useState(false);
+
+  // Leaderboard + predictions fan-out — used for the rank line and pre-tournament social snapshot.
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [predictionsLockedCount, setPredictionsLockedCount] = useState<number>(0);
+  const [championAdoptionCount, setChampionAdoptionCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    Promise.all([
+      fetch('/api/leaderboard').then(r => r.json()).catch(() => ({ leaderboard: [] })),
+      fetch('/api/leaderboard/predictions').then(r => r.json()).catch(() => ({ predictions: [], total_users: 0 })),
+    ]).then(([lbData, predData]: [{ leaderboard?: LeaderboardEntry[] }, { predictions?: LeaderboardPrediction[]; total_users?: number }]) => {
+      if (cancelled) return;
+      const entries = lbData.leaderboard ?? [];
+      const preds = predData.predictions ?? [];
+      setLeaderboard(entries);
+      setTotalUsers(predData.total_users ?? preds.length);
+      setPredictionsLockedCount(preds.length);
+      if (active?.champion_code) {
+        const same = preds.filter(p => p.champion_code === active.champion_code).length;
+        setChampionAdoptionCount(same);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [user, active?.champion_code]);
+
+  // Eliminated teams: lost a finished knockout match. Drives the stake-alive strip.
+  const eliminatedTeams = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of bracket) {
+      const live = liveMatches[m.id];
+      if (!live || live.status !== 'FINISHED' || !live.actualResult || !live.homeCode || !live.awayCode) continue;
+      if (live.actualResult === 'home') set.add(live.awayCode);
+      else if (live.actualResult === 'away') set.add(live.homeCode);
+    }
+    return set;
+  }, [bracket, liveMatches]);
+
+  const stakeInfo = useMemo<StakeInfo>(() => {
+    const championCode = active?.champion_code ?? null;
+    let championStatus: ChampionStatus;
+    if (!championCode) {
+      championStatus = 'awaiting';
+    } else if (actual.finalWinner && actual.finalWinner === championCode) {
+      championStatus = 'confirmed';
+    } else if (eliminatedTeams.has(championCode)) {
+      championStatus = 'eliminated';
+    } else if (hasSignal.R32) {
+      championStatus = 'alive';
+    } else {
+      championStatus = 'awaiting';
+    }
+
+    let r16Alive = 0;
+    for (const code of predicted.R16) if (!eliminatedTeams.has(code)) r16Alive++;
+
+    return {
+      championStatus,
+      championCode,
+      r16Alive,
+      r16Total: predicted.R16.size,
+      // Only useful once any knockout match has finished
+      showR16: hasSignal.R32 && predicted.R16.size > 0,
+    };
+  }, [active?.champion_code, predicted.R16, eliminatedTeams, actual.finalWinner, hasSignal.R32]);
+
+  const rankInfo = useMemo<RankInfo | null>(() => {
+    if (!user || leaderboard.length === 0) return null;
+    const idx = leaderboard.findIndex(e => e.user_id === user.id);
+    if (idx === -1) return null;
+    const me = leaderboard[idx];
+    const rank = idx + 1;
+    if (rank === 1) {
+      const next = leaderboard[1];
+      const gap = next ? me.total_points - next.total_points : 0;
+      return { rank, total: leaderboard.length, gap, leaderName: null };
+    }
+    const leader = leaderboard[0];
+    return {
+      rank,
+      total: leaderboard.length,
+      gap: leader.total_points - me.total_points,
+      leaderName: leader.display_name,
+    };
+  }, [user, leaderboard]);
 
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);
   const filteredOutcomes = useMemo(
@@ -243,6 +451,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       champion_code: active.champion_code,
       group_matches: active.group_matches ?? {},
       knockout_matches: active.knockout_matches ?? {},
+      group_tiebreakers: active.group_tiebreakers ?? {},
       third_place_tiebreaker: active.third_place_tiebreaker,
       is_approved: active.is_approved ?? false,
       created_at: active.created_at,
@@ -300,8 +509,42 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     );
   }
 
+  // Pre-tournament: replace the bland empty state with a rich Prediction-Locked view.
+  if (!summary.hasAnyResults) {
+    return (
+      <>
+        <PredictionLockedView
+          active={active}
+          liveMatches={liveMatches}
+          teamFlagsByCode={teamFlagsByCode}
+          totalUsers={totalUsers}
+          predictionsLockedCount={predictionsLockedCount}
+          championAdoptionCount={championAdoptionCount}
+          onOpenBreakdown={() => setShowBreakdown(true)}
+          onNavigate={onNavigate}
+        />
+        {showBreakdown && selfLeaderboardPred && (
+          <UserPredictionsModal
+            prediction={selfLeaderboardPred}
+            onClose={() => setShowBreakdown(false)}
+            liveMatches={liveMatches}
+            teamFlagsByCode={teamFlagsByCode}
+          />
+        )}
+      </>
+    );
+  }
+
+  const showStakeStrip = stakeInfo.championCode !== null && (stakeInfo.championStatus !== 'awaiting' || stakeInfo.showR16);
+
   return (
     <div className="pt-2 pb-12 space-y-4">
+      {showStakeStrip && (
+        <div className="px-4">
+          <StakeStrip stake={stakeInfo} flagsByCode={teamFlagsByCode} />
+        </div>
+      )}
+
       <div className="px-4">
         <Dashboard
           totalPoints={summary.totalPoints}
@@ -311,7 +554,9 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           pendingCount={summary.pendingCount}
           pointsToday={summary.pointsToday}
           hasAnyResults={summary.hasAnyResults}
+          rankInfo={rankInfo}
           onOpenBreakdown={() => setShowBreakdown(true)}
+          onNavigate={onNavigate}
         />
       </div>
 
@@ -336,17 +581,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
         </div>
       </div>
 
-      {!summary.hasAnyResults ? (
-        <div className="px-4">
-          <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
-            <span className="material-symbols-outlined text-neutral-500 text-3xl">sports_soccer</span>
-            <h3 className="font-black text-sm mt-2">The tournament hasn&apos;t kicked off yet</h3>
-            <p className="text-xs text-neutral-500 font-body mt-1">
-              Your picks will start scoring as matches finish.
-            </p>
-          </div>
-        </div>
-      ) : groupStats.length === 0 ? (
+      {groupStats.length === 0 ? (
         <div className="px-4">
           <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
             <span className="material-symbols-outlined text-neutral-500 text-3xl">filter_alt_off</span>

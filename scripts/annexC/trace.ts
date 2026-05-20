@@ -4,7 +4,7 @@
 
 import { generateBracket } from '../../src/lib/logic/bracket';
 import { allGroupMatches } from '../../src/data/matches';
-import type { MatchResult } from '../../src/types';
+import type { GroupLetter, GroupTiebreakers, MatchResult } from '../../src/types';
 
 // All home wins. With this schedule, every group's 3rd-placed team finishes on 3
 // points, which means all 12 thirds tie at the 8/9 boundary — the app would
@@ -15,11 +15,17 @@ for (const m of allGroupMatches) {
   groupPredictions[m.id] = 'home';
 }
 
-import { getThirdPlaceRanking } from '../../src/lib/logic/standings';
-const ranking = getThirdPlaceRanking(groupPredictions);
+import { getGroupTieBands, getThirdPlaceRanking } from '../../src/lib/logic/standings';
+const groupTiebreakers: GroupTiebreakers = {};
+for (const group of 'ABCDEFGHIJKL'.split('') as GroupLetter[]) {
+  for (const band of getGroupTieBands(group, groupPredictions)) {
+    groupTiebreakers[band.key] = band.teams;
+  }
+}
+const ranking = getThirdPlaceRanking(groupPredictions, groupTiebreakers);
 const tiebreaker = ranking.slice(0, 8).map(e => e.team);
 
-const bracket = generateBracket(groupPredictions, {}, tiebreaker);
+const bracket = generateBracket(groupPredictions, {}, tiebreaker, groupTiebreakers);
 
 console.log('Round | ID    | Position | Home | Away');
 console.log('------+-------+----------+------+------');

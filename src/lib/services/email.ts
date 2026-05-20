@@ -31,7 +31,6 @@ interface SendPredictionEmailParams {
   name: string;
   predictionNumber?: number;
   shareUrl: string;
-  shareToken?: string;
   issuedAt?: string | null;
   pdfAttachment?: {
     filename: string;
@@ -44,7 +43,6 @@ export async function sendPredictionEmail({
   name,
   predictionNumber,
   shareUrl,
-  shareToken,
   issuedAt,
   pdfAttachment,
 }: SendPredictionEmailParams) {
@@ -52,7 +50,6 @@ export async function sendPredictionEmail({
     name,
     predictionNumber,
     shareUrl,
-    shareToken,
     issuedAt: issuedAt ?? undefined,
     daysUntilKickoff: daysUntilKickoff(),
     pdfFilename: pdfAttachment?.filename,

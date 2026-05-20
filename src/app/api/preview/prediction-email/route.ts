@@ -14,13 +14,11 @@ export async function GET(req: Request) {
   const predictionNumber = Number(url.searchParams.get('n') ?? '42');
 
   const n = Number.isFinite(predictionNumber) ? predictionNumber : 42;
-  const shareToken = 'a7k2p9m4q3xh8t1n';
   const displayName = 'Marcos Velasco';
   const element = PredictionEmail({
     name: displayName,
     predictionNumber: n,
-    shareUrl: `https://fifacup26.vercel.app/shared/${shareToken}`,
-    shareToken,
+    shareUrl: 'https://fifacup26.vercel.app/shared/a7k2p9m4q3xh8t1n',
     issuedAt: new Date(),
     daysUntilKickoff: daysUntilKickoff(),
     pdfFilename: `FIFA-26-Prediction-${n}.pdf`,

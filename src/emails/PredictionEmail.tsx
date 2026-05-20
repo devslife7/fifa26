@@ -8,7 +8,6 @@ export interface PredictionEmailProps {
   name: string;
   predictionNumber?: number;
   shareUrl: string;
-  shareToken?: string;
   daysUntilKickoff: number;
   pdfFilename?: string;
   issuedAt?: Date | string;
@@ -25,7 +24,6 @@ export function PredictionEmail({
   name,
   predictionNumber,
   shareUrl,
-  shareToken,
   daysUntilKickoff,
   pdfFilename,
   issuedAt,
@@ -153,86 +151,32 @@ export function PredictionEmail({
                         </td>
                       </tr>
 
-                      {/* Receipt-style metadata block */}
-                      <tr>
-                        <td style={{ padding: '20px 32px 8px' }}>
-                          <table
-                            width="100%"
-                            cellPadding={0}
-                            cellSpacing={0}
-                            role="presentation"
-                            style={{
-                              borderTop: '1px solid rgba(0,0,0,0.08)',
-                              borderBottom: '1px solid rgba(0,0,0,0.08)',
-                            }}
-                          >
-                            <tbody>
-                              {predictionNumber ? (
-                                <tr>
-                                  <td
-                                    style={{
-                                      padding: '10px 0',
-                                      fontSize: '11px',
-                                      fontWeight: 700,
-                                      letterSpacing: '0.12em',
-                                      textTransform: 'uppercase',
-                                      color: t.inkMuted,
-                                      width: '40%',
-                                    }}
-                                  >
-                                    Prediction No.
-                                  </td>
-                                  <td
-                                    align="right"
-                                    style={{
-                                      padding: '10px 0',
-                                      fontFamily:
-                                        "'SF Mono', Menlo, Consolas, monospace",
-                                      fontSize: '13px',
-                                      fontWeight: 700,
-                                      color: t.ink,
-                                    }}
-                                  >
-                                    #{String(predictionNumber).padStart(3, '0')}
-                                  </td>
-                                </tr>
-                              ) : null}
-                              {shareToken ? (
-                                <tr>
-                                  <td
-                                    style={{
-                                      padding: '10px 0',
-                                      borderTop: '1px dashed rgba(0,0,0,0.08)',
-                                      fontSize: '11px',
-                                      fontWeight: 700,
-                                      letterSpacing: '0.12em',
-                                      textTransform: 'uppercase',
-                                      color: t.inkMuted,
-                                    }}
-                                  >
-                                    Share Code
-                                  </td>
-                                  <td
-                                    align="right"
-                                    style={{
-                                      padding: '10px 0',
-                                      borderTop: '1px dashed rgba(0,0,0,0.08)',
-                                      fontFamily:
-                                        "'SF Mono', Menlo, Consolas, monospace",
-                                      fontSize: '13px',
-                                      fontWeight: 700,
-                                      color: t.ink,
-                                      wordBreak: 'break-all',
-                                    }}
-                                  >
-                                    {shareToken}
-                                  </td>
-                                </tr>
-                              ) : null}
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
+                      {/* Prediction number badge */}
+                      {predictionNumber ? (
+                        <tr>
+                          <td style={{ padding: '24px 32px 8px', textAlign: 'center' }}>
+                            <div
+                              style={{
+                                display: 'inline-block',
+                                padding: '8px 16px',
+                                borderRadius: '999px',
+                                backgroundColor: 'rgba(0,0,0,0.04)',
+                                border: '1px solid rgba(0,0,0,0.08)',
+                                fontFamily: "'SF Mono', Menlo, Consolas, monospace",
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                color: t.ink,
+                              }}
+                            >
+                              <span style={{ color: t.inkMuted, marginRight: '8px' }}>
+                                PREDICTION
+                              </span>
+                              #{String(predictionNumber).padStart(3, '0')}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
 
                       {/* Body copy */}
                       <tr>

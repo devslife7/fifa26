@@ -39,6 +39,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [focusedMatchId, setFocusedMatchId] = useState<string | null>(null);
   const focusClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoScrollTimerRef = useRef<number | null>(null);
   const [userExpandedGroups, setUserExpandedGroups] = useState<Set<GroupLetter>>(new Set());
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -51,26 +52,63 @@ export default function Home() {
     });
   }, []);
 
-  const scrollToMatch = useCallback((matchId: string) => {
-    const el = document.getElementById(`group-match-${matchId}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const getAutoScrollBehavior = useCallback((): ScrollBehavior => {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
   }, []);
+
+  const scrollToElement = useCallback((id: string, force = true): boolean => {
+    const el = document.getElementById(id);
+    if (!el) return false;
+
+    const rect = el.getBoundingClientRect();
+    const stickyHeader = document.querySelector('.sticky.top-0');
+    const stickyBottom = stickyHeader?.getBoundingClientRect().bottom ?? 0;
+    const topInset = Math.max(88, stickyBottom + 14);
+    const bottomInset = 96;
+    const availableHeight = window.innerHeight - topInset - bottomInset;
+    const comfortablyVisible =
+      rect.top >= topInset &&
+      (rect.height > availableHeight || rect.bottom <= window.innerHeight - bottomInset);
+
+    if (!force && comfortablyVisible) return true;
+
+    const targetTop = Math.max(0, window.scrollY + rect.top - topInset);
+    window.scrollTo({ top: targetTop, behavior: getAutoScrollBehavior() });
+    return true;
+  }, [getAutoScrollBehavior]);
+
+  const scheduleScrollToElement = useCallback((id: string, force = true) => {
+    if (autoScrollTimerRef.current) clearTimeout(autoScrollTimerRef.current);
+
+    let attempts = 0;
+    const tryScroll = () => {
+      if (scrollToElement(id, force)) {
+        autoScrollTimerRef.current = null;
+        return;
+      }
+      attempts += 1;
+      if (attempts <= 6) {
+        autoScrollTimerRef.current = window.setTimeout(tryScroll, 60);
+      } else {
+        autoScrollTimerRef.current = null;
+      }
+    };
+
+    requestAnimationFrame(tryScroll);
+  }, [scrollToElement]);
+
+  const scrollToMatch = useCallback((matchId: string, force = true) => {
+    scheduleScrollToElement(`group-match-${matchId}`, force);
+  }, [scheduleScrollToElement]);
 
   const scrollToGroupTieResolver = useCallback((group: GroupLetter) => {
-    const scroll = () => {
-      const el = document.getElementById(`group-tie-resolver-${group}`);
-      if (!el) return;
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    };
-    requestAnimationFrame(() => requestAnimationFrame(scroll));
-    window.setTimeout(scroll, 120);
-  }, []);
+    scheduleScrollToElement(`group-tie-resolver-${group}`, true);
+  }, [scheduleScrollToElement]);
 
-  const triggerAutoAdvance = useCallback((matchId: string) => {
+  const triggerAutoAdvance = useCallback((matchId: string, forceScroll = true) => {
     if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
     setFocusedMatchId(matchId);
-    requestAnimationFrame(() => scrollToMatch(matchId));
+    scrollToMatch(matchId, forceScroll);
     focusClearTimerRef.current = setTimeout(() => {
       setFocusedMatchId(null);
       focusClearTimerRef.current = null;
@@ -229,7 +267,7 @@ export default function Home() {
       if (unresolved.length === 0) {
         const nextMatch = allGroupMatches.find(m => !groupPredictions[m.id]);
         if (nextMatch) {
-          window.setTimeout(() => triggerAutoAdvance(nextMatch.id), 150);
+          window.setTimeout(() => triggerAutoAdvance(nextMatch.id, false), 150);
         }
       }
 
@@ -419,9 +457,12 @@ export default function Home() {
     const prev = prevTiesResolvedRef.current;
     prevTiesResolvedRef.current = readyForBracket;
     if (prev === null) return; // skip initial load
-    if (groupCount >= 72 && (activeTab === 'groups' || activeTab === 'thirdplace')) {
+    if (prev === readyForBracket) return;
+
+    const currentTab = activeTabRef.current;
+    if (groupCount >= 72 && (currentTab === 'groups' || currentTab === 'thirdplace')) {
       const target = readyForBracket ? 'bracket' : needsThirdPlaceInput ? 'thirdplace' : null;
-      if (!target || target === activeTab) return;
+      if (!target || target === currentTab) return;
       if (autoNavTimerRef.current) clearTimeout(autoNavTimerRef.current);
       autoNavTimerRef.current = setTimeout(() => {
         autoNavTimerRef.current = null;
@@ -429,7 +470,7 @@ export default function Home() {
         setTimeout(() => window.scrollTo({ top: 0 }), 0);
       }, 400);
     }
-  }, [readyForBracket, needsThirdPlaceInput, mounted, groupCount, activeTab]);
+  }, [readyForBracket, needsThirdPlaceInput, mounted, groupCount]);
 
   const handleNextIncompleteGroupMatch = useCallback(() => {
     const unresolvedGroup = groups.find(group => getUnresolvedGroupTieBands(group, groupPredictions, groupTiebreakers).length > 0);

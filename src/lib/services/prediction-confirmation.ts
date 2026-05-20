@@ -96,7 +96,6 @@ export async function sendPredictionConfirmation({
       name: fullName,
       predictionNumber: prediction.prediction_number ?? undefined,
       shareUrl,
-      shareToken: prediction.share_token,
       issuedAt: prediction.completed_at,
       pdfAttachment: pdfBuffer
         ? {

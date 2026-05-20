@@ -25,6 +25,8 @@ export default function GroupTieResolverCard({
   tieBands.forEach(band => {
     band.teams.forEach(team => bandByTeam.set(team, band));
   });
+  const remainingTeams = tieBands.reduce((sum, band) => sum + band.teams.length, 0);
+  const selectedTeams = tieBands.reduce((sum, band) => sum + (groupTiebreakers[band.key]?.length ?? 0), 0);
 
   const handleTeamTap = (band: GroupTieBand, teamCode: string) => {
     const current = groupTiebreakers[band.key] ?? [];
@@ -38,14 +40,25 @@ export default function GroupTieResolverCard({
   };
 
   return (
-    <div className="bg-neutral-900 border border-primary/30 rounded-3xl overflow-hidden shadow-[0_0_0_1px_rgba(212,160,23,0.06)]">
-      <div className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-primary/[0.08] border-b border-primary/20">
-        <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-          Group {group} · Resolve Tie
-        </span>
-        <span className="text-[9px] font-bold uppercase tracking-wider text-primary/80">
-          Tap in order
-        </span>
+    <div className="bg-neutral-900 border-2 border-primary rounded-3xl overflow-hidden shadow-[0_0_0_4px_rgba(212,160,23,0.12),0_18px_40px_rgba(0,0,0,0.28)]">
+      <div className="w-full px-4 py-3 bg-primary text-black border-b border-black/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="material-symbols-outlined text-[22px] font-variation-fill flex-shrink-0">priority_high</span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] leading-none opacity-70">Action required</p>
+              <p className="mt-1 text-[14px] font-black uppercase tracking-wider leading-tight">
+                Group {group} tie breaker needed
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-lg bg-black px-2.5 py-1 text-[11px] font-black tabular-nums text-primary">
+            {selectedTeams}/{remainingTeams}
+          </span>
+        </div>
+        <p className="mt-2 text-[11px] font-bold leading-snug text-black/75">
+          This group is not final. Tap the highlighted tied teams in finishing order.
+        </p>
       </div>
 
       <div className="divide-y divide-white/5">
@@ -69,8 +82,8 @@ export default function GroupTieResolverCard({
               className={`w-full flex items-center gap-3 px-3 py-3 text-left transition-colors ${
                 tied
                   ? selected
-                    ? 'bg-primary/15'
-                    : 'bg-white/[0.03] hover:bg-white/[0.06]'
+                    ? 'bg-primary/20 shadow-[inset_5px_0_0_0_var(--color-primary)]'
+                    : 'bg-primary/[0.08] shadow-[inset_5px_0_0_0_rgba(212,160,23,0.45)] hover:bg-primary/[0.12]'
                   : qualified
                     ? 'bg-primary/[0.04]'
                     : 'opacity-60'
@@ -88,10 +101,10 @@ export default function GroupTieResolverCard({
                 {team.name}
               </span>
               {band ? (
-                <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md ${
-                  selected ? 'bg-primary text-black' : 'bg-white/10 text-primary'
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-md ${
+                  selected ? 'bg-primary text-black' : 'bg-primary/20 text-primary ring-1 ring-primary/40'
                 }`}>
-                  {selected ? `Tie #${selectedIndex + 1}` : 'Tap'}
+                  {selected ? `Order ${selectedIndex + 1}` : 'Needs order'}
                 </span>
               ) : qualified ? (
                 <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-primary/15 text-primary">
@@ -106,9 +119,9 @@ export default function GroupTieResolverCard({
         })}
       </div>
 
-      <div className="px-3 py-2 bg-white/[0.02] border-t border-white/5">
-        <p className="text-[10px] font-semibold text-neutral-400">
-          Resolve each tied points group before this group feeds into the bracket.
+      <div className="px-4 py-3 bg-primary/[0.08] border-t border-primary/20">
+        <p className="text-[11px] font-bold text-primary">
+          Bracket and best-third placement are paused until this group tie is resolved.
         </p>
       </div>
     </div>

@@ -11,7 +11,7 @@ export interface PredictionEmailProps {
   daysUntilKickoff: number;
   pdfFilename?: string;
   issuedAt?: Date | string;
-  logoUrl?: string;
+  headerImageUrl?: string;
 }
 
 function formatIssuedDate(value?: Date | string): string {
@@ -19,7 +19,7 @@ function formatIssuedDate(value?: Date | string): string {
   return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 }
 
-const DEFAULT_LOGO_URL = 'https://fifacup26.vercel.app/images/email-logo-mark.png';
+const DEFAULT_HEADER_IMAGE_URL = 'https://fifacup26.vercel.app/images/email-header.png';
 
 export function PredictionEmail({
   name,
@@ -28,7 +28,7 @@ export function PredictionEmail({
   daysUntilKickoff,
   pdfFilename,
   issuedAt,
-  logoUrl = DEFAULT_LOGO_URL,
+  headerImageUrl = DEFAULT_HEADER_IMAGE_URL,
 }: PredictionEmailProps) {
   const previewText = predictionNumber
     ? `Prediction #${predictionNumber} confirmed · full bracket attached`
@@ -64,42 +64,16 @@ export function PredictionEmail({
                     }}
                   >
                     <tbody>
-                      {/* Header — logo on black */}
+                      {/* Header image uses baked pixels so Gmail dark mode cannot invert the brand area. */}
                       <tr>
                         <td align="center" style={{ padding: 0 }}>
-                          <table
-                            width="100%"
-                            cellPadding={0}
-                            cellSpacing={0}
-                            role="presentation"
-                            style={{ backgroundColor: t.stadiumBlack }}
-                          >
-                            <tbody>
-                              <tr>
-                                <td align="center" style={{ padding: '48px 32px 44px' }}>
-                                  <Img
-                                    src={logoUrl}
-                                    alt="FIFA 26"
-                                    width="128"
-                                    height="128"
-                                    style={{ display: 'block', margin: '0 auto', borderRadius: '24px' }}
-                                  />
-                                  <div
-                                    style={{
-                                      marginTop: '14px',
-                                      fontSize: '10px',
-                                      fontWeight: 800,
-                                      letterSpacing: '0.3em',
-                                      textTransform: 'uppercase',
-                                      color: 'rgba(255,255,255,0.5)',
-                                    }}
-                                  >
-                                    FIFA 26 Predictions
-                                  </div>
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                          <Img
+                            src={headerImageUrl}
+                            alt="FIFA 26 Predictions"
+                            width="500"
+                            height="260"
+                            style={{ display: 'block', width: '100%', maxWidth: '500px', height: 'auto' }}
+                          />
                         </td>
                       </tr>
 

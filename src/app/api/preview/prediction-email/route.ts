@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   const n = Number.isFinite(predictionNumber) ? predictionNumber : 42;
   const displayName = 'Marcos Velasco';
-  const logoUrl = new URL('/images/email-logo-mark.png', req.url).toString();
+  const headerImageUrl = new URL('/images/email-header.png', req.url).toString();
   const element = PredictionEmail({
     name: displayName,
     predictionNumber: n,
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     issuedAt: new Date(),
     daysUntilKickoff: daysUntilKickoff(),
     pdfFilename: `FIFA-26-Prediction-${n}.pdf`,
-    logoUrl,
+    headerImageUrl,
   });
 
   const html = await render(element);

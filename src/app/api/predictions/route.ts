@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   const body = await request.json();
   const {
     predictionId,
+    resendEmail,
     name,
     groupMatches,
     knockoutMatches,
@@ -47,7 +48,53 @@ export async function POST(request: Request) {
     isComplete,
     submitterName,
     submitterEmail,
+    shareToken: resendShareToken,
   } = body;
+
+  if (resendEmail || resendShareToken) {
+    if (!resendEmail || typeof resendEmail !== 'string') {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+    if (!resendShareToken || typeof resendShareToken !== 'string') {
+      return NextResponse.json({ error: 'Share token is required' }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resendEmail)) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
+    }
+
+    const serviceClient = createServiceClient();
+    const { data: prediction, error } = await serviceClient
+      .from('predictions')
+      .select('id, prediction_number, name, submitter_name, completed_at, share_token, group_matches, knockout_matches, third_place_tiebreaker')
+      .eq('share_token', resendShareToken)
+      .eq('is_complete', true)
+      .single();
+
+    if (error || !prediction) {
+      return NextResponse.json({ error: 'Prediction not found' }, { status: 404 });
+    }
+
+    const origin = request.headers.get('origin') || 'https://fifa26.app';
+    const confirmation = await sendPredictionConfirmation({
+      supabase: serviceClient,
+      prediction,
+      to: resendEmail.trim(),
+      displayName: prediction.submitter_name || prediction.name || 'Predictor',
+      origin,
+      groupMatches: prediction.group_matches ?? {},
+      knockoutMatches: prediction.knockout_matches ?? {},
+      thirdPlaceTiebreaker: prediction.third_place_tiebreaker ?? null,
+    });
+
+    if (!confirmation.emailSent) {
+      return NextResponse.json(
+        { error: 'Unable to send confirmation email. Please try again later.' },
+        { status: 502 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  }
 
   // Anonymous submission (no predictionId, has submitterEmail)
   if (!predictionId && submitterEmail) {

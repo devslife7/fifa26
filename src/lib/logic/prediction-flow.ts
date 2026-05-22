@@ -109,14 +109,14 @@ export function getPredictionFlowState(
   const bracketComplete = knockoutCount >= BRACKET_TOTAL;
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker) ?? null;
   const hasChampion = !!championCode;
-  const submitAvailable = hasChampion && groupsComplete && thirdPlaceComplete;
+  const submitAvailable = hasChampion && groupsComplete && thirdPlaceComplete && bracketComplete;
 
   let nextPredictionTab: TabId = 'groups';
   if (!groupsComplete) {
     nextPredictionTab = 'groups';
   } else if (thirdPlaceRequired && !thirdPlaceComplete) {
     nextPredictionTab = 'thirdplace';
-  } else if (hasChampion) {
+  } else if (submitAvailable) {
     nextPredictionTab = 'submit';
   } else {
     nextPredictionTab = 'bracket';

@@ -432,7 +432,7 @@ function HomeFooter({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
     { label: 'Home', target: 'home' },
     { label: 'Predictor', target: 'groups' },
     { label: 'Leaderboard', target: 'ranking' },
-    { label: 'Tracker', target: 'tracker' },
+    { label: 'News', target: 'news' },
   ];
 
   return (

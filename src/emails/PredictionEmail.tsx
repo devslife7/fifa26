@@ -18,7 +18,7 @@ function formatIssuedDate(value?: Date | string): string {
   return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 }
 
-const LOGO_URL = 'https://fifacup26.vercel.app/images/fifa_logov2_transparent.png';
+const LOGO_URL = 'https://fifacup26.vercel.app/images/email-logo-mark.png';
 
 export function PredictionEmail({
   name,
@@ -78,9 +78,9 @@ export function PredictionEmail({
                                   <Img
                                     src={LOGO_URL}
                                     alt="FIFA 26"
-                                    width="140"
-                                    height="140"
-                                    style={{ display: 'block', margin: '0 auto' }}
+                                    width="128"
+                                    height="128"
+                                    style={{ display: 'block', margin: '0 auto', borderRadius: '24px' }}
                                   />
                                   <div
                                     style={{

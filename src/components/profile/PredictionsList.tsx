@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { SavedPrediction } from '@/types';
+import { LiveMatch, SavedPrediction } from '@/types';
 import PredictionRow from './PredictionRow';
 import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
 import PredictionCapture from '@/components/shared/PredictionCapture';
@@ -9,6 +9,8 @@ import { copyImageToClipboard } from '@/lib/client/clipboard';
 
 interface PredictionsListProps {
   predictions: SavedPrediction[];
+  liveMatches: Record<string, LiveMatch>;
+  teamFlagsByCode: Record<string, string>;
   loading: boolean;
   currentEditingId: string | null;
   darkMode: boolean;
@@ -21,7 +23,7 @@ interface PredictionsListProps {
 }
 
 export default function PredictionsList({
-  predictions, loading, currentEditingId, darkMode: d, hasPredictions,
+  predictions, liveMatches, teamFlagsByCode, loading, currentEditingId, darkMode: d, hasPredictions,
   onLoadPrediction, onNewPrediction, onRename, onSetActive, onDelete,
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -93,6 +95,8 @@ export default function PredictionsList({
             <PredictionRow
               key={p.id}
               prediction={p}
+              liveMatches={liveMatches}
+              teamFlagsByCode={teamFlagsByCode}
               isCurrentlyEditing={currentEditingId === p.id}
               isExpanded={expandedId === p.id}
               darkMode={d}
@@ -125,6 +129,8 @@ export default function PredictionsList({
             third_place_tiebreaker: viewingPrediction.third_place_tiebreaker,
           }}
           onClose={() => setViewingPrediction(null)}
+          liveMatches={liveMatches}
+          teamFlagsByCode={teamFlagsByCode}
         />
       )}
       {expandedPrediction && (

@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { SavedPrediction } from '@/types';
+import { LiveMatch, SavedPrediction } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { getTopThree } from '@/lib/logic/bracket';
-import PredictionDetailCard from './PredictionDetailCard';
+import PredictionExpandedTracker from './PredictionExpandedTracker';
 
 interface PredictionRowProps {
   prediction: SavedPrediction;
+  liveMatches: Record<string, LiveMatch>;
+  teamFlagsByCode: Record<string, string>;
   isCurrentlyEditing: boolean;
   isExpanded: boolean;
   darkMode: boolean;
@@ -24,7 +26,7 @@ interface PredictionRowProps {
 }
 
 export default function PredictionRow({
-  prediction: p, isCurrentlyEditing, isExpanded, darkMode: d,
+  prediction: p, liveMatches, teamFlagsByCode, isCurrentlyEditing, isExpanded, darkMode: d,
   onToggleExpand, onView, onEdit, onRename, onSetActive, onCopyLink, onDelete, onCopyImage, isCopyingImage, copySuccess,
 }: PredictionRowProps) {
   const [deleting, setDeleting] = useState(false);
@@ -202,7 +204,12 @@ export default function PredictionRow({
       {/* Expanded detail + actions */}
       {isExpanded && (
         <>
-        <PredictionDetailCard prediction={p} darkMode={d} />
+        <PredictionExpandedTracker
+          prediction={p}
+          liveMatches={liveMatches}
+          teamFlagsByCode={teamFlagsByCode}
+          onCompare={onView}
+        />
         <div className={`px-4 pb-3 pt-0 flex items-center gap-2 flex-wrap border-t ${d ? 'border-white/5' : 'border-neutral-50'}`}>
           <div className="w-full pt-2.5 flex items-center gap-2 flex-wrap">
             <button

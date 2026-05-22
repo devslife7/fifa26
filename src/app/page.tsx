@@ -34,7 +34,6 @@ import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
 import NewsView from '@/components/news/NewsView';
 import ProfileView from '@/components/profile/ProfileView';
-import TrackerView from '@/components/tracker/TrackerView';
 
 function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?: string } | undefined>) {
   return groups.flatMap(group =>
@@ -50,7 +49,7 @@ function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?
 }
 
 const ACTIVE_TAB_STORAGE_KEY = 'fifa26_active_tab';
-const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'news', 'submit', 'profile', 'tracker'];
+const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'news', 'submit', 'profile'];
 
 function isTabId(value: string | null): value is TabId {
   return VALID_TABS.includes(value as TabId);
@@ -192,7 +191,9 @@ export default function Home() {
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
     setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
-    if (isTabId(savedTab)) {
+    if (savedTab === 'tracker') {
+      setActiveTab('news');
+    } else if (isTabId(savedTab)) {
       setActiveTab(savedTab);
     }
     setMounted(true);
@@ -424,6 +425,12 @@ export default function Home() {
     setIsSubmitted(getSubmittedForSnapshot(predictionSnapshot));
     setHasSubmittedBefore(getHasSubmittedBefore());
   }, [mounted, predictionSnapshot]);
+
+  useEffect(() => {
+    if (!mounted || activeTab !== 'submit' || flowState.submitAvailable) return;
+    setActiveTab(flowState.nextPredictionTab);
+    setTimeout(() => window.scrollTo({ top: 0 }), 0);
+  }, [activeTab, flowState.nextPredictionTab, flowState.submitAvailable, mounted]);
 
   const navigateTo = useCallback((tab: TabId) => {
     const prev = activeTabRef.current;
@@ -751,14 +758,6 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'tracker' && (
-          <TrackerView
-            liveMatches={liveMatchesByLocalId}
-            teamFlagsByCode={teamFlagsByCode}
-            onNavigate={navigateTo}
-          />
-        )}
-
         {activeTab === 'news' && <NewsView />}
 
         {activeTab === 'profile' && (
@@ -766,6 +765,8 @@ export default function Home() {
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
+            liveMatches={liveMatchesByLocalId}
+            teamFlagsByCode={teamFlagsByCode}
             onNavigate={navigateTo}
             onNavigateToPredictions={handleNavigateToPredictions}
             onLoadPrediction={handleLoadPrediction}

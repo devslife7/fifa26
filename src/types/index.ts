@@ -61,7 +61,7 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'news' | 'submit' | 'profile' | 'tracker';
+export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'news' | 'submit' | 'profile';
 
 export interface LeaderboardEntry {
   user_id: string;

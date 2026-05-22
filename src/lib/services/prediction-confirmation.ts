@@ -22,6 +22,13 @@ interface SendPredictionConfirmationParams {
   thirdPlaceTiebreaker?: string[] | null;
 }
 
+interface SendPredictionConfirmationResult {
+  pdfGenerated: boolean;
+  pdfError: string | null;
+  emailSent: boolean;
+  emailError: string | null;
+}
+
 function errorMessage(err: unknown): string {
   const message = err instanceof Error ? err.message : 'Unknown error';
   return message.slice(0, 1000);
@@ -43,8 +50,15 @@ export async function sendPredictionConfirmation({
   groupMatches,
   knockoutMatches,
   thirdPlaceTiebreaker,
-}: SendPredictionConfirmationParams) {
-  if (!prediction.share_token) return;
+}: SendPredictionConfirmationParams): Promise<SendPredictionConfirmationResult> {
+  const result: SendPredictionConfirmationResult = {
+    pdfGenerated: false,
+    pdfError: null,
+    emailSent: false,
+    emailError: null,
+  };
+
+  if (!prediction.share_token) return result;
 
   const shareUrl = `${origin}/shared/${prediction.share_token}`;
   let pdfBuffer: Buffer | null = null;
@@ -76,12 +90,14 @@ export async function sendPredictionConfirmation({
         pdf_generation_error: null,
       })
       .eq('id', prediction.id);
+    result.pdfGenerated = true;
   } catch (err) {
+    result.pdfError = errorMessage(err);
     console.error('Prediction PDF generation/upload failed:', err);
     await supabase
       .from('predictions')
       .update({
-        pdf_generation_error: errorMessage(err),
+        pdf_generation_error: result.pdfError,
       })
       .eq('id', prediction.id);
   }
@@ -109,13 +125,17 @@ export async function sendPredictionConfirmation({
         confirmation_email_error: null,
       })
       .eq('id', prediction.id);
+    result.emailSent = true;
   } catch (err) {
+    result.emailError = errorMessage(err);
     console.error('Failed to send prediction email:', err);
     await supabase
       .from('predictions')
       .update({
-        confirmation_email_error: errorMessage(err),
+        confirmation_email_error: result.emailError,
       })
       .eq('id', prediction.id);
   }
+
+  return result;
 }

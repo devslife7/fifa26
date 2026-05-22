@@ -59,6 +59,7 @@ export default function ChampionOverlay({
   const [confirmEmail, setConfirmEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
 
   // Confirmation data
   const [predictionNumber, setPredictionNumber] = useState<number | null>(null);
@@ -337,7 +338,7 @@ export default function ChampionOverlay({
                   <div className="mt-1.5 flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2 border border-white/5">
                     <span className="text-sm text-white font-medium truncate">{email}</span>
                     <button
-                      onClick={() => { setConfirmEmail(email); setEditingConfirmEmail(true); setResent(false); }}
+                      onClick={() => { setConfirmEmail(email); setEditingConfirmEmail(true); setResent(false); setResendError(null); }}
                       className="ml-2 shrink-0 text-[11px] text-primary font-semibold hover:text-primary/80 transition-colors"
                     >
                       Change
@@ -356,8 +357,9 @@ export default function ChampionOverlay({
                       onClick={async () => {
                         if (!confirmEmail.trim()) return;
                         setResending(true);
+                        setResendError(null);
                         try {
-                          await fetch('/api/predictions', {
+                          const res = await fetch('/api/predictions', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -365,17 +367,25 @@ export default function ChampionOverlay({
                               shareToken,
                             }),
                           });
-                        } catch {}
-                        setResending(false);
-                        setResent(true);
-                        setEmail(confirmEmail);
-                        markSnapshotSubmitted(predictionSnapshot, {
-                          predictionNumber,
-                          shareToken,
-                          createdAt,
-                          email: confirmEmail.trim(),
-                        });
-                        setEditingConfirmEmail(false);
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            setResendError(data.error ?? 'Unable to resend confirmation.');
+                            return;
+                          }
+                          setResent(true);
+                          setEmail(confirmEmail);
+                          markSnapshotSubmitted(predictionSnapshot, {
+                            predictionNumber,
+                            shareToken,
+                            createdAt,
+                            email: confirmEmail.trim(),
+                          });
+                          setEditingConfirmEmail(false);
+                        } catch {
+                          setResendError('Network error. Please try again.');
+                        } finally {
+                          setResending(false);
+                        }
                       }}
                       disabled={resending || !confirmEmail.trim()}
                       className="shrink-0 px-3 py-2 bg-primary text-black font-bold text-xs rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -386,6 +396,9 @@ export default function ChampionOverlay({
                 )}
                 {resent && !editingConfirmEmail && (
                   <p className="text-[10px] text-wc-green mt-1">Confirmation resent!</p>
+                )}
+                {resendError && (
+                  <p className="text-[10px] text-wc-red mt-1">{resendError}</p>
                 )}
               </div>
             </div>
@@ -656,7 +669,7 @@ export default function ChampionOverlay({
                   <div className="mt-1.5 flex items-center justify-between bg-white/[0.03] rounded-lg px-3 py-2 border border-white/5">
                     <span className="text-sm text-white font-medium truncate">{email}</span>
                     <button
-                      onClick={() => { setConfirmEmail(email); setEditingConfirmEmail(true); setResent(false); }}
+                      onClick={() => { setConfirmEmail(email); setEditingConfirmEmail(true); setResent(false); setResendError(null); }}
                       className="ml-2 shrink-0 text-[11px] text-primary font-semibold hover:text-primary/80 transition-colors"
                     >
                       Change
@@ -675,8 +688,9 @@ export default function ChampionOverlay({
                       onClick={async () => {
                         if (!confirmEmail.trim()) return;
                         setResending(true);
+                        setResendError(null);
                         try {
-                          await fetch('/api/predictions', {
+                          const res = await fetch('/api/predictions', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -684,17 +698,25 @@ export default function ChampionOverlay({
                               shareToken,
                             }),
                           });
-                        } catch {}
-                        setResending(false);
-                        setResent(true);
-                        setEmail(confirmEmail);
-                        markSnapshotSubmitted(predictionSnapshot, {
-                          predictionNumber,
-                          shareToken,
-                          createdAt,
-                          email: confirmEmail.trim(),
-                        });
-                        setEditingConfirmEmail(false);
+                          const data = await res.json().catch(() => ({}));
+                          if (!res.ok) {
+                            setResendError(data.error ?? 'Unable to resend confirmation.');
+                            return;
+                          }
+                          setResent(true);
+                          setEmail(confirmEmail);
+                          markSnapshotSubmitted(predictionSnapshot, {
+                            predictionNumber,
+                            shareToken,
+                            createdAt,
+                            email: confirmEmail.trim(),
+                          });
+                          setEditingConfirmEmail(false);
+                        } catch {
+                          setResendError('Network error. Please try again.');
+                        } finally {
+                          setResending(false);
+                        }
                       }}
                       disabled={resending || !confirmEmail.trim()}
                       className="shrink-0 px-3 py-2 bg-primary text-black font-bold text-xs rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -705,6 +727,9 @@ export default function ChampionOverlay({
                 )}
                 {resent && !editingConfirmEmail && (
                   <p className="text-[10px] text-wc-green mt-1">Confirmation resent!</p>
+                )}
+                {resendError && (
+                  <p className="text-[10px] text-wc-red mt-1">{resendError}</p>
                 )}
               </div>
             </div>

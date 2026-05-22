@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
+import { LiveMatch, MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
   loadPredictions, getEditingPredictionId, getEditingPredictionName,
@@ -20,6 +20,8 @@ interface ProfileViewProps {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
   thirdPlaceTiebreaker?: string[];
+  liveMatches: Record<string, LiveMatch>;
+  teamFlagsByCode: Record<string, string>;
   onNavigate: (tab: TabId) => void;
   onNavigateToPredictions: (view?: TabId) => void;
   onLoadPrediction: (prediction: SavedPrediction) => void;
@@ -28,7 +30,7 @@ interface ProfileViewProps {
 }
 
 export default function ProfileView({
-  groupPredictions, knockoutPredictions, thirdPlaceTiebreaker,
+  groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, liveMatches, teamFlagsByCode,
   onNavigate, onNavigateToPredictions, onLoadPrediction, onNewPrediction, onClearPredictions,
 }: ProfileViewProps) {
   const { user } = useAuth();
@@ -252,6 +254,8 @@ export default function ProfileView({
           {/* Zone 4: Predictions Library */}
           <PredictionsList
             predictions={savedPredictions}
+            liveMatches={liveMatches}
+            teamFlagsByCode={teamFlagsByCode}
             loading={loadingSaved}
             currentEditingId={currentEditingId}
             darkMode={d}

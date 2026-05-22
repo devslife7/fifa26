@@ -64,18 +64,18 @@ export default function SocialLoopCard({
   if (userRank !== null && totalUsers !== null && totalUsers > 0) {
     return (
       <button
-        onClick={() => onNavigate('tracker')}
+        onClick={() => onNavigate('news')}
         className="flex w-full items-center gap-3 rounded-[22px] bg-white/[0.025] px-4 py-3.5 text-left transition-transform active:scale-[0.99]"
       >
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-primary/10">
-          <span className="material-symbols-outlined text-[22px] text-primary">event_available</span>
+          <span className="material-symbols-outlined text-[22px] text-primary">newspaper</span>
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-black text-neutral-100">
             Your rank: <span className="text-primary">#{userRank}</span> of {totalUsers}
           </span>
           <span className="mt-0.5 block font-body text-xs font-semibold text-neutral-500">
-            Track active picks and points.
+            Catch up on tournament news.
           </span>
         </span>
         <span className="material-symbols-outlined text-[20px] text-neutral-500">arrow_forward</span>

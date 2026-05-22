@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { GroupLetter, LiveMatch } from '@/types';
+import {
+  mergeLiveMatches,
+  readCachedLiveData,
+  readFakeLiveData,
+  writeCachedLiveData,
+} from '@/lib/client/fake-live-data';
 
 interface LiveDataResult {
   matches: LiveMatch[];
@@ -13,32 +19,6 @@ interface LiveDataResult {
   rateLimited: boolean;
   lastUpdated: number | null;
   refetch: () => void;
-}
-
-const LS_KEY = 'fifa26_live_data';
-
-interface CachedLiveData {
-  matches: LiveMatch[];
-  fetchedAt: number;
-}
-
-function readLocalCache(): CachedLiveData | null {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as CachedLiveData;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocalCache(matches: LiveMatch[]): void {
-  try {
-    const data: CachedLiveData = { matches, fetchedAt: Date.now() };
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-  } catch {
-    // localStorage full or unavailable
-  }
 }
 
 function buildMatchesByLocalId(matches: LiveMatch[]): Record<string, LiveMatch> {
@@ -87,11 +67,13 @@ export function useLiveData(): LiveDataResult {
       if (!matchesRes.ok) throw new Error('Failed to fetch');
       const matchesData = await matchesRes.json();
       const liveMatches: LiveMatch[] = matchesData.matches ?? [];
-      setMatches(liveMatches);
-      setTeamFlagsByCode(buildTeamFlagsByCode(liveMatches));
+      const fakeMatches = readFakeLiveData()?.matches ?? [];
+      const mergedMatches = mergeLiveMatches(liveMatches, fakeMatches);
+      setMatches(mergedMatches);
+      setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
       setLastUpdated(Date.now());
       setError(null);
-      writeLocalCache(liveMatches);
+      writeCachedLiveData(mergedMatches);
 
       if (groupRes.ok) {
         const groupData = await groupRes.json();
@@ -106,10 +88,12 @@ export function useLiveData(): LiveDataResult {
 
   // Initial load: show cached data instantly, then fetch from server cache
   useEffect(() => {
-    const cached = readLocalCache();
+    const cached = readCachedLiveData();
     if (cached) {
-      setMatches(cached.matches);
-      setTeamFlagsByCode(buildTeamFlagsByCode(cached.matches));
+      const fakeMatches = readFakeLiveData()?.matches ?? [];
+      const mergedMatches = mergeLiveMatches(cached.matches, fakeMatches);
+      setMatches(mergedMatches);
+      setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
       setLastUpdated(cached.fetchedAt);
       setLoading(false);
     }

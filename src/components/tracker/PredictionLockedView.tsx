@@ -1,28 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { LiveMatch, SavedPrediction, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-import { TOURNAMENT_KICKOFF } from '@/data/tournament';
-
-interface TimeRemaining {
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-}
-
-function diffToParts(targetMs: number): TimeRemaining | null {
-  const diff = targetMs - Date.now();
-  if (diff <= 0) return null;
-  return {
-    days: Math.floor(diff / 86_400_000),
-    hours: Math.floor((diff / 3_600_000) % 24),
-    minutes: Math.floor((diff / 60_000) % 60),
-    seconds: Math.floor((diff / 1_000) % 60),
-  };
-}
 
 const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   weekday: 'short',
@@ -31,19 +12,6 @@ const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 });
-
-function CountTile({ value, label }: { value: number | null; label: string }) {
-  return (
-    <div className="flex min-w-0 flex-col items-center">
-      <span className="font-display text-[36px] font-black leading-none tabular-nums text-primary drop-shadow-[0_2px_14px_rgba(249,212,6,0.24)]">
-        {value === null ? '--' : String(value).padStart(2, '0')}
-      </span>
-      <span className="mt-1.5 font-body text-[8px] font-black uppercase tracking-[0.22em] text-neutral-500">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 function FlagChip({ code, flagUrl, size = 'md' }: { code: string | null; flagUrl?: string; size?: 'sm' | 'md' | 'lg' }) {
   if (!code) return null;
@@ -76,7 +44,7 @@ export default function PredictionLockedView({
   onOpenBreakdown,
   onNavigate,
 }: Props) {
-  // Find the earliest scheduled match. Fall back to the official kickoff.
+  // Find the earliest scheduled match for the pre-tournament sign.
   const firstMatch = useMemo<LiveMatch | null>(() => {
     const entries = Object.values(liveMatches);
     const scheduled = entries
@@ -84,26 +52,6 @@ export default function PredictionLockedView({
       .sort((a, b) => a.utcDate.localeCompare(b.utcDate));
     return scheduled[0] ?? null;
   }, [liveMatches]);
-
-  const targetMs = useMemo(() => {
-    if (firstMatch?.utcDate) {
-      const t = new Date(firstMatch.utcDate).getTime();
-      if (!Number.isNaN(t)) return t;
-    }
-    return TOURNAMENT_KICKOFF.getTime();
-  }, [firstMatch?.utcDate]);
-
-  const [timeLeft, setTimeLeft] = useState<TimeRemaining | null>(null);
-  const [clockReady, setClockReady] = useState(false);
-  useEffect(() => {
-    const updateClock = () => {
-      setTimeLeft(diffToParts(targetMs));
-      setClockReady(true);
-    };
-    updateClock();
-    const id = window.setInterval(updateClock, 1000);
-    return () => window.clearInterval(id);
-  }, [targetMs]);
 
   const championCode = active.champion_code;
   const championTeam = championCode ? teamsByCode[championCode] : null;
@@ -123,24 +71,9 @@ export default function PredictionLockedView({
   const firstMatchPickedTeam =
     firstMatchPickedTeamCode && firstMatchPickedTeamCode !== 'DRAW' ? teamsByCode[firstMatchPickedTeamCode] : null;
 
-  const startedAlready = clockReady && !timeLeft;
-
   return (
     <div className="px-4 pb-12 pt-2">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(245,197,66,0.14)_0%,rgba(15,23,42,0.96)_28%,rgba(5,7,13,0.98)_100%)] shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-accent/5 blur-3xl"
-        />
-
+      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-neutral-900/90 shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
         <div className="relative px-5 pb-5 pt-5">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -152,11 +85,9 @@ export default function PredictionLockedView({
                 {active.name || `Prediction #${active.prediction_number ?? ''}`}
               </h2>
               <p className="mt-2 max-w-[230px] font-body text-[12px] font-semibold leading-snug text-neutral-400">
-                {startedAlready
-                  ? 'Matches are about to kick off'
-                  : firstMatch?.localMatchId
-                    ? `First match — ${DATE_FORMATTER.format(new Date(firstMatch.utcDate))}`
-                    : 'Counting down to Jun 11, 2026'}
+                {firstMatch?.localMatchId
+                  ? `First match — ${DATE_FORMATTER.format(new Date(firstMatch.utcDate))}`
+                  : 'Tournament starts Jun 11, 2026'}
               </p>
             </div>
             {active.is_approved ? (
@@ -171,20 +102,6 @@ export default function PredictionLockedView({
               </span>
             )}
           </div>
-
-          {timeLeft || !clockReady ? (
-            <div className="grid grid-cols-4 divide-x divide-white/10 rounded-[20px] border border-white/10 bg-black/18 py-4 backdrop-blur">
-              <CountTile value={timeLeft?.days ?? null} label="days" />
-              <CountTile value={timeLeft?.hours ?? null} label="hrs" />
-              <CountTile value={timeLeft?.minutes ?? null} label="min" />
-              <CountTile value={timeLeft?.seconds ?? null} label="sec" />
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 rounded-[20px] border border-wc-green/20 bg-wc-green/10 px-4 py-4 text-wc-green">
-              <span className="size-2 rounded-full bg-wc-green animate-pulse" />
-              <span className="font-body text-sm font-black uppercase tracking-wider">Kick-off imminent</span>
-            </div>
-          )}
         </div>
 
         <div className="relative border-t border-white/10 px-5 py-5">

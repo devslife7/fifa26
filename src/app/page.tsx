@@ -12,7 +12,13 @@ import {
 } from '@/lib/logic/bracket';
 import { calculateGroupStandings } from '@/lib/logic/standings';
 import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions, setEditingPrediction } from '@/lib/client/storage';
-import { createPredictionSnapshot, getPredictionFlowState, getSubmittedForSnapshot, markSnapshotSubmitted } from '@/lib/logic/prediction-flow';
+import {
+  createPredictionSnapshot,
+  getHasSubmittedBefore,
+  getPredictionFlowState,
+  getSubmittedForSnapshot,
+  markSnapshotSubmitted,
+} from '@/lib/logic/prediction-flow';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/groups/GroupMatchCard';
@@ -411,37 +417,13 @@ export default function Home() {
     [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
   );
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [userRank, setUserRank] = useState<number | null>(null);
-  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [hasSubmittedBefore, setHasSubmittedBefore] = useState(false);
 
   useEffect(() => {
     if (!mounted) return;
     setIsSubmitted(getSubmittedForSnapshot(predictionSnapshot));
+    setHasSubmittedBefore(getHasSubmittedBefore());
   }, [mounted, predictionSnapshot]);
-
-  useEffect(() => {
-    if (!user || !isSubmitted) {
-      setUserRank(null);
-      setTotalUsers(null);
-      return;
-    }
-    let cancelled = false;
-    fetch('/api/leaderboard')
-      .then(res => (res.ok ? res.json() : Promise.reject(new Error('failed'))))
-      .then((data: { leaderboard?: Array<{ user_id: string }> }) => {
-        if (cancelled) return;
-        const entries = data.leaderboard ?? [];
-        const idx = entries.findIndex(e => e.user_id === user.id);
-        setTotalUsers(entries.length || null);
-        setUserRank(idx >= 0 ? idx + 1 : null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setUserRank(null);
-        setTotalUsers(null);
-      });
-    return () => { cancelled = true; };
-  }, [user, isSubmitted]);
 
   const navigateTo = useCallback((tab: TabId) => {
     const prev = activeTabRef.current;
@@ -530,11 +512,14 @@ export default function Home() {
     resetAllPredictions();
     localStorage.removeItem('prediction_submitted');
     localStorage.removeItem('prediction_submitted_snapshot');
+    localStorage.removeItem('prediction_submitted_confirmation');
+    localStorage.removeItem('prediction_has_submitted');
     setGroupPredictions({});
     setKnockoutPredictions({});
     setThirdPlaceTiebreaker([]);
     setEditingPrediction(null);
     setIsSubmitted(false);
+    setHasSubmittedBefore(false);
     navigateTo('groups');
   }, [navigateTo]);
 
@@ -618,16 +603,13 @@ export default function Home() {
         {activeTab === 'home' && (
           <HomeView
             flowState={flowState}
-            champion={champion ?? null}
             teamFlagsByCode={teamFlagsByCode ?? {}}
             liveMatch={liveMatch}
             nextMatch={nextMatch}
             userPickForNextMatch={userPickForNextMatch}
-            isSubmitted={isSubmitted}
-            userRank={userRank}
-            totalUsers={totalUsers}
+            hasSubmittedBefore={hasSubmittedBefore}
             onNavigate={navigateTo}
-            onManagePredictions={() => navigateTo('profile')}
+            onStartAgain={handleNewPrediction}
           />
         )}
 
@@ -802,10 +784,12 @@ export default function Home() {
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             user={user ?? null}
+            isSubmitted={isSubmitted}
             onDismiss={() => setActiveTab('bracket')}
-            onSubmitted={() => {
-              markSnapshotSubmitted(predictionSnapshot);
+            onSubmitted={(confirmation) => {
+              markSnapshotSubmitted(predictionSnapshot, confirmation);
               setIsSubmitted(true);
+              setHasSubmittedBefore(true);
             }}
             onNavigateToRanking={() => {
               navigateTo('ranking');

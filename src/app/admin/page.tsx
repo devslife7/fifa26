@@ -195,7 +195,7 @@ export default function AdminPage() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <FakeResultsSeeder />
+        <FakeResultsSeeder adminSecret={secret} />
 
         {loading ? (
           <div className="flex items-center justify-center py-20">

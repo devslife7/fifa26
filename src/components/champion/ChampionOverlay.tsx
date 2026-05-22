@@ -5,6 +5,12 @@ import { MatchResult, KnockoutResult } from '@/types';
 import { getChampion, getTopThree } from '@/lib/logic/bracket';
 import { teamsByCode } from '@/data/teams';
 import { loadPredictions, getEditingPredictionId, getEditingPredictionName } from '@/lib/client/storage';
+import {
+  createPredictionSnapshot,
+  getSubmittedConfirmationForSnapshot,
+  markSnapshotSubmitted,
+  type SubmittedPredictionConfirmation,
+} from '@/lib/logic/prediction-flow';
 import { useAuth, type AppUser } from '@/components/providers/AuthProvider';
 import Podium from '@/components/champion/Podium';
 
@@ -14,8 +20,9 @@ interface ChampionOverlayProps {
   thirdPlaceTiebreaker?: string[];
   user: AppUser | null;
   onDismiss: () => void;
-  onSubmitted: () => void;
+  onSubmitted: (confirmation: SubmittedPredictionConfirmation) => void;
   onNavigateToRanking: () => void;
+  isSubmitted?: boolean;
   isPage?: boolean;
 }
 
@@ -27,10 +34,12 @@ export default function ChampionOverlay({
   onDismiss,
   onSubmitted,
   onNavigateToRanking,
+  isSubmitted,
   isPage,
 }: ChampionOverlayProps) {
   const { signIn, verifyOtp } = useAuth();
-  const [phase, setPhase] = useState<'form' | 'confirmation'>('form');
+  const predictionSnapshot = createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
+  const [phase, setPhase] = useState<'form' | 'confirmation'>(() => isSubmitted ? 'confirmation' : 'form');
   const [name, setName] = useState(user?.display_name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -59,6 +68,22 @@ export default function ChampionOverlay({
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const champion = championCode ? teamsByCode[championCode] : null;
+
+  useEffect(() => {
+    if (!isSubmitted) {
+      setPhase('form');
+      return;
+    }
+
+    const confirmation = getSubmittedConfirmationForSnapshot(predictionSnapshot);
+    if (confirmation) {
+      setPredictionNumber(confirmation.predictionNumber);
+      setShareToken(confirmation.shareToken);
+      setCreatedAt(confirmation.createdAt);
+      if (confirmation.email) setEmail(confirmation.email);
+    }
+    setPhase('confirmation');
+  }, [isSubmitted, predictionSnapshot]);
 
   useEffect(() => {
     if (user?.display_name && !name) setName(user.display_name);
@@ -141,14 +166,17 @@ export default function ChampionOverlay({
         return;
       }
 
-      // Store confirmation data from API response
-      if (data.predictions) {
-        setPredictionNumber(data.predictions.prediction_number ?? null);
-        setShareToken(data.predictions.share_token ?? null);
-        setCreatedAt(data.predictions.created_at ?? null);
-      }
+      const confirmation: SubmittedPredictionConfirmation = {
+        predictionNumber: data.predictions?.prediction_number ?? null,
+        shareToken: data.predictions?.share_token ?? null,
+        createdAt: data.predictions?.created_at ?? null,
+        email: email.trim(),
+      };
 
-      onSubmitted();
+      setPredictionNumber(confirmation.predictionNumber);
+      setShareToken(confirmation.shareToken);
+      setCreatedAt(confirmation.createdAt);
+      onSubmitted(confirmation);
       setPhase('confirmation');
     } catch {
       setError('Network error. Please try again.');
@@ -341,6 +369,12 @@ export default function ChampionOverlay({
                         setResending(false);
                         setResent(true);
                         setEmail(confirmEmail);
+                        markSnapshotSubmitted(predictionSnapshot, {
+                          predictionNumber,
+                          shareToken,
+                          createdAt,
+                          email: confirmEmail.trim(),
+                        });
                         setEditingConfirmEmail(false);
                       }}
                       disabled={resending || !confirmEmail.trim()}
@@ -364,6 +398,14 @@ export default function ChampionOverlay({
               >
                 <span className="material-symbols-outlined text-lg">leaderboard</span>
                 View Leaderboard
+              </button>
+
+              <button
+                onClick={onDismiss}
+                className="w-full py-3 bg-white/10 text-white/80 font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Edit Bracket
               </button>
 
               {!user && otpStep !== 'done' && (
@@ -646,6 +688,12 @@ export default function ChampionOverlay({
                         setResending(false);
                         setResent(true);
                         setEmail(confirmEmail);
+                        markSnapshotSubmitted(predictionSnapshot, {
+                          predictionNumber,
+                          shareToken,
+                          createdAt,
+                          email: confirmEmail.trim(),
+                        });
                         setEditingConfirmEmail(false);
                       }}
                       disabled={resending || !confirmEmail.trim()}
@@ -669,6 +717,14 @@ export default function ChampionOverlay({
               >
                 <span className="material-symbols-outlined text-lg">leaderboard</span>
                 View Leaderboard
+              </button>
+
+              <button
+                onClick={onDismiss}
+                className="w-full py-3 bg-white/10 text-white/80 font-bold rounded-xl hover:bg-white/15 transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Edit Bracket
               </button>
 
               {!user && otpStep !== 'done' && (

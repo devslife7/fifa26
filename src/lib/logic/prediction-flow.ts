@@ -4,6 +4,17 @@ import { getChampion } from '@/lib/logic/bracket';
 
 export const GROUP_TOTAL = 72;
 export const BRACKET_TOTAL = 32;
+const SUBMITTED_KEY = 'prediction_submitted';
+const SUBMITTED_SNAPSHOT_KEY = 'prediction_submitted_snapshot';
+const SUBMITTED_CONFIRMATION_KEY = 'prediction_submitted_confirmation';
+const HAS_SUBMITTED_KEY = 'prediction_has_submitted';
+
+export interface SubmittedPredictionConfirmation {
+  predictionNumber: number | null;
+  shareToken: string | null;
+  createdAt: string | null;
+  email: string;
+}
 
 export interface PredictionFlowState {
   groupCount: number;
@@ -34,19 +45,51 @@ export function createPredictionSnapshot(
 
 export function getSubmittedForSnapshot(snapshot: string): boolean {
   if (typeof window === 'undefined') return false;
-  const wasSubmitted = localStorage.getItem('prediction_submitted') === 'true';
+  const wasSubmitted = localStorage.getItem(SUBMITTED_KEY) === 'true';
   if (!wasSubmitted) return false;
-  const savedSnapshot = localStorage.getItem('prediction_submitted_snapshot');
+  const savedSnapshot = localStorage.getItem(SUBMITTED_SNAPSHOT_KEY);
   if (savedSnapshot === snapshot) return true;
-  localStorage.removeItem('prediction_submitted');
-  localStorage.removeItem('prediction_submitted_snapshot');
+  localStorage.removeItem(SUBMITTED_KEY);
+  localStorage.removeItem(SUBMITTED_SNAPSHOT_KEY);
+  localStorage.removeItem(SUBMITTED_CONFIRMATION_KEY);
   return false;
 }
 
-export function markSnapshotSubmitted(snapshot: string): void {
+export function getHasSubmittedBefore(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(HAS_SUBMITTED_KEY) === 'true'
+    || localStorage.getItem(SUBMITTED_KEY) === 'true';
+}
+
+export function getSubmittedConfirmationForSnapshot(snapshot: string): SubmittedPredictionConfirmation | null {
+  if (typeof window === 'undefined') return null;
+  if (!getSubmittedForSnapshot(snapshot)) return null;
+
+  try {
+    const value = localStorage.getItem(SUBMITTED_CONFIRMATION_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as SubmittedPredictionConfirmation & { snapshot?: string };
+    if (parsed.snapshot !== snapshot) return null;
+    return {
+      predictionNumber: parsed.predictionNumber ?? null,
+      shareToken: parsed.shareToken ?? null,
+      createdAt: parsed.createdAt ?? null,
+      email: parsed.email ?? '',
+    };
+  } catch {
+    localStorage.removeItem(SUBMITTED_CONFIRMATION_KEY);
+    return null;
+  }
+}
+
+export function markSnapshotSubmitted(snapshot: string, confirmation?: SubmittedPredictionConfirmation): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('prediction_submitted', 'true');
-  localStorage.setItem('prediction_submitted_snapshot', snapshot);
+  localStorage.setItem(SUBMITTED_KEY, 'true');
+  localStorage.setItem(SUBMITTED_SNAPSHOT_KEY, snapshot);
+  localStorage.setItem(HAS_SUBMITTED_KEY, 'true');
+  if (confirmation) {
+    localStorage.setItem(SUBMITTED_CONFIRMATION_KEY, JSON.stringify({ ...confirmation, snapshot }));
+  }
 }
 
 export function getPredictionFlowState(

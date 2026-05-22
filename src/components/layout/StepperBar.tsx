@@ -49,7 +49,7 @@ export default function StepperBar({ flowState, isSubmitted, activeTab, onNaviga
     // Bracket
     if (step.action === 'bracket') {
       if (flowState.hasChampion) return 'completed';
-      if (flowState.groupsComplete && flowState.thirdPlaceComplete && (activeTab === 'bracket' || flowState.knockoutCount > 0)) return 'active';
+      if (flowState.groupsComplete && flowState.thirdPlaceComplete) return 'active';
       return 'future';
     }
     // Submit

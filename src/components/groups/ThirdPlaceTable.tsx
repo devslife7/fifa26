@@ -18,9 +18,11 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
   const selectableTeams = hasTie ? tieInfo.tied : [];
   const selectableTeamCodes = new Set(selectableTeams.map(entry => entry.team));
   const selectedCount = tiebreakerPicks.filter(teamCode => selectableTeamCodes.has(teamCode)).length;
-  const remainingCount = Math.max(tieInfo.slotsToFill - selectedCount, 0);
   const tiebreakerComplete = hasTie && selectedCount === tieInfo.slotsToFill;
-
+  const title = hasTie ? 'Resolve Third-Place Cutoff' : 'Third-Place Qualifiers';
+  const description = hasTie
+    ? 'Pick the tied teams that should claim the remaining Round of 32 places.'
+    : 'Top 8 of 12 third-place teams advance to the Round of 32.';
   const handleToggle = (teamCode: string) => {
     const current = new Set(tiebreakerPicks);
     if (current.has(teamCode)) {
@@ -32,23 +34,44 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
   };
 
   return (
-    <div className="mt-8">
-      <div className="mb-5">
-        <div>
-          <h2 className="text-[26px] font-black leading-tight text-white tracking-tight">
-            {hasTie ? 'Resolve Third-Place Cutoff' : 'Third-Place Qualifiers'}
-          </h2>
-          <p className="text-neutral-500 text-sm mt-1">
-            {hasTie
-              ? 'These teams are tied on points for the final Round of 32 spots. Pick who advances.'
-              : 'Top 8 of 12 third-place teams advance to the Round of 32.'}
-          </p>
-          {!hasTie && ranking.length === 12 && (
-            <p className="text-neutral-600 text-xs mt-2 leading-snug">
-              Group ties are resolved automatically using FIFA ranking for a faster prediction flow.
+    <div className="mt-5 space-y-4">
+      <div className="bg-neutral-950/70 px-1 py-2 sm:px-0">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary/80">Third-place ranking</p>
+            <h2 className="mt-1 text-[22px] font-black leading-tight text-white sm:text-2xl">
+              {title}
+            </h2>
+            <p className="mt-1.5 max-w-xl text-sm leading-5 text-neutral-400">
+              {description}
             </p>
+          </div>
+          {ranking.length > 0 && (
+            hasTie ? (
+              <div className="shrink-0 text-right">
+                <div className="text-[34px] font-black leading-none text-primary tabular-nums sm:text-[42px]">
+                  {selectedCount}/{tieInfo.slotsToFill}
+                </div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-neutral-500">
+                  selected
+                </div>
+              </div>
+            ) : (
+              <span className="shrink-0 rounded-lg border border-wc-green/30 bg-wc-green/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-wc-green">
+                Automatic
+              </span>
+            )
           )}
         </div>
+
+        {ranking.length > 0 && (
+          <div className="mt-4 border-t border-white/10 pt-3 flex items-start gap-2 text-xs leading-5 text-neutral-500">
+            <span className="material-symbols-outlined mt-0.5 text-[15px] text-neutral-600">info</span>
+            <p>
+              If teams finish level on points in a group, FIFA ranking decides the order automatically.
+            </p>
+          </div>
+        )}
       </div>
 
       {ranking.length === 0 ? (
@@ -60,26 +83,6 @@ export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebre
         </div>
       ) : (
         <>
-          <div className="mb-4 rounded-2xl border border-white/10 bg-neutral-900 p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-neutral-500">Tiebreaker Progress</p>
-                <p className="mt-1 text-sm font-bold text-neutral-200">
-                  {hasTie
-                    ? tiebreakerComplete
-                      ? 'Complete. These teams will feed into the Round of 32.'
-                      : `${remainingCount} ${remainingCount === 1 ? 'pick' : 'picks'} remaining.`
-                    : 'No tiebreaker picks are needed.'}
-                </p>
-              </div>
-              {hasTie && (
-                <span className="shrink-0 rounded-2xl bg-primary px-5 py-3 text-[32px] font-black leading-none text-black shadow-[0_0_0_1px_rgba(0,0,0,0.15)_inset]">
-                  {selectedCount}/{tieInfo.slotsToFill}
-                </span>
-              )}
-            </div>
-          </div>
-
           {selectableTeams.length > 0 && (
             <div className="bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden">
               <table className="w-full text-sm table-fixed">

@@ -393,6 +393,7 @@ export default function Home() {
   const autoNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollPositionsRef = useRef<Partial<Record<TabId, number>>>({});
   const activeTabRef = useRef<TabId>(activeTab);
+  const homeTabPrimedForTopRef = useRef(false);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   const PREDICTION_TABS: TabId[] = useMemo(() => ['groups', 'bracket', 'thirdplace', 'submit'], []);
   const [lastPredictionTab, setLastPredictionTab] = useState<TabId | null>(null);
@@ -444,6 +445,16 @@ export default function Home() {
 
   const navigateTo = useCallback((tab: TabId) => {
     const prev = activeTabRef.current;
+
+    if (tab === 'home' && prev === 'home' && homeTabPrimedForTopRef.current) {
+      scrollPositionsRef.current.home = 0;
+      requestAnimationFrame(() => {
+        const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+        window.scrollTo({ top: 0, behavior });
+      });
+      return;
+    }
+
     if (prev !== tab) {
       scrollPositionsRef.current[prev] = window.scrollY;
       if (PREDICTION_TABS.includes(prev)) {
@@ -453,6 +464,8 @@ export default function Home() {
     setActiveTab(tab);
     const target = scrollPositionsRef.current[tab] ?? 0;
     requestAnimationFrame(() => window.scrollTo({ top: target }));
+
+    homeTabPrimedForTopRef.current = tab === 'home';
   }, [PREDICTION_TABS]);
 
   // Auto-advance when user completes the 72nd group prediction

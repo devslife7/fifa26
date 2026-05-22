@@ -304,6 +304,7 @@ export default function Home() {
     predictions.groupTiebreakers = {};
     predictions.thirdPlaceTiebreaker = [];
     savePredictions(predictions);
+    setEditingPrediction(null);
     setGroupPredictions({});
     setKnockoutPredictions({});
     setGroupTiebreakers({});

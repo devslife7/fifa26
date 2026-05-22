@@ -112,7 +112,7 @@ export default function GroupMatchCard({ matchId, homeCode, awayCode, result, on
           )}
         </div>
       )}
-      <div className="flex items-stretch gap-2 px-2 py-2.5">
+      <div data-prediction-choice-area className="flex items-stretch gap-2 px-2 py-2.5">
 
         {/* Home */}
         <button

@@ -139,8 +139,17 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
 
     const container = scrollContainerRef.current;
     const preservedScrollLeft = container?.scrollLeft ?? 0;
-    const rect = matchEl.getBoundingClientRect();
-    const centeredTop = window.scrollY + rect.top - Math.max(120, (window.innerHeight - rect.height) / 2);
+    const choiceArea = matchEl.querySelector<HTMLElement>('[data-prediction-choice-area]');
+    const targetEl = choiceArea ?? matchEl;
+    const rect = targetEl.getBoundingClientRect();
+    const tabsBottom = document.querySelector<HTMLElement>('[data-bracket-round-tabs]')?.getBoundingClientRect().bottom ?? 0;
+    const bottomNavTop = document.querySelector<HTMLElement>('nav.fixed.bottom-0')?.getBoundingClientRect().top ?? window.innerHeight;
+    const topInset = Math.max(96, tabsBottom + 16);
+    const bottomInset = Math.max(0, window.innerHeight - bottomNavTop + 16);
+    const availableHeight = Math.max(180, window.innerHeight - topInset - bottomInset);
+    const viewportTargetCenter = topInset + availableHeight / 2;
+    const elementCenter = window.scrollY + rect.top + rect.height / 2;
+    const centeredTop = elementCenter - viewportTargetCenter;
 
     window.scrollTo({
       top: Math.max(0, centeredTop),
@@ -334,7 +343,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
   return (
     <div>
       {/* Sticky Round Tabs */}
-      <div className="sticky top-[77px] z-20 bg-background-dark">
+      <div data-bracket-round-tabs className="sticky top-[77px] z-20 bg-background-dark">
         <div className="flex items-center border-b border-white/10">
           <div
             ref={tabsContainerRef}

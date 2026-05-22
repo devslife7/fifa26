@@ -63,20 +63,41 @@ export default function Home() {
     const el = document.getElementById(id);
     if (!el) return false;
 
-    const rect = el.getBoundingClientRect();
+    const targetEl = el.querySelector<HTMLElement>('[data-prediction-choice-area]') ?? el;
+    const rect = targetEl.getBoundingClientRect();
     const stickyHeader = document.querySelector('.sticky.top-0');
     const stickyBottom = stickyHeader?.getBoundingClientRect().bottom ?? 0;
+    const bottomNavTop = document.querySelector<HTMLElement>('nav.fixed.bottom-0')?.getBoundingClientRect().top ?? window.innerHeight;
     const topInset = Math.max(88, stickyBottom + 14);
-    const bottomInset = 96;
-    const availableHeight = window.innerHeight - topInset - bottomInset;
+    const bottomInset = Math.max(96, window.innerHeight - bottomNavTop + 16);
+    const availableHeight = Math.max(180, window.innerHeight - topInset - bottomInset);
     const comfortablyVisible =
       rect.top >= topInset &&
       (rect.height > availableHeight || rect.bottom <= window.innerHeight - bottomInset);
 
     if (!force && comfortablyVisible) return true;
 
-    const targetTop = Math.max(0, window.scrollY + rect.top - topInset);
+    const viewportTargetCenter = topInset + availableHeight / 2;
+    const elementCenter = window.scrollY + rect.top + rect.height / 2;
+    const targetTop = Math.max(0, elementCenter - viewportTargetCenter);
     window.scrollTo({ top: targetTop, behavior: getAutoScrollBehavior() });
+    return true;
+  }, [getAutoScrollBehavior]);
+
+  const scrollGroupSummaryIntoView = useCallback((group: GroupLetter): boolean => {
+    const el = document.getElementById(`group-section-${group}`);
+    if (!el) return false;
+
+    const targetEl = el.querySelector<HTMLElement>('[data-group-summary-area]');
+    if (!targetEl) return false;
+
+    const rect = targetEl.getBoundingClientRect();
+    const stickyHeader = document.querySelector('.sticky.top-0');
+    const stickyBottom = stickyHeader?.getBoundingClientRect().bottom ?? 0;
+    const topInset = Math.max(88, stickyBottom + 14);
+    const targetTop = window.scrollY + rect.top - topInset;
+
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: getAutoScrollBehavior() });
     return true;
   }, [getAutoScrollBehavior]);
 
@@ -100,9 +121,33 @@ export default function Home() {
     requestAnimationFrame(tryScroll);
   }, [scrollToElement]);
 
+  const scheduleScrollToGroupSummary = useCallback((group: GroupLetter) => {
+    if (autoScrollTimerRef.current) clearTimeout(autoScrollTimerRef.current);
+
+    let attempts = 0;
+    const tryScroll = () => {
+      if (scrollGroupSummaryIntoView(group)) {
+        autoScrollTimerRef.current = null;
+        return;
+      }
+      attempts += 1;
+      if (attempts <= 6) {
+        autoScrollTimerRef.current = window.setTimeout(tryScroll, 60);
+      } else {
+        autoScrollTimerRef.current = null;
+      }
+    };
+
+    requestAnimationFrame(tryScroll);
+  }, [scrollGroupSummaryIntoView]);
+
   const scrollToMatch = useCallback((matchId: string, force = true) => {
     scheduleScrollToElement(`group-match-${matchId}`, force);
   }, [scheduleScrollToElement]);
+
+  const scrollToGroupSummary = useCallback((group: GroupLetter) => {
+    scheduleScrollToGroupSummary(group);
+  }, [scheduleScrollToGroupSummary]);
 
   const triggerAutoAdvance = useCallback((matchId: string, forceScroll = true) => {
     if (focusClearTimerRef.current) clearTimeout(focusClearTimerRef.current);
@@ -183,15 +228,20 @@ export default function Home() {
 
       // Auto-advance: when filling an empty slot, focus + scroll to the next undecided match
       if (wasEmpty) {
-        const nextMatch = allGroupMatches.find(m => !next[m.id]);
-        if (nextMatch) {
+        const groupMatches = allGroupMatches.filter(m => m.group === groupLetter);
+        const completedGroup = groupMatches.every(m => next[m.id]);
+        if (completedGroup) {
+          scrollToGroupSummary(groupLetter);
+        } else {
+          const nextMatch = allGroupMatches.find(m => !next[m.id]);
+          if (!nextMatch) return next;
           triggerAutoAdvance(nextMatch.id);
         }
       }
 
       return next;
     });
-  }, [triggerAutoAdvance]);
+  }, [scrollToGroupSummary, triggerAutoAdvance]);
 
   const handleTiebreakerChange = useCallback((picks: string[]) => {
     setThirdPlaceTiebreaker(picks);
@@ -592,7 +642,7 @@ export default function Home() {
                 const standings = calculateGroupStandings(groupLetter, groupPredictions);
                 const collapsed = complete && !userExpandedGroups.has(groupLetter);
                 return (
-                  <div key={section.label}>
+                  <div key={section.label} id={`group-section-${groupLetter}`}>
                     <div className="py-2 mb-2 flex items-center justify-between gap-3">
                       <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
                         {section.label}
@@ -602,14 +652,16 @@ export default function Home() {
                       </span>
                     </div>
                     {collapsed ? (
-                      <GroupQualifiersStrip
-                        group={groupLetter}
-                        standings={standings}
-                        expanded={false}
-                        onToggle={() => toggleGroupExpanded(groupLetter)}
-                        teamFlagsByCode={teamFlagsByCode}
-                        thirdPlaceRelevant={flowState.thirdPlaceRequired}
-                      />
+                      <div data-group-summary-area>
+                        <GroupQualifiersStrip
+                          group={groupLetter}
+                          standings={standings}
+                          expanded={false}
+                          onToggle={() => toggleGroupExpanded(groupLetter)}
+                          teamFlagsByCode={teamFlagsByCode}
+                          thirdPlaceRelevant={flowState.thirdPlaceRequired}
+                        />
+                      </div>
                     ) : (
                       <div className="bg-neutral-900 border border-white/10 rounded-3xl overflow-hidden">
                         {complete && (

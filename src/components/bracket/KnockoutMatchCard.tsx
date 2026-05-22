@@ -62,7 +62,7 @@ export default function KnockoutMatchCard({
   teamFlagsByCode,
   readOnly = false,
   venue,
-  focused: _focused = false,
+  focused = false,
 }: Props) {
   const homePH = isPlaceholder(homeCode);
   const awayPH = isPlaceholder(awayCode);
@@ -150,7 +150,9 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${!canPredict ? 'opacity-80' : ''}`}>
+    <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${
+      focused ? 'ring-2 ring-primary/70 shadow-[0_0_28px_rgba(245,197,66,0.18)]' : ''
+    } ${!canPredict ? 'opacity-80' : ''}`}>
       <div className="px-3 pt-1.5 flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">{matchId}</span>
         {liveMatch?.utcDate && (
@@ -196,7 +198,7 @@ export default function KnockoutMatchCard({
           )}
         </div>
       </div>
-      <div className="flex flex-col gap-2 px-2 py-2.5">
+      <div data-prediction-choice-area className="flex flex-col gap-2 px-2 py-2.5">
         <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />
         <TeamSlot team={away} code={awayCode} side="away" isSelected={result === 'away'} />
       </div>

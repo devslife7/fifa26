@@ -35,7 +35,7 @@ const roundLabels: Record<string, string> = {
 const styles = StyleSheet.create({
   page: {
     paddingTop: 18,
-    paddingBottom: 22,
+    paddingBottom: 28,
     paddingHorizontal: 22,
     fontFamily: 'Helvetica',
     fontSize: 9,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottom: '1px solid #e5e7eb',
-    minHeight: 18,
+    minHeight: 17,
   },
   tableHeaderRow: {
     backgroundColor: '#f3f4f6',
@@ -222,8 +222,9 @@ function knockoutPickCode(home: string | undefined, away: string | undefined, re
 }
 
 function submittedDate(value: string | null | undefined): string {
-  if (!value) return new Date().toLocaleString('en-US');
-  return new Date(value).toLocaleString('en-US', {
+  const date = value ? new Date(value) : new Date();
+  return date.toLocaleString('en-US', {
+    timeZone: 'America/New_York',
     month: 'short',
     day: 'numeric',
     year: 'numeric',

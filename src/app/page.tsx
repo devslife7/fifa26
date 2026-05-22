@@ -30,6 +30,26 @@ import NewsView from '@/components/news/NewsView';
 import ProfileView from '@/components/profile/ProfileView';
 import TrackerView from '@/components/tracker/TrackerView';
 
+function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?: string } | undefined>) {
+  return groups.flatMap(group =>
+    allGroupMatches
+      .filter(match => match.group === group)
+      .sort((a, b) => {
+        const dateA = liveMatchesByLocalId?.[a.id]?.utcDate ?? '';
+        const dateB = liveMatchesByLocalId?.[b.id]?.utcDate ?? '';
+        const dateSort = dateA.localeCompare(dateB);
+        return dateSort || a.matchNumber - b.matchNumber;
+      })
+  );
+}
+
+const ACTIVE_TAB_STORAGE_KEY = 'fifa26_active_tab';
+const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'news', 'submit', 'profile', 'tracker'];
+
+function isTabId(value: string | null): value is TabId {
+  return VALID_TABS.includes(value as TabId);
+}
+
 export default function Home() {
   const { user } = useAuth();
   const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
@@ -162,11 +182,24 @@ export default function Home() {
   // Load local predictions on mount
   useEffect(() => {
     const saved = loadPredictions();
+    const savedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
     setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
+    if (isTabId(savedTab)) {
+      setActiveTab(savedTab);
+    }
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab, mounted]);
+
+  const orderedGroupMatches = useMemo(() => {
+    return getOrderedGroupMatches(liveMatchesByLocalId);
+  }, [liveMatchesByLocalId]);
 
   // Sync server predictions on auth (hydrate localStorage if local is empty)
   useEffect(() => {
@@ -228,12 +261,15 @@ export default function Home() {
 
       // Auto-advance: when filling an empty slot, focus + scroll to the next undecided match
       if (wasEmpty) {
-        const groupMatches = allGroupMatches.filter(m => m.group === groupLetter);
+        const groupMatches = orderedGroupMatches.filter(m => m.group === groupLetter);
         const completedGroup = groupMatches.every(m => next[m.id]);
         if (completedGroup) {
           scrollToGroupSummary(groupLetter);
         } else {
-          const nextMatch = allGroupMatches.find(m => !next[m.id]);
+          const clickedIndex = orderedGroupMatches.findIndex(m => m.id === matchId);
+          const matchesAfterClick = clickedIndex >= 0 ? orderedGroupMatches.slice(clickedIndex + 1) : [];
+          const nextMatch = matchesAfterClick.find(m => !next[m.id])
+            ?? orderedGroupMatches.find(m => !next[m.id]);
           if (!nextMatch) return next;
           triggerAutoAdvance(nextMatch.id);
         }
@@ -241,7 +277,7 @@ export default function Home() {
 
       return next;
     });
-  }, [scrollToGroupSummary, triggerAutoAdvance]);
+  }, [orderedGroupMatches, scrollToGroupSummary, triggerAutoAdvance]);
 
   const handleTiebreakerChange = useCallback((picks: string[]) => {
     setThirdPlaceTiebreaker(picks);
@@ -461,9 +497,9 @@ export default function Home() {
   }, [readyForBracket, needsThirdPlaceInput, mounted, groupCount]);
 
   const handleNextIncompleteGroupMatch = useCallback(() => {
-    const next = allGroupMatches.find(match => !groupPredictions[match.id]);
+    const next = orderedGroupMatches.find(match => !groupPredictions[match.id]);
     if (next) scrollToMatch(next.id);
-  }, [groupPredictions, scrollToMatch]);
+  }, [groupPredictions, orderedGroupMatches, scrollToMatch]);
 
   const handleLoadPrediction = useCallback((prediction: SavedPrediction) => {
     loadFromServer(prediction);
@@ -513,16 +549,10 @@ export default function Home() {
 
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
-      const matches = allGroupMatches
-        .filter(m => m.group === group)
-        .sort((a, b) => {
-          const dateA = liveMatchesByLocalId?.[a.id]?.utcDate ?? '';
-          const dateB = liveMatchesByLocalId?.[b.id]?.utcDate ?? '';
-          return dateA.localeCompare(dateB);
-        });
+      const matches = orderedGroupMatches.filter(m => m.group === group);
       return { label: `Group ${group}`, matches };
     });
-  }, [liveMatchesByLocalId]);
+  }, [orderedGroupMatches]);
 
   const { liveMatch, nextMatch, userPickForNextMatch } = useMemo(() => {
     const entries = Object.values(liveMatchesByLocalId ?? {});

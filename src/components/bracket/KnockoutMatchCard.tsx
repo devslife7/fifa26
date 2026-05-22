@@ -151,7 +151,7 @@ export default function KnockoutMatchCard({
 
   return (
     <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${
-      focused ? 'ring-2 ring-primary/70 shadow-[0_0_28px_rgba(245,197,66,0.18)]' : ''
+      ''
     } ${!canPredict ? 'opacity-80' : ''}`}>
       <div className="px-3 pt-1.5 flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">{matchId}</span>

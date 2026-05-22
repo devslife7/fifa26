@@ -69,7 +69,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
   const [justRefreshed, setJustRefreshed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'predictions' | 'rankings'>('predictions');
 
   useEffect(() => {
     const fetchLeaderboard = fetch('/api/leaderboard')
@@ -204,67 +203,10 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   };
 
   return (
-    <div className="flex-grow pb-24">
+    <div className="flex-grow pt-4 pb-24">
 
       <div className="md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
-          {/* Tab bar */}
-          <div className="sticky top-0 z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-4 pb-3 bg-background-dark/85 backdrop-blur-md mb-4">
-            <div className="flex items-center justify-between gap-3">
-              <div role="tablist" className="inline-flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/10">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === 'predictions'}
-                  onClick={() => setActiveTab('predictions')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all font-body ${
-                    activeTab === 'predictions'
-                      ? 'bg-primary text-black shadow-sm'
-                      : 'text-neutral-400 hover:text-neutral-100'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[15px] ${activeTab === 'predictions' ? 'font-variation-fill' : ''}`}>assignment</span>
-                  Predictions
-                  {predictions.length > 0 && (
-                    <span className={`ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black tabular-nums ${
-                      activeTab === 'predictions' ? 'bg-black/25 text-black' : 'bg-white/10 text-neutral-300'
-                    }`}>{predictions.length}</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === 'rankings'}
-                  onClick={() => setActiveTab('rankings')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-all font-body ${
-                    activeTab === 'rankings'
-                      ? 'bg-primary text-black shadow-sm'
-                      : 'text-neutral-400 hover:text-neutral-100'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[15px] ${activeTab === 'rankings' ? 'font-variation-fill' : ''}`}>emoji_events</span>
-                  Rankings
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={refreshing}
-                aria-label="Refresh leaderboard"
-                title={justRefreshed ? 'Updated' : 'Refresh'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold font-body transition-colors shrink-0 ${
-                  justRefreshed
-                    ? 'border-wc-green/50 text-wc-green bg-wc-green/10'
-                    : 'border-white/10 text-neutral-300 hover:border-primary/30 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>
-                  {justRefreshed ? 'check' : 'refresh'}
-                </span>
-                <span className="hidden sm:inline">{justRefreshed ? 'Updated' : 'Refresh'}</span>
-              </button>
-            </div>
-          </div>
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 animate-trophy-glow" />
@@ -272,8 +214,33 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
           ) : (
             <div className="space-y-3">
               {/* Predictions Section */}
-              {activeTab === 'predictions' && predictions.length > 0 && (
+              {predictions.length > 0 && (
                 <div className="mb-6">
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-xl font-variation-fill">assignment</span>
+                      <h2 className="font-bold text-lg">Predictions</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRefresh}
+                      disabled={refreshing}
+                      aria-label="Refresh leaderboard"
+                      title={justRefreshed ? 'Updated' : 'Refresh'}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold font-body transition-colors ${
+                        justRefreshed
+                          ? 'border-wc-green/50 text-wc-green bg-wc-green/10'
+                          : 'border-white/10 text-neutral-300 hover:border-primary/30 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>
+                        {justRefreshed ? 'check' : 'refresh'}
+                      </span>
+                      {justRefreshed ? 'Updated' : 'Refresh'}
+                    </button>
+                  </div>
+
+
                   {(() => {
                     const approved = predictions.filter(p => p.is_approved).sort((a, b) => {
                       if (!a.updated_at || !b.updated_at) return 0;
@@ -364,16 +331,15 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 </div>
               )}
 
-              {activeTab === 'predictions' && predictions.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <span className="material-symbols-outlined text-neutral-600 text-5xl mb-3">assignment</span>
-                  <p className="text-sm font-bold text-neutral-300 font-body">No predictions yet</p>
-                  <p className="text-xs text-neutral-500 mt-1 font-body">Submitted predictions will appear here.</p>
-                </div>
+              {/* Leaderboard List */}
+              {!usePlaceholder && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-primary text-xl font-variation-fill">emoji_events</span>
+                <h2 className="font-bold text-lg">Rankings</h2>
+              </div>
               )}
 
-              {/* Leaderboard List */}
-              {activeTab === 'rankings' && !usePlaceholder && leaderboard.map((entry, idx) => {
+              {!usePlaceholder && leaderboard.map((entry, idx) => {
                 const rank = idx + 1;
                 const isCurrentUser = !usePlaceholder && user?.id === entry.user_id;
                 const medal = getMedalIcon(rank);

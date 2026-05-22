@@ -27,11 +27,17 @@ const ROUND_LABELS: Record<KnockoutRound, string> = {
 };
 
 type TrackerTabId = 'active' | 'settled' | 'all';
+type TrackerStageId = 'group' | 'knockout';
 
 const TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'settled', label: 'Settled' },
   { id: 'all', label: 'All' },
+];
+
+const STAGE_TABS: { id: TrackerStageId; label: string; icon: string }[] = [
+  { id: 'group', label: 'Group Stage', icon: 'grid_view' },
+  { id: 'knockout', label: 'Bracket Stage', icon: 'account_tree' },
 ];
 
 interface Props {
@@ -58,6 +64,10 @@ function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean
   if (tab === 'active') return isActiveOutcome(outcome);
   if (tab === 'settled') return isSettledOutcome(outcome);
   return true;
+}
+
+function matchesTrackerStage(outcome: PerMatchOutcome, stage: TrackerStageId): boolean {
+  return outcome.kind === stage;
 }
 
 function maxPointsForOutcome(outcome: PerMatchOutcome): number {
@@ -397,7 +407,7 @@ function Dashboard({
         className="w-full px-4 py-2.5 border-t border-white/10 text-[12px] font-bold text-primary hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
       >
         <span className="material-symbols-outlined text-[16px]">bar_chart</span>
-        View full breakdown
+        Compare with other predictions
       </button>
     </div>
   );
@@ -407,6 +417,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   const { user } = useAuth();
   const { prediction: active, loading: loadingActive } = useActivePrediction();
   const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(active, liveMatches);
+  const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
   const [trackerTab, setTrackerTab] = useState<TrackerTabId>('active');
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -506,9 +517,22 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     ), 0),
     [outcomes],
   );
+  const stageCounts = useMemo(
+    () => ({
+      group: outcomes.filter(o => o.kind === 'group').length,
+      knockout: outcomes.filter(o => o.kind === 'knockout').length,
+    }),
+    [outcomes],
+  );
+  const stageOutcomes = useMemo(
+    () => outcomes.filter(o => matchesTrackerStage(o, trackerStage)),
+    [outcomes, trackerStage],
+  );
+  const stageActiveCount = useMemo(() => stageOutcomes.filter(isActiveOutcome).length, [stageOutcomes]);
+  const stageSettledCount = useMemo(() => stageOutcomes.filter(isSettledOutcome).length, [stageOutcomes]);
   const filteredOutcomes = useMemo(
-    () => outcomes.filter(o => matchesTrackerTab(o, trackerTab)),
-    [outcomes, trackerTab],
+    () => stageOutcomes.filter(o => matchesTrackerTab(o, trackerTab)),
+    [stageOutcomes, trackerTab],
   );
   const groupedByDate = useMemo(() => groupItemsByDate(filteredOutcomes), [filteredOutcomes]);
 
@@ -644,10 +668,34 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       </div>
 
       <div className="px-4">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-neutral-950/50 p-1">
+          {STAGE_TABS.map(tab => {
+            const isActive = trackerStage === tab.id;
+            const count = stageCounts[tab.id];
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setTrackerStage(tab.id)}
+                className={`min-w-0 px-2.5 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-colors font-body flex items-center justify-center gap-1.5 ${
+                  isActive
+                    ? 'bg-primary text-black'
+                    : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px] flex-shrink-0">{tab.icon}</span>
+                <span className="truncate">{tab.label}</span>
+                <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="px-4">
         <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-white/[0.025] p-1">
           {TRACKER_TABS.map(tab => {
             const isActive = trackerTab === tab.id;
-            const count = tab.id === 'active' ? activeCount : tab.id === 'settled' ? settledCount : outcomes.length;
+            const count = tab.id === 'active' ? stageActiveCount : tab.id === 'settled' ? stageSettledCount : stageOutcomes.length;
             return (
               <button
                 key={tab.id}
@@ -671,7 +719,9 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
             <span className="material-symbols-outlined text-neutral-500 text-3xl">filter_alt_off</span>
             <p className="text-xs text-neutral-500 font-body mt-2">
-              {trackerTab === 'active' ? 'No active picks right now.' : 'Nothing to show here yet.'}
+              {trackerTab === 'active'
+                ? `No active ${trackerStage === 'group' ? 'group stage' : 'bracket stage'} picks right now.`
+                : 'Nothing to show here yet.'}
             </p>
           </div>
         </div>

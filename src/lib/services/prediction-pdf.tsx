@@ -34,8 +34,8 @@ const roundLabels: Record<string, string> = {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 22,
-    paddingBottom: 36,
+    paddingTop: 18,
+    paddingBottom: 22,
     paddingHorizontal: 22,
     fontFamily: 'Helvetica',
     fontSize: 9,
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     borderBottom: '1px solid #e5e7eb',
-    minHeight: 16,
+    minHeight: 18,
   },
   tableHeaderRow: {
     backgroundColor: '#f3f4f6',
@@ -186,11 +186,18 @@ const styles = StyleSheet.create({
     fontSize: 8,
   },
   footer: {
-    marginTop: 10,
+    marginTop: 8,
     paddingTop: 6,
     borderTop: '1px solid #e5e7eb',
     color: '#6b7280',
     fontSize: 7,
+  },
+  pagination: {
+    position: 'absolute',
+    right: 22,
+    bottom: 10,
+    color: '#6b7280',
+    fontSize: 8,
   },
 });
 
@@ -316,6 +323,11 @@ function PredictionPdfDocument({
         </View>
         </View>
 
+        <Text
+          fixed
+          style={styles.pagination}
+          render={({ pageNumber, totalPages }) => `page ${pageNumber}/${totalPages}`}
+        />
       </Page>
       <Page size="A4" style={styles.page}>
         <View wrap={false}>
@@ -394,6 +406,11 @@ function PredictionPdfDocument({
           This PDF is a submitted prediction snapshot. Share link: {shareUrl}
         </Text>
         </View>
+        <Text
+          fixed
+          style={styles.pagination}
+          render={({ pageNumber, totalPages }) => `page ${pageNumber}/${totalPages}`}
+        />
       </Page>
     </Document>
   );

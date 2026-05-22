@@ -36,7 +36,26 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   }
 }
 
+export async function createAdminSessionToken(): Promise<string> {
+  return new SignJWT({ admin: true })
+    .setSubject('admin')
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .setProtectedHeader({ alg: 'HS256' })
+    .sign(SECRET);
+}
+
+export async function verifyAdminSessionToken(token: string): Promise<boolean> {
+  try {
+    const { payload } = await jwtVerify(token, SECRET);
+    return payload.sub === 'admin' && payload.admin === true;
+  } catch {
+    return false;
+  }
+}
+
 export const SESSION_COOKIE = 'session';
+export const ADMIN_SESSION_COOKIE = 'admin_session';
 
 export const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -44,4 +63,12 @@ export const COOKIE_OPTIONS = {
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 30 * 24 * 60 * 60, // 30 days
+};
+
+export const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60, // 7 days
 };

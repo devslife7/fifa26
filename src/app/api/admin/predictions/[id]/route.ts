@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
+import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminSecret = request.headers.get('x-admin-secret');
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const { id } = await params;
   const body = await request.json();
@@ -38,10 +36,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminSecret = request.headers.get('x-admin-secret');
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const { id } = await params;
   const supabase = createServiceClient();

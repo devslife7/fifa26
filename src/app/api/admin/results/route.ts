@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { recalculateScores } from '@/lib/services/recalculate-scores';
+import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
 
 type AdminResultPayload = {
   matchId: string;
@@ -27,10 +28,7 @@ function validateResult(row: AdminResultPayload): string | null {
 }
 
 export async function POST(request: Request) {
-  const adminSecret = request.headers.get('x-admin-secret');
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const body = await request.json();
   const results = normalizeResults(body);
@@ -85,10 +83,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const adminSecret = request.headers.get('x-admin-secret');
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const body = await request.json();
   const matchIds = Array.isArray(body?.matchIds)

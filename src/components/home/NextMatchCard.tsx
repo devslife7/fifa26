@@ -1,12 +1,11 @@
 'use client';
 
-import { LiveMatch, MatchResult, TabId } from '@/types';
+import { LiveMatch, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {
   liveMatch: LiveMatch | null;
   nextMatch: LiveMatch | null;
-  userPickForNextMatch: MatchResult | undefined;
   teamFlagsByCode: Record<string, string>;
   onNavigate: (tab: TabId) => void;
 }
@@ -21,13 +20,6 @@ function formatKickoff(utcDate: string): string {
   const date = new Date(utcDate);
   if (Number.isNaN(date.getTime())) return '';
   return KICKOFF_FORMATTER.format(date);
-}
-
-function pickLabel(pick: MatchResult | undefined): string {
-  if (pick === 'home') return 'Home win';
-  if (pick === 'away') return 'Away win';
-  if (pick === 'draw') return 'Draw';
-  return 'No pick yet';
 }
 
 function TeamCell({
@@ -45,15 +37,15 @@ function TeamCell({
   const label = shortName || (code ? teamsByCode[code]?.name ?? code : name ?? '—');
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/20">
+    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/20">
         {flagUrl ? (
           <img src={flagUrl} alt={label} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-lg">{emojiFallback || '—'}</span>
+          <span className="text-2xl">{emojiFallback || '—'}</span>
         )}
       </div>
-      <span className="truncate text-sm font-black text-neutral-100">{label}</span>
+      <span className="truncate text-[15px] font-black text-neutral-100">{label}</span>
     </div>
   );
 }
@@ -61,7 +53,6 @@ function TeamCell({
 export default function NextMatchCard({
   liveMatch,
   nextMatch,
-  userPickForNextMatch,
   teamFlagsByCode,
   onNavigate,
 }: Props) {
@@ -76,21 +67,21 @@ export default function NextMatchCard({
   return (
     <button
       onClick={() => onNavigate('groups')}
-      className="w-full rounded-[22px] bg-white/[0.025] px-4 py-4 text-left transition-transform active:scale-[0.99]"
+      className="min-h-[104px] w-full rounded-[26px] bg-white/[0.025] px-5 py-5 text-left transition-transform active:scale-[0.99]"
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="font-body text-[10px] font-black uppercase tracking-[0.14em] text-neutral-500">
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <span className="font-body text-[11px] font-black uppercase tracking-[0.16em] text-neutral-500">
           {isLive ? 'Live now' : 'Up next'}
         </span>
         {isLive ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
-            <span className="font-body text-[9px] font-black uppercase tracking-[0.18em] text-wc-green">
+            <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+            <span className="font-body text-[10px] font-black uppercase tracking-[0.18em] text-wc-green">
               Live
             </span>
           </span>
         ) : (
-          <span className="font-body text-[10px] font-bold uppercase tracking-[0.1em] text-neutral-400">
+          <span className="font-body text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-400">
             {formatKickoff(match.utcDate)}
           </span>
         )}
@@ -105,42 +96,29 @@ export default function NextMatchCard({
         />
         <div className="shrink-0 text-center font-display tabular-nums">
           {isLive ? (
-            <span className="text-base font-black text-primary">
+            <span className="text-xl font-black text-primary">
               {(score?.home ?? 0)}–{(score?.away ?? 0)}
             </span>
           ) : (
-            <span className="font-body text-[10px] font-bold uppercase tracking-[0.12em] text-neutral-500">
+            <span className="font-body text-xs font-bold uppercase tracking-[0.12em] text-neutral-500">
               vs
             </span>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-          <span className="truncate text-right text-sm font-black text-neutral-100">
+        <div className="flex min-w-0 flex-[1.15] items-center justify-end gap-2.5">
+          <span className="truncate text-right text-[15px] font-black text-neutral-100">
             {match.awayShortName || (match.awayCode ? teamsByCode[match.awayCode]?.name ?? match.awayCode : match.awayName ?? '—')}
           </span>
-          <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-black/20">
+          <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/20">
             {awayFlag ? (
               <img src={awayFlag} alt={match.awayShortName ?? match.awayName ?? ''} className="h-full w-full object-cover" />
             ) : (
-              <span className="text-lg">
+              <span className="text-2xl">
                 {match.awayCode ? teamsByCode[match.awayCode]?.flag ?? '' : '—'}
               </span>
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-black/15 px-3 py-2">
-        <span className="font-body text-[10px] font-black uppercase tracking-[0.14em] text-neutral-500">
-          Your pick
-        </span>
-        <span
-          className={`text-xs font-black ${
-            userPickForNextMatch ? 'text-primary' : 'text-neutral-400'
-          }`}
-        >
-          {pickLabel(userPickForNextMatch)}
-        </span>
       </div>
     </button>
   );

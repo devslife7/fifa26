@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import FakeResultsSeeder from '@/components/admin/FakeResultsSeeder';
 
 interface AdminPrediction {
@@ -21,18 +21,22 @@ interface AdminPrediction {
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [authError, setAuthError] = useState('');
   const [predictions, setPredictions] = useState<AdminPrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const fetchPredictions = useCallback(async (adminSecret: string) => {
+  const fetchPredictions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/predictions', {
-        headers: { 'x-admin-secret': adminSecret },
-      });
+      const res = await fetch('/api/admin/predictions');
+      if (res.status === 403) {
+        setAuthenticated(false);
+        setPredictions([]);
+        return;
+      }
       if (!res.ok) throw new Error('Unauthorized');
       const data = await res.json();
       setPredictions(data.predictions ?? []);
@@ -43,22 +47,47 @@ export default function AdminPage() {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/admin/session');
+        const data = await res.json().catch(() => null);
+        if (!cancelled && data?.authenticated) {
+          setAuthenticated(true);
+          await fetchPredictions();
+        }
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    };
+
+    void checkSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchPredictions]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError('');
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/predictions', {
-        headers: { 'x-admin-secret': secret },
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret }),
       });
       if (!res.ok) {
         setAuthError('Invalid admin secret');
         setLoading(false);
         return;
       }
-      const data = await res.json();
-      setPredictions(data.predictions ?? []);
       setAuthenticated(true);
+      setSecret('');
+      await fetchPredictions();
     } catch {
       setAuthError('Failed to connect');
     } finally {
@@ -73,7 +102,6 @@ export default function AdminPage() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-secret': secret,
         },
         body: JSON.stringify({ is_approved: !currentlyApproved }),
       });
@@ -93,7 +121,6 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/predictions/${id}`, {
         method: 'DELETE',
-        headers: { 'x-admin-secret': secret },
       });
       if (res.ok) {
         setPredictions(prev => prev.filter(p => p.id !== id));
@@ -101,6 +128,14 @@ export default function AdminPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/admin/session', { method: 'DELETE' });
+    setAuthenticated(false);
+    setPredictions([]);
+    setSecret('');
+    setAuthError('');
   };
 
   const getName = (p: AdminPrediction) =>
@@ -118,6 +153,14 @@ export default function AdminPage() {
       minute: '2-digit',
     });
   };
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-background-dark flex items-center justify-center px-4">
+        <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 animate-trophy-glow" />
+      </div>
+    );
+  }
 
   // Password gate
   if (!authenticated) {
@@ -178,11 +221,18 @@ export default function AdminPage() {
                 <span className="text-neutral-400">{predictions.length}</span>
               </div>
               <button
-                onClick={() => fetchPredictions(secret)}
+                onClick={() => fetchPredictions()}
                 className="p-1.5 sm:p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white"
                 title="Refresh"
               >
                 <span className="material-symbols-outlined text-lg sm:text-xl">refresh</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-white/5 transition-colors text-neutral-400 hover:text-white"
+                title="Sign out"
+              >
+                <span className="material-symbols-outlined text-lg sm:text-xl">logout</span>
               </button>
             </div>
           </div>
@@ -195,7 +245,7 @@ export default function AdminPage() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <FakeResultsSeeder adminSecret={secret} />
+        <FakeResultsSeeder />
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -210,11 +260,12 @@ export default function AdminPage() {
           <>
             {/* Desktop table */}
             <div className="hidden md:block space-y-2">
-              <div className="grid grid-cols-[60px_1fr_1fr_120px_100px_100px_140px] gap-3 px-4 py-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              <div className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_90px_140px] gap-3 px-4 py-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
                 <div>#</div>
                 <div>Name</div>
                 <div>Email</div>
                 <div>Champion</div>
+                <div>Submitted</div>
                 <div>Status</div>
                 <div>Active</div>
                 <div>Actions</div>
@@ -223,7 +274,7 @@ export default function AdminPage() {
               {predictions.map(p => (
                 <div
                   key={p.id}
-                  className="grid grid-cols-[60px_1fr_1fr_120px_100px_100px_140px] gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 items-center"
+                  className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_90px_140px] gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 items-center"
                 >
                   <div className="text-neutral-400 font-mono">
                     {p.prediction_number ?? '—'}
@@ -236,6 +287,9 @@ export default function AdminPage() {
                   </div>
                   <div className="text-sm text-neutral-300">
                     {p.champion_code ?? '—'}
+                  </div>
+                  <div className="text-xs text-neutral-400">
+                    {formatDate(p.completed_at)}
                   </div>
                   <div>
                     {p.is_approved ? (
@@ -343,7 +397,10 @@ export default function AdminPage() {
                       </span>
                     )}
                     {p.completed_at && (
-                      <span>{formatDate(p.completed_at)}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        Submitted {formatDate(p.completed_at)}
+                      </span>
                     )}
                   </div>
 

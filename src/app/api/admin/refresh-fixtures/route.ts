@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server';
 import { fetchLiveMatches } from '@/lib/services/football-api';
 import { upsertFixturesToDb } from '@/lib/services/fixtures-db';
 import { createServiceClient } from '@/lib/services/supabase/server';
+import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
 
 export async function POST(request: Request) {
-  if (request.headers.get('x-admin-secret') !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const force = new URL(request.url).searchParams.get('force') === 'true';
   const cooldownHours = parseInt(process.env.REFRESH_COOLDOWN_HOURS ?? '1', 10);

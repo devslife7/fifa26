@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LiveMatch, MatchResult, TabId } from '@/types';
+import { LiveMatch, TabId } from '@/types';
 import { PredictionFlowState } from '@/lib/logic/prediction-flow';
 import { teamsByCode } from '@/data/teams';
 import NextMatchCard from '@/components/home/NextMatchCard';
@@ -12,7 +12,6 @@ interface HomeViewProps {
   teamFlagsByCode: Record<string, string>;
   liveMatch: LiveMatch | null;
   nextMatch: LiveMatch | null;
-  userPickForNextMatch: MatchResult | undefined;
   hasSubmittedBefore: boolean;
   onNavigate: (tab: TabId) => void;
   onStartAgain: () => void;
@@ -486,7 +485,6 @@ export default function HomeView({
   teamFlagsByCode,
   liveMatch,
   nextMatch,
-  userPickForNextMatch,
   hasSubmittedBefore,
   onNavigate,
   onStartAgain,
@@ -499,7 +497,6 @@ export default function HomeView({
   }, []);
 
   const action = getHomeAction(flowState, hasSubmittedBefore);
-  const showSubmittedActions = hasSubmittedBefore && !!flowState.championCode;
 
   return (
     <div className="flex flex-col gap-3 pt-0 pb-8 md:grid md:grid-cols-2 md:items-start md:gap-6">
@@ -512,7 +509,7 @@ export default function HomeView({
         />
         <div className="flex flex-col gap-2">
           <PrimaryAction action={action} onNavigate={onNavigate} />
-          {showSubmittedActions && <StartAgainAction onStartAgain={onStartAgain} />}
+          <StartAgainAction onStartAgain={onStartAgain} />
         </div>
       </div>
 
@@ -520,7 +517,6 @@ export default function HomeView({
         <NextMatchCard
           liveMatch={liveMatch}
           nextMatch={nextMatch}
-          userPickForNextMatch={userPickForNextMatch}
           teamFlagsByCode={teamFlagsByCode}
           onNavigate={onNavigate}
         />

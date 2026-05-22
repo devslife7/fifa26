@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { recalculateScores } from '@/lib/services/recalculate-scores';
+import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
 
 export async function POST(request: Request) {
-  const adminSecret = request.headers.get('x-admin-secret');
-  if (adminSecret !== process.env.ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  if (!(await isAdminRequest(request))) return forbiddenResponse();
 
   const result = await recalculateScores();
   if (!result.ok) {

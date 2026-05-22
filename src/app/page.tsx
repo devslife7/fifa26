@@ -552,7 +552,7 @@ export default function Home() {
     });
   }, [orderedGroupMatches]);
 
-  const { liveMatch, nextMatch, userPickForNextMatch } = useMemo(() => {
+  const { liveMatch, nextMatch } = useMemo(() => {
     const entries = Object.values(liveMatchesByLocalId ?? {});
     const live = entries
       .filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED')
@@ -560,10 +560,8 @@ export default function Home() {
     const upcoming = entries
       .filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED')
       .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
-    const pickTarget = upcoming?.localMatchId;
-    const pick = pickTarget ? groupPredictions[pickTarget] : undefined;
-    return { liveMatch: live, nextMatch: upcoming, userPickForNextMatch: pick };
-  }, [liveMatchesByLocalId, groupPredictions]);
+    return { liveMatch: live, nextMatch: upcoming };
+  }, [liveMatchesByLocalId]);
 
   if (!mounted) {
     return (
@@ -606,7 +604,6 @@ export default function Home() {
             teamFlagsByCode={teamFlagsByCode ?? {}}
             liveMatch={liveMatch}
             nextMatch={nextMatch}
-            userPickForNextMatch={userPickForNextMatch}
             hasSubmittedBefore={hasSubmittedBefore}
             onNavigate={navigateTo}
             onStartAgain={handleNewPrediction}

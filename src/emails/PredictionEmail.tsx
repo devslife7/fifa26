@@ -11,6 +11,7 @@ export interface PredictionEmailProps {
   daysUntilKickoff: number;
   pdfFilename?: string;
   issuedAt?: Date | string;
+  logoUrl?: string;
 }
 
 function formatIssuedDate(value?: Date | string): string {
@@ -18,7 +19,7 @@ function formatIssuedDate(value?: Date | string): string {
   return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format(d);
 }
 
-const LOGO_URL = 'https://fifacup26.vercel.app/images/email-logo-mark.png';
+const DEFAULT_LOGO_URL = 'https://fifacup26.vercel.app/images/email-logo-mark.png';
 
 export function PredictionEmail({
   name,
@@ -27,6 +28,7 @@ export function PredictionEmail({
   daysUntilKickoff,
   pdfFilename,
   issuedAt,
+  logoUrl = DEFAULT_LOGO_URL,
 }: PredictionEmailProps) {
   const previewText = predictionNumber
     ? `Prediction #${predictionNumber} confirmed · full bracket attached`
@@ -76,7 +78,7 @@ export function PredictionEmail({
                               <tr>
                                 <td align="center" style={{ padding: '48px 32px 44px' }}>
                                   <Img
-                                    src={LOGO_URL}
+                                    src={logoUrl}
                                     alt="FIFA 26"
                                     width="128"
                                     height="128"

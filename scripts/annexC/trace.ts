@@ -4,28 +4,22 @@
 
 import { generateBracket } from '../../src/lib/logic/bracket';
 import { allGroupMatches } from '../../src/data/matches';
-import type { GroupLetter, GroupTiebreakers, MatchResult } from '../../src/types';
+import { getThirdPlaceRanking } from '../../src/lib/logic/standings';
+import type { MatchResult } from '../../src/types';
 
 // All home wins. With this schedule, every group's 3rd-placed team finishes on 3
 // points, which means all 12 thirds tie at the 8/9 boundary — the app would
-// surface the tiebreaker UI. Here we supply an explicit tiebreaker so the
+// surface the third-place cutoff UI. Here we supply explicit picks so the
 // fixture has a fully resolved bracket.
 const groupPredictions: Record<string, MatchResult> = {};
 for (const m of allGroupMatches) {
   groupPredictions[m.id] = 'home';
 }
 
-import { getGroupTieBands, getThirdPlaceRanking } from '../../src/lib/logic/standings';
-const groupTiebreakers: GroupTiebreakers = {};
-for (const group of 'ABCDEFGHIJKL'.split('') as GroupLetter[]) {
-  for (const band of getGroupTieBands(group, groupPredictions)) {
-    groupTiebreakers[band.key] = band.teams;
-  }
-}
-const ranking = getThirdPlaceRanking(groupPredictions, groupTiebreakers);
+const ranking = getThirdPlaceRanking(groupPredictions);
 const tiebreaker = ranking.slice(0, 8).map(e => e.team);
 
-const bracket = generateBracket(groupPredictions, {}, tiebreaker, groupTiebreakers);
+const bracket = generateBracket(groupPredictions, {}, tiebreaker);
 
 console.log('Round | ID    | Position | Home | Away');
 console.log('------+-------+----------+------+------');

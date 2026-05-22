@@ -1,20 +1,19 @@
 'use client';
 
-import { GroupTiebreakers, MatchResult } from '@/types';
+import { MatchResult } from '@/types';
 import { getThirdPlaceRanking, detectThirdPlaceTie } from '@/lib/logic/standings';
 import { teamsByCode } from '@/data/teams';
 
 interface Props {
   predictions: Record<string, MatchResult>;
-  groupTiebreakers?: GroupTiebreakers;
   tiebreakerPicks: string[];
   onTiebreakerChange: (picks: string[]) => void;
   teamFlagsByCode?: Record<string, string>;
 }
 
-export default function ThirdPlaceTable({ predictions, groupTiebreakers = {}, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
-  const ranking = getThirdPlaceRanking(predictions, groupTiebreakers);
-  const tieInfo = detectThirdPlaceTie(predictions, groupTiebreakers);
+export default function ThirdPlaceTable({ predictions, tiebreakerPicks, onTiebreakerChange, teamFlagsByCode }: Props) {
+  const ranking = getThirdPlaceRanking(predictions);
+  const tieInfo = detectThirdPlaceTie(predictions);
   const hasTie = tieInfo.slotsToFill > 0;
   const selectableTeams = hasTie ? tieInfo.tied : [];
   const selectableTeamCodes = new Set(selectableTeams.map(entry => entry.team));
@@ -37,13 +36,18 @@ export default function ThirdPlaceTable({ predictions, groupTiebreakers = {}, ti
       <div className="mb-5">
         <div>
           <h2 className="text-[26px] font-black leading-tight text-white tracking-tight">
-            {hasTie ? `Pick ${tieInfo.slotsToFill} Third-Place Teams` : 'Third-Place Qualifiers'}
+            {hasTie ? 'Resolve Third-Place Cutoff' : 'Third-Place Qualifiers'}
           </h2>
           <p className="text-neutral-500 text-sm mt-1">
             {hasTie
-              ? `${tieInfo.tied.length} teams are tied on ${tieInfo.tied[0]?.standing.points} points. Your picks fill the remaining Round of 32 spots.`
+              ? 'These teams are tied on points for the final Round of 32 spots. Pick who advances.'
               : 'Top 8 of 12 third-place teams advance to the Round of 32.'}
           </p>
+          {!hasTie && ranking.length === 12 && (
+            <p className="text-neutral-600 text-xs mt-2 leading-snug">
+              Group ties are resolved automatically using FIFA ranking for a faster prediction flow.
+            </p>
+          )}
         </div>
       </div>
 

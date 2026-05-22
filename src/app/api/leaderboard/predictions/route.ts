@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('prediction_number, name, group_matches, knockout_matches, group_tiebreakers, third_place_tiebreaker, champion_code, completed_at, created_at, updated_at, is_approved, profiles!left(display_name)')
+    .select('prediction_number, name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, created_at, updated_at, is_approved, profiles!left(display_name)')
     .eq('is_complete', true)
     .order('completed_at', { ascending: true });
 
@@ -24,7 +24,6 @@ export async function GET() {
       champion_code: row.champion_code,
       group_matches: row.group_matches ?? {},
       knockout_matches: row.knockout_matches ?? {},
-      group_tiebreakers: row.group_tiebreakers ?? {},
       third_place_tiebreaker: row.third_place_tiebreaker ?? null,
       is_approved: row.is_approved ?? false,
       created_at: row.created_at ?? null,

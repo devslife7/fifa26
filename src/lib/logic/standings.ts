@@ -1,11 +1,10 @@
-import { GroupLetter, GroupStanding, GroupTiebreakers, MatchResult } from '@/types';
+import { GroupLetter, GroupStanding, MatchResult } from '@/types';
 import { getGroupTeams } from '@/data/teams';
 import { getGroupMatches } from '@/data/matches';
 
 export function calculateGroupStandings(
   group: GroupLetter,
   predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
 ): GroupStanding[] {
   const groupTeams = getGroupTeams(group);
   const matches = getGroupMatches(group);
@@ -52,26 +51,18 @@ export function calculateGroupStandings(
 
   return Object.values(standings).sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
-    const tiedTeams = Object.values(standings)
-      .filter(s => s.points === a.points)
-      .map(s => s.team);
-    const key = getGroupTieKey(group, a.points);
-    const order = groupTiebreakers[key];
-    if (isValidTieOrder(tiedTeams, order)) {
-      return order.indexOf(a.team) - order.indexOf(b.team);
-    }
+    if (a.fifaRanking !== b.fifaRanking) return a.fifaRanking - b.fifaRanking;
     return (groupOrder.get(a.team) ?? 0) - (groupOrder.get(b.team) ?? 0);
   });
 }
 
 export function getAllGroupStandings(
   predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
 ): Record<GroupLetter, GroupStanding[]> {
   const groups: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
   const result: Record<string, GroupStanding[]> = {};
   groups.forEach(g => {
-    result[g] = calculateGroupStandings(g, predictions, groupTiebreakers);
+    result[g] = calculateGroupStandings(g, predictions);
   });
   return result as Record<GroupLetter, GroupStanding[]>;
 }
@@ -89,93 +80,16 @@ export function areAllGroupsComplete(predictions: Record<string, MatchResult>): 
   return groups.every(g => isGroupComplete(g, predictions));
 }
 
-export interface GroupTieBand {
-  key: string;
-  group: GroupLetter;
-  points: number;
-  teams: string[];
-}
-
-export function getGroupTieKey(group: GroupLetter, points: number): string {
-  return `${group}:${points}`;
-}
-
-export function isValidTieOrder(teams: string[], order?: string[]): order is string[] {
-  if (!order || order.length !== teams.length) return false;
-  const expected = new Set(teams);
-  if (expected.size !== teams.length) return false;
-  return order.every(team => expected.has(team)) && new Set(order).size === expected.size;
-}
-
-export function getGroupTieBands(
-  group: GroupLetter,
-  predictions: Record<string, MatchResult>
-): GroupTieBand[] {
-  if (!isGroupComplete(group, predictions)) return [];
-
-  const standings = calculateGroupStandings(group, predictions);
-  const byPoints = new Map<number, string[]>();
-  standings.forEach(standing => {
-    const teams = byPoints.get(standing.points) ?? [];
-    teams.push(standing.team);
-    byPoints.set(standing.points, teams);
-  });
-
-  return Array.from(byPoints.entries())
-    .filter(([, teams]) => teams.length > 1)
-    .sort(([a], [b]) => b - a)
-    .map(([points, teams]) => ({
-      key: getGroupTieKey(group, points),
-      group,
-      points,
-      teams,
-    }));
-}
-
-export function getUnresolvedGroupTieBands(
-  group: GroupLetter,
-  predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
-): GroupTieBand[] {
-  return getGroupTieBands(group, predictions).filter(
-    band => !isValidTieOrder(band.teams, groupTiebreakers[band.key])
-  );
-}
-
-export function getAllUnresolvedGroupTieBands(
-  predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
-): GroupTieBand[] {
-  const groups: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-  return groups.flatMap(group => getUnresolvedGroupTieBands(group, predictions, groupTiebreakers));
-}
-
-export function areCompletedGroupTiesResolved(
-  predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
-): boolean {
-  return getAllUnresolvedGroupTieBands(predictions, groupTiebreakers).length === 0;
-}
-
-export function areAllGroupsFinalized(
-  predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
-): boolean {
-  return areAllGroupsComplete(predictions) && areCompletedGroupTiesResolved(predictions, groupTiebreakers);
-}
-
 // Get all 3rd-place teams ranked
 export function getThirdPlaceRanking(
   predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
 ): { team: string; group: GroupLetter; standing: GroupStanding }[] {
   const groups: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
   const thirdPlaced: { team: string; group: GroupLetter; standing: GroupStanding }[] = [];
 
   groups.forEach(g => {
     if (!isGroupComplete(g, predictions)) return;
-    if (getUnresolvedGroupTieBands(g, predictions, groupTiebreakers).length > 0) return;
-    const standings = calculateGroupStandings(g, predictions, groupTiebreakers);
+    const standings = calculateGroupStandings(g, predictions);
     if (standings.length >= 3) {
       thirdPlaced.push({ team: standings[2].team, group: g, standing: standings[2] });
     }
@@ -201,9 +115,8 @@ export interface ThirdPlaceTieInfo {
 
 export function detectThirdPlaceTie(
   predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
 ): ThirdPlaceTieInfo {
-  const ranking = getThirdPlaceRanking(predictions, groupTiebreakers);
+  const ranking = getThirdPlaceRanking(predictions);
 
   if (ranking.length < 9) {
     return { lockedIn: ranking.slice(0, 8), eliminated: [], tied: [], slotsToFill: 0 };
@@ -243,9 +156,8 @@ export function detectThirdPlaceTie(
 export function areThirdPlaceTiesResolved(
   predictions: Record<string, MatchResult>,
   tiebreakerPicks?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): boolean {
-  const { slotsToFill, tied } = detectThirdPlaceTie(predictions, groupTiebreakers);
+  const { slotsToFill, tied } = detectThirdPlaceTie(predictions);
   if (slotsToFill === 0) return true;
   if (!tiebreakerPicks || tiebreakerPicks.length !== slotsToFill) return false;
   const tiedTeams = new Set(tied.map(entry => entry.team));
@@ -256,9 +168,8 @@ export function areThirdPlaceTiesResolved(
 export function getBestThirdPlaceTeams(
   predictions: Record<string, MatchResult>,
   tiebreakerPicks?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): { team: string; group: GroupLetter }[] {
-  const { lockedIn, tied, slotsToFill } = detectThirdPlaceTie(predictions, groupTiebreakers);
+  const { lockedIn, tied, slotsToFill } = detectThirdPlaceTie(predictions);
 
   if (slotsToFill === 0) {
     return lockedIn.slice(0, 8).map(e => ({ team: e.team, group: e.group }));
@@ -282,7 +193,6 @@ export function getBestThirdPlaceTeams(
 // Get group winners and runners-up
 export function getGroupQualifiers(
   predictions: Record<string, MatchResult>,
-  groupTiebreakers: GroupTiebreakers = {}
 ): { winners: Record<GroupLetter, string>; runnersUp: Record<GroupLetter, string> } {
   const groups: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
   const winners: Record<string, string> = {};
@@ -290,8 +200,7 @@ export function getGroupQualifiers(
 
   groups.forEach(g => {
     if (!isGroupComplete(g, predictions)) return;
-    if (getUnresolvedGroupTieBands(g, predictions, groupTiebreakers).length > 0) return;
-    const standings = calculateGroupStandings(g, predictions, groupTiebreakers);
+    const standings = calculateGroupStandings(g, predictions);
     if (standings.length >= 2) {
       winners[g] = standings[0].team;
       runnersUp[g] = standings[1].team;

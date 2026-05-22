@@ -1,5 +1,5 @@
-import { TabId, MatchResult, KnockoutResult, GroupTiebreakers } from '@/types';
-import { areCompletedGroupTiesResolved, areThirdPlaceTiesResolved, detectThirdPlaceTie } from '@/lib/logic/standings';
+import { TabId, MatchResult, KnockoutResult } from '@/types';
+import { areThirdPlaceTiesResolved, detectThirdPlaceTie, areAllGroupsComplete } from '@/lib/logic/standings';
 import { getChampion } from '@/lib/logic/bracket';
 
 export const GROUP_TOTAL = 72;
@@ -9,7 +9,6 @@ export interface PredictionFlowState {
   groupCount: number;
   knockoutCount: number;
   groupMatchesComplete: boolean;
-  groupTiesComplete: boolean;
   groupsComplete: boolean;
   thirdPlaceRequired: boolean;
   thirdPlaceComplete: boolean;
@@ -29,9 +28,8 @@ export function createPredictionSnapshot(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): string {
-  return JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker ?? []) + JSON.stringify(groupTiebreakers);
+  return JSON.stringify(groupPredictions) + JSON.stringify(knockoutPredictions) + JSON.stringify(thirdPlaceTiebreaker ?? []);
 }
 
 export function getSubmittedForSnapshot(snapshot: string): boolean {
@@ -55,20 +53,18 @@ export function getPredictionFlowState(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker: string[] = [],
-  groupTiebreakers: GroupTiebreakers = {}
 ): PredictionFlowState {
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const groupMatchesComplete = groupCount >= GROUP_TOTAL;
-  const groupTiesComplete = areCompletedGroupTiesResolved(groupPredictions, groupTiebreakers);
-  const groupsComplete = groupMatchesComplete && groupTiesComplete;
-  const tieInfo = groupsComplete ? detectThirdPlaceTie(groupPredictions, groupTiebreakers) : null;
+  const groupsComplete = groupMatchesComplete && areAllGroupsComplete(groupPredictions);
+  const tieInfo = groupsComplete ? detectThirdPlaceTie(groupPredictions) : null;
   const thirdPlaceSlotsToFill = tieInfo?.slotsToFill ?? 0;
   const thirdPlaceRequired = thirdPlaceSlotsToFill > 0;
   const thirdPlacePickCount = thirdPlaceTiebreaker.length;
-  const thirdPlaceComplete = !thirdPlaceRequired || areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const thirdPlaceComplete = !thirdPlaceRequired || areThirdPlaceTiesResolved(groupPredictions, thirdPlaceTiebreaker);
   const bracketComplete = knockoutCount >= BRACKET_TOTAL;
-  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers) ?? null;
+  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker) ?? null;
   const hasChampion = !!championCode;
   const submitAvailable = hasChampion && groupsComplete && thirdPlaceComplete;
 
@@ -87,7 +83,6 @@ export function getPredictionFlowState(
     groupCount,
     knockoutCount,
     groupMatchesComplete,
-    groupTiesComplete,
     groupsComplete,
     thirdPlaceRequired,
     thirdPlaceComplete,

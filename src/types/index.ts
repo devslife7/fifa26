@@ -10,6 +10,7 @@ export interface Team {
 
 export type MatchResult = 'home' | 'draw' | 'away';
 export type KnockoutResult = 'home' | 'away';
+/** @deprecated Group-stage ties are now resolved automatically by FIFA ranking. */
 export type GroupTiebreakers = Record<string, string[]>;
 
 export interface GroupMatch {
@@ -54,7 +55,6 @@ export interface GroupStanding {
 export interface Predictions {
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
-  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];  // team codes chosen by user to advance from tie zone
   userName?: string;
   userEmail?: string;

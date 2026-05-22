@@ -1,4 +1,4 @@
-import type { GroupTiebreakers, KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
+import type { KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
 import { generateBracket, getMatchWinner } from './bracket';
 
 interface ActualResult {
@@ -13,7 +13,6 @@ interface PredictionRow {
   group_matches: Record<string, string>;
   knockout_matches: Record<string, string>;
   champion_code: string | null;
-  group_tiebreakers?: GroupTiebreakers | null;
   third_place_tiebreaker: string[] | null;
 }
 
@@ -91,7 +90,6 @@ export function getPredictedQualifiers(prediction: PredictionRow): Qualifiers {
     prediction.group_matches as Record<string, MatchResult>,
     prediction.knockout_matches as Record<string, KnockoutResult>,
     prediction.third_place_tiebreaker ?? undefined,
-    prediction.group_tiebreakers ?? {},
   );
   return qualifiersFromBracket(bracket, prediction.champion_code);
 }
@@ -99,7 +97,6 @@ export function getPredictedQualifiers(prediction: PredictionRow): Qualifiers {
 export function getActualQualifiers(
   actualResults: ActualResult[],
   tiebreakerFallback?: string[] | null,
-  groupTiebreakerFallback?: GroupTiebreakers | null,
 ): Qualifiers {
   const groupMatches: Record<string, MatchResult> = {};
   const knockoutMatches: Record<string, KnockoutResult> = {};
@@ -118,7 +115,7 @@ export function getActualQualifiers(
     }
   }
 
-  const bracket = generateBracket(groupMatches, knockoutMatches, tiebreakerFallback ?? undefined, groupTiebreakerFallback ?? {});
+  const bracket = generateBracket(groupMatches, knockoutMatches, tiebreakerFallback ?? undefined);
   return qualifiersFromBracket(bracket, actualChampion);
 }
 
@@ -143,7 +140,7 @@ export function calculateScore(
 
   // Knockout — qualifier-based.
   const predicted = getPredictedQualifiers(prediction);
-  const actual = getActualQualifiers(actualResults, prediction.third_place_tiebreaker, prediction.group_tiebreakers);
+  const actual = getActualQualifiers(actualResults, prediction.third_place_tiebreaker);
 
   points += intersectionSize(predicted.R32, actual.R32) * QUALIFIER_POINTS.R32;
   points += intersectionSize(predicted.R16, actual.R16) * QUALIFIER_POINTS.R16;

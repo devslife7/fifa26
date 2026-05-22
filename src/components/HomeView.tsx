@@ -8,6 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import AuthModal from '@/components/auth/AuthModal';
 import NextMatchCard from '@/components/home/NextMatchCard';
 import SocialLoopCard from '@/components/home/SocialLoopCard';
+import { TOURNAMENT_KICKOFF } from '@/data/tournament';
 
 interface HomeViewProps {
   flowState: PredictionFlowState;
@@ -37,11 +38,9 @@ type HomeAction = {
   target: TabId;
 };
 
-const TOURNAMENT_START = new Date('2026-06-11T00:00:00Z');
-
 function getTimeRemaining(): TimeRemaining | null {
   const now = Date.now();
-  const diff = TOURNAMENT_START.getTime() - now;
+  const diff = TOURNAMENT_KICKOFF.getTime() - now;
   if (diff <= 0) return null;
   return {
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),

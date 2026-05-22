@@ -15,7 +15,7 @@ export async function recalculateScores(): Promise<RecalculateResult> {
 
   const { data: predictions, error: predError } = await supabase
     .from('predictions')
-    .select('user_id, group_matches, knockout_matches, champion_code, group_tiebreakers, third_place_tiebreaker, profiles(display_name)')
+    .select('user_id, group_matches, knockout_matches, champion_code, third_place_tiebreaker, profiles(display_name)')
     .eq('is_complete', true)
     .eq('is_active', true);
   if (predError) return { ok: false, error: predError.message };
@@ -31,7 +31,6 @@ export async function recalculateScores(): Promise<RecalculateResult> {
         group_matches: pred.group_matches as Record<string, string>,
         knockout_matches: pred.knockout_matches as Record<string, string>,
         champion_code: pred.champion_code,
-        group_tiebreakers: (pred.group_tiebreakers as Record<string, string[]> | null) ?? null,
         third_place_tiebreaker: (pred.third_place_tiebreaker as string[] | null) ?? null,
       },
       actualResults ?? [],

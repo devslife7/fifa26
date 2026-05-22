@@ -42,7 +42,6 @@ export async function POST(request: Request) {
     name,
     groupMatches,
     knockoutMatches,
-    groupTiebreakers,
     thirdPlaceTiebreaker,
     championCode,
     isComplete,
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
         submitter_email: submitterEmail,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},
-        group_tiebreakers: groupTiebreakers ?? {},
+        group_tiebreakers: {},
         third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
         champion_code: championCode,
         is_complete: isComplete ?? false,
@@ -95,7 +94,6 @@ export async function POST(request: Request) {
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
-        groupTiebreakers: groupTiebreakers ?? {},
         thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
       });
     }
@@ -135,7 +133,7 @@ export async function POST(request: Request) {
       .update({
         group_matches: groupMatches,
         knockout_matches: knockoutMatches,
-        group_tiebreakers: groupTiebreakers ?? {},
+        group_tiebreakers: {},
         third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
         champion_code: championCode,
         is_complete: isComplete ?? false,
@@ -168,7 +166,6 @@ export async function POST(request: Request) {
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
-        groupTiebreakers: groupTiebreakers ?? {},
         thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
       });
     }
@@ -201,7 +198,7 @@ export async function POST(request: Request) {
         name,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},
-        group_tiebreakers: groupTiebreakers ?? {},
+        group_tiebreakers: {},
         third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
         champion_code: championCode,
         is_complete: isComplete ?? false,
@@ -225,7 +222,6 @@ export async function POST(request: Request) {
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
-        groupTiebreakers: groupTiebreakers ?? {},
         thirdPlaceTiebreaker: thirdPlaceTiebreaker ?? null,
       });
     }

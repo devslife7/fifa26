@@ -122,7 +122,6 @@ export default function PredictionsList({
             champion_code: viewingPrediction.champion_code ?? null,
             group_matches: viewingPrediction.group_matches ?? {},
             knockout_matches: viewingPrediction.knockout_matches ?? {},
-            group_tiebreakers: viewingPrediction.group_tiebreakers ?? {},
             third_place_tiebreaker: viewingPrediction.third_place_tiebreaker,
           }}
           onClose={() => setViewingPrediction(null)}

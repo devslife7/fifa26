@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LiveMatch, SavedPrediction, TabId } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
-
-const TOURNAMENT_START = new Date('2026-06-11T00:00:00Z');
+import { TOURNAMENT_KICKOFF } from '@/data/tournament';
 
 interface TimeRemaining {
   days: number;
@@ -33,11 +32,11 @@ const DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 });
 
-function CountTile({ value, label }: { value: number; label: string }) {
+function CountTile({ value, label }: { value: number | null; label: string }) {
   return (
-    <div className="flex flex-col items-center min-w-0">
-      <span className="font-display text-[34px] font-black leading-none tabular-nums text-primary drop-shadow-[0_2px_12px_rgba(249,212,6,0.22)]">
-        {String(value).padStart(2, '0')}
+    <div className="flex min-w-0 flex-col items-center">
+      <span className="font-display text-[36px] font-black leading-none tabular-nums text-primary drop-shadow-[0_2px_14px_rgba(249,212,6,0.24)]">
+        {value === null ? '--' : String(value).padStart(2, '0')}
       </span>
       <span className="mt-1.5 font-body text-[8px] font-black uppercase tracking-[0.22em] text-neutral-500">
         {label}
@@ -77,7 +76,7 @@ export default function PredictionLockedView({
   onOpenBreakdown,
   onNavigate,
 }: Props) {
-  // Find the earliest scheduled match. Fall back to TOURNAMENT_START.
+  // Find the earliest scheduled match. Fall back to the official kickoff.
   const firstMatch = useMemo<LiveMatch | null>(() => {
     const entries = Object.values(liveMatches);
     const scheduled = entries
@@ -91,13 +90,18 @@ export default function PredictionLockedView({
       const t = new Date(firstMatch.utcDate).getTime();
       if (!Number.isNaN(t)) return t;
     }
-    return TOURNAMENT_START.getTime();
+    return TOURNAMENT_KICKOFF.getTime();
   }, [firstMatch?.utcDate]);
 
-  const [timeLeft, setTimeLeft] = useState<TimeRemaining | null>(() => diffToParts(targetMs));
+  const [timeLeft, setTimeLeft] = useState<TimeRemaining | null>(null);
+  const [clockReady, setClockReady] = useState(false);
   useEffect(() => {
-    setTimeLeft(diffToParts(targetMs));
-    const id = window.setInterval(() => setTimeLeft(diffToParts(targetMs)), 1000);
+    const updateClock = () => {
+      setTimeLeft(diffToParts(targetMs));
+      setClockReady(true);
+    };
+    updateClock();
+    const id = window.setInterval(updateClock, 1000);
     return () => window.clearInterval(id);
   }, [targetMs]);
 
@@ -119,31 +123,35 @@ export default function PredictionLockedView({
   const firstMatchPickedTeam =
     firstMatchPickedTeamCode && firstMatchPickedTeamCode !== 'DRAW' ? teamsByCode[firstMatchPickedTeamCode] : null;
 
-  const startedAlready = !timeLeft;
+  const startedAlready = clockReady && !timeLeft;
 
   return (
-    <div className="pt-2 pb-12 px-4 space-y-4">
-      {/* Hero: lock confirmation + countdown */}
-      <section className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-b from-primary/10 via-neutral-900 to-neutral-900">
+    <div className="px-4 pb-12 pt-2">
+      <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(160deg,rgba(245,197,66,0.14)_0%,rgba(15,23,42,0.96)_28%,rgba(5,7,13,0.98)_100%)] shadow-[0_24px_80px_rgba(0,0,0,0.38)]">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent"
+          className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-[radial-gradient(ellipse_at_50%_0%,rgba(249,212,6,0.22),transparent_70%)]"
+          className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl"
         />
-        <div className="relative px-4 pt-4 pb-3">
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="material-symbols-outlined text-primary text-[16px] font-variation-fill">lock</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Prediction locked in</span>
-          </div>
-          <div className="flex items-end justify-between gap-3">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-0 left-0 h-40 w-40 rounded-full bg-accent/5 blur-3xl"
+        />
+
+        <div className="relative px-5 pb-5 pt-5">
+          <div className="mb-5 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-lg font-black text-white truncate">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px] font-variation-fill">lock</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Prediction locked in</span>
+              </div>
+              <h2 className="truncate text-3xl font-black leading-none text-white">
                 {active.name || `Prediction #${active.prediction_number ?? ''}`}
               </h2>
-              <p className="text-[11px] font-semibold text-neutral-400 font-body">
+              <p className="mt-2 max-w-[230px] font-body text-[12px] font-semibold leading-snug text-neutral-400">
                 {startedAlready
                   ? 'Matches are about to kick off'
                   : firstMatch?.localMatchId
@@ -152,155 +160,160 @@ export default function PredictionLockedView({
               </p>
             </div>
             {active.is_approved ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-wc-green/10 border border-wc-green/30">
-                <span className="material-symbols-outlined text-wc-green text-[12px] font-variation-fill">check_circle</span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-wc-green/30 bg-wc-green/10 px-3 py-1.5">
+                <span className="material-symbols-outlined text-wc-green text-[14px] font-variation-fill">check_circle</span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-wc-green">Approved</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-wc-amber/10 border border-wc-amber/30">
-                <span className="material-symbols-outlined text-wc-amber text-[12px]">schedule</span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-wc-amber/30 bg-wc-amber/10 px-3 py-1.5">
+                <span className="material-symbols-outlined text-wc-amber text-[14px]">schedule</span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-wc-amber">Pending review</span>
               </span>
             )}
           </div>
-        </div>
 
-        {/* Countdown */}
-        {timeLeft ? (
-          <div className="relative grid grid-cols-4 gap-1 px-4 pb-4">
-            <CountTile value={timeLeft.days} label="days" />
-            <CountTile value={timeLeft.hours} label="hrs" />
-            <CountTile value={timeLeft.minutes} label="min" />
-            <CountTile value={timeLeft.seconds} label="sec" />
-          </div>
-        ) : (
-          <div className="px-4 pb-4 flex items-center justify-center gap-2 text-wc-green">
-            <span className="size-2 rounded-full bg-wc-green animate-pulse" />
-            <span className="font-body text-sm font-black uppercase tracking-wider">Kick-off imminent</span>
-          </div>
-        )}
-      </section>
-
-      {/* Champion */}
-      <section className="rounded-2xl border border-white/10 bg-neutral-900/80 overflow-hidden">
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-cup-gold text-[16px] font-variation-fill">emoji_events</span>
-            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-400">Your champion</span>
-          </div>
-          {championAdoptionCount > 1 && (
-            <span className="text-[10px] font-bold text-neutral-500 font-body">
-              {championAdoptionCount - 1} other{championAdoptionCount - 1 === 1 ? '' : 's'} agree
-            </span>
+          {timeLeft || !clockReady ? (
+            <div className="grid grid-cols-4 divide-x divide-white/10 rounded-[20px] border border-white/10 bg-black/18 py-4 backdrop-blur">
+              <CountTile value={timeLeft?.days ?? null} label="days" />
+              <CountTile value={timeLeft?.hours ?? null} label="hrs" />
+              <CountTile value={timeLeft?.minutes ?? null} label="min" />
+              <CountTile value={timeLeft?.seconds ?? null} label="sec" />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-[20px] border border-wc-green/20 bg-wc-green/10 px-4 py-4 text-wc-green">
+              <span className="size-2 rounded-full bg-wc-green animate-pulse" />
+              <span className="font-body text-sm font-black uppercase tracking-wider">Kick-off imminent</span>
+            </div>
           )}
         </div>
-        {championCode && championTeam ? (
-          <div className="px-4 pb-4 flex items-center gap-3">
-            <FlagChip code={championCode} flagUrl={championFlag} size="lg" />
+
+        <div className="relative border-t border-white/10 px-5 py-5">
+          <div className="absolute bottom-0 left-7 top-0 w-px bg-gradient-to-b from-primary/50 via-white/10 to-white/0" aria-hidden />
+          <div className="relative flex gap-4">
+            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10">
+              <span className="material-symbols-outlined text-cup-gold text-[19px] font-variation-fill">emoji_events</span>
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xl font-black text-white truncate">{championTeam.name}</div>
-              <div className="text-[11px] font-semibold text-neutral-500 font-body">FIFA #{championTeam.fifaRanking} · Group {championTeam.group}</div>
-            </div>
-            <button
-              onClick={onOpenBreakdown}
-              className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-            >
-              See full path
-              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => onNavigate('bracket')}
-            className="w-full px-4 pb-4 flex items-center justify-between gap-2 text-left"
-          >
-            <span className="text-sm font-semibold text-neutral-300">Pick your champion to seal the prediction</span>
-            <span className="material-symbols-outlined text-[16px] text-primary">arrow_forward</span>
-          </button>
-        )}
-      </section>
-
-      {/* First match preview */}
-      {firstGroupMatch && firstMatch && (
-        <section className="rounded-2xl border border-white/10 bg-neutral-900/80 overflow-hidden">
-          <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-primary text-[16px]">sports_soccer</span>
-              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-400">First match</span>
-            </div>
-            <span className="text-[10px] font-bold text-neutral-500 font-body tabular-nums">
-              {DATE_FORMATTER.format(new Date(firstMatch.utcDate))}
-            </span>
-          </div>
-          <div className="px-4 pb-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <FlagChip code={firstGroupMatch.home} flagUrl={firstMatch.homeCode ? teamFlagsByCode[firstMatch.homeCode] : undefined} />
-              <span className="text-sm font-semibold text-neutral-100 font-body truncate">
-                {teamsByCode[firstGroupMatch.home]?.name ?? firstGroupMatch.home}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FlagChip code={firstGroupMatch.away} flagUrl={firstMatch.awayCode ? teamFlagsByCode[firstMatch.awayCode] : undefined} />
-              <span className="text-sm font-semibold text-neutral-100 font-body truncate">
-                {teamsByCode[firstGroupMatch.away]?.name ?? firstGroupMatch.away}
-              </span>
-            </div>
-          </div>
-          <div className="px-4 py-2.5 border-t border-white/5 flex items-center justify-between gap-2 bg-white/[0.02]">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Your pick</span>
-            {firstMatchPick ? (
-              <div className="flex items-center gap-1.5">
-                {firstMatchPick === 'draw' ? (
-                  <span className="text-sm font-black text-neutral-200">Draw</span>
-                ) : (
-                  <>
-                    <FlagChip code={firstMatchPickedTeamCode} flagUrl={firstMatchPickedTeamCode ? teamFlagsByCode[firstMatchPickedTeamCode] : undefined} size="sm" />
-                    <span className="text-sm font-black text-primary">{firstMatchPickedTeam?.name ?? firstMatchPickedTeamCode}</span>
-                  </>
-                )}
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400">Your champion</span>
+                {championCode && championTeam ? (
+                  <button
+                    onClick={onOpenBreakdown}
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-bold text-primary transition-colors hover:text-primary/80"
+                  >
+                    See path
+                    <span className="material-symbols-outlined text-[15px]">chevron_right</span>
+                  </button>
+                ) : championAdoptionCount > 1 ? (
+                  <span className="font-body text-[10px] font-bold text-neutral-500">
+                    {championAdoptionCount - 1} other{championAdoptionCount - 1 === 1 ? '' : 's'} agree
+                  </span>
+                ) : null}
               </div>
-            ) : (
-              <button
-                onClick={() => onNavigate('groups')}
-                className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors"
-              >
-                Pick a winner →
-              </button>
-            )}
+              {championCode && championTeam ? (
+                <div className="flex items-center gap-3">
+                  <FlagChip code={championCode} flagUrl={championFlag} size="lg" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-2xl font-black leading-none text-white">{championTeam.name}</div>
+                    <div className="mt-1 font-body text-[11px] font-semibold text-neutral-500">FIFA #{championTeam.fifaRanking} · Group {championTeam.group}</div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onNavigate('bracket')}
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                >
+                  <span className="font-body text-sm font-semibold text-neutral-300">Pick your champion to seal the prediction</span>
+                  <span className="material-symbols-outlined text-[16px] text-primary">arrow_forward</span>
+                </button>
+              )}
+            </div>
           </div>
-        </section>
-      )}
+        </div>
 
-      {/* Friends snapshot */}
-      {totalUsers > 0 && (
-        <section className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-neutral-400 text-[18px]">groups</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-neutral-100">
+        {championCode && championTeam ? (
+          <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        ) : null}
+
+        {firstGroupMatch && firstMatch && (
+          <div className="relative px-5 py-5">
+            <div className="absolute bottom-0 left-7 top-0 w-px bg-gradient-to-b from-white/10 via-white/10 to-white/0" aria-hidden />
+            <div className="relative flex gap-4">
+              <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                <span className="material-symbols-outlined text-primary text-[19px]">sports_soccer</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-neutral-400">First match</span>
+                  <span className="whitespace-nowrap font-body text-[10px] font-bold tabular-nums text-neutral-500">
+                    {DATE_FORMATTER.format(new Date(firstMatch.utcDate))}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <FlagChip code={firstGroupMatch.home} flagUrl={firstMatch.homeCode ? teamFlagsByCode[firstMatch.homeCode] : undefined} />
+                    <span className="truncate font-body text-sm font-semibold text-neutral-100">
+                      {teamsByCode[firstGroupMatch.home]?.name ?? firstGroupMatch.home}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FlagChip code={firstGroupMatch.away} flagUrl={firstMatch.awayCode ? teamFlagsByCode[firstMatch.awayCode] : undefined} />
+                    <span className="truncate font-body text-sm font-semibold text-neutral-100">
+                      {teamsByCode[firstGroupMatch.away]?.name ?? firstGroupMatch.away}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Your pick</span>
+                  {firstMatchPick ? (
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {firstMatchPick === 'draw' ? (
+                        <span className="text-sm font-black text-neutral-200">Draw</span>
+                      ) : (
+                        <>
+                          <FlagChip code={firstMatchPickedTeamCode} flagUrl={firstMatchPickedTeamCode ? teamFlagsByCode[firstMatchPickedTeamCode] : undefined} size="sm" />
+                          <span className="truncate text-sm font-black text-primary">{firstMatchPickedTeam?.name ?? firstMatchPickedTeamCode}</span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => onNavigate('groups')}
+                      className="whitespace-nowrap text-[11px] font-bold text-primary transition-colors hover:text-primary/80"
+                    >
+                      Pick winner
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {totalUsers > 0 && (
+          <button
+            onClick={() => onNavigate('ranking')}
+            className="relative flex w-full items-center gap-3 border-t border-white/10 bg-white/[0.025] px-5 py-4 text-left transition-colors hover:bg-white/[0.04]"
+          >
+            <span className="material-symbols-outlined text-neutral-400 text-[20px]">groups</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-neutral-100">
                 {predictionsLockedCount} {predictionsLockedCount === 1 ? 'prediction' : 'predictions'} locked in
               </div>
               {championAdoptionCount > 0 && championTeam && (
-                <div className="text-[11px] font-semibold text-neutral-500 font-body mt-0.5">
+                <div className="mt-0.5 truncate font-body text-[11px] font-semibold text-neutral-500">
                   {championAdoptionCount === 1
                     ? `You're the only one picking ${championTeam.name}`
                     : `${championAdoptionCount} of ${predictionsLockedCount} picked ${championTeam.name}`}
                 </div>
               )}
             </div>
-            <button
-              onClick={() => onNavigate('ranking')}
-              className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors flex items-center gap-0.5"
-            >
-              See all
-              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            </button>
-          </div>
-        </section>
-      )}
+            <span className="material-symbols-outlined text-primary text-[18px]">chevron_right</span>
+          </button>
+        )}
+      </section>
 
-      {/* Quiet hint */}
-      <p className="text-center text-[11px] font-semibold text-neutral-500 font-body pt-1">
+      <p className="pt-5 text-center font-body text-[11px] font-semibold text-neutral-500">
         Your picks will start scoring as matches finish.
       </p>
     </div>

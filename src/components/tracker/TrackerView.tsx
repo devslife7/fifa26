@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LiveMatch, MatchResult, KnockoutResult, KnockoutRound, TabId, LeaderboardPrediction, LeaderboardEntry } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { useActivePrediction } from '@/hooks/useActivePrediction';
-import { usePredictionResults, type PerMatchOutcome, type MatchOutcomeState } from '@/hooks/usePredictionResults';
+import {
+  GROUP_POINTS,
+  QUALIFIER_POINTS,
+  WINNER_POINTS,
+  usePredictionResults,
+  type PerMatchOutcome,
+  type MatchOutcomeState,
+} from '@/hooks/usePredictionResults';
 import { groupItemsByDate, formatMatchTime } from '@/lib/utils/match-dates';
 import { useAuth } from '@/components/providers/AuthProvider';
 import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
@@ -19,14 +26,12 @@ const ROUND_LABELS: Record<KnockoutRound, string> = {
   FIN: 'Final',
 };
 
-type FilterId = 'all' | 'correct' | 'wrong' | 'pending' | 'upcoming';
+type TrackerTabId = 'active' | 'settled' | 'all';
 
-const FILTERS: { id: FilterId; label: string }[] = [
+const TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
+  { id: 'active', label: 'Active' },
+  { id: 'settled', label: 'Settled' },
   { id: 'all', label: 'All' },
-  { id: 'correct', label: 'Correct' },
-  { id: 'wrong', label: 'Wrong' },
-  { id: 'pending', label: 'Pending' },
-  { id: 'upcoming', label: 'Upcoming' },
 ];
 
 interface Props {
@@ -35,13 +40,35 @@ interface Props {
   onNavigate: (tab: TabId) => void;
 }
 
-function matchesFilter(state: MatchOutcomeState, status: PerMatchOutcome['status'], filter: FilterId): boolean {
-  if (filter === 'all') return true;
-  if (filter === 'correct') return state === 'hit';
-  if (filter === 'wrong') return state === 'miss';
-  if (filter === 'pending') return status === 'IN_PLAY' || status === 'PAUSED' || state === 'pending';
-  if (filter === 'upcoming') return state === 'upcoming';
+function isLiveStatus(status: PerMatchOutcome['status']): boolean {
+  return status === 'IN_PLAY' || status === 'PAUSED';
+}
+
+function isActiveOutcome(outcome: PerMatchOutcome): boolean {
+  if (!outcome.picked) return false;
+  return isLiveStatus(outcome.status) || outcome.state === 'pending' || outcome.state === 'upcoming';
+}
+
+function isSettledOutcome(outcome: PerMatchOutcome): boolean {
+  return outcome.state === 'hit' || outcome.state === 'miss' || outcome.state === 'no-pick';
+}
+
+function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean {
+  if (tab === 'all') return true;
+  if (tab === 'active') return isActiveOutcome(outcome);
+  if (tab === 'settled') return isSettledOutcome(outcome);
   return true;
+}
+
+function maxPointsForOutcome(outcome: PerMatchOutcome): number {
+  if (outcome.kind === 'group') return GROUP_POINTS;
+  if (outcome.round === 'R32') return QUALIFIER_POINTS.R16;
+  if (outcome.round === 'R16') return QUALIFIER_POINTS.QF;
+  if (outcome.round === 'QF') return QUALIFIER_POINTS.SF;
+  if (outcome.round === 'SF') return QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD'];
+  if (outcome.round === '3RD') return WINNER_POINTS['3RD'];
+  if (outcome.round === 'FIN') return WINNER_POINTS.FIN;
+  return 0;
 }
 
 function TeamRow({ code, score, flagUrl, dim }: { code: string | null; score: number | null; flagUrl?: string; dim?: boolean }) {
@@ -67,7 +94,16 @@ function TeamRow({ code, score, flagUrl, dim }: { code: string | null; score: nu
   );
 }
 
-function StateBadge({ state, points }: { state: MatchOutcomeState; points: number }) {
+function StateBadge({ state, points, status }: { state: MatchOutcomeState; points: number; status: PerMatchOutcome['status'] }) {
+  if (isLiveStatus(status)) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-wc-green/15 text-wc-green border border-wc-green/30">
+        <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
+        <span className="text-[10px] font-bold uppercase tracking-wider font-body">Live</span>
+      </span>
+    );
+  }
+
   if (state === 'hit') {
     return (
       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-wc-green/15 text-wc-green border border-wc-green/30">
@@ -124,6 +160,8 @@ function MatchRow({ outcome, flagsByCode }: { outcome: PerMatchOutcome; flagsByC
   const homeFlag = outcome.homeCode ? flagsByCode[outcome.homeCode] : undefined;
   const awayFlag = outcome.awayCode ? flagsByCode[outcome.awayCode] : undefined;
   const label = pickLabel(outcome);
+  const active = isActiveOutcome(outcome);
+  const maxPoints = maxPointsForOutcome(outcome);
 
   return (
     <div className="px-3 py-2.5 border-b border-white/5 last:border-0 flex items-center gap-3">
@@ -143,16 +181,22 @@ function MatchRow({ outcome, flagsByCode }: { outcome: PerMatchOutcome; flagsByC
           <TeamRow code={outcome.awayCode} score={showScore ? awayScore : null} flagUrl={awayFlag} />
         </div>
         {label && (
-          <div className="mt-1.5 flex items-center gap-1.5 text-[11px]">
-            <span className="text-neutral-500 font-bold uppercase tracking-wider">Pick:</span>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] flex-wrap">
+            <span className="text-neutral-500 font-bold uppercase tracking-wider">Your pick:</span>
             <span className={`font-semibold ${
               outcome.state === 'hit' ? 'text-wc-green' : outcome.state === 'miss' ? 'text-wc-red' : 'text-neutral-300'
             }`}>{label}</span>
+            {active && maxPoints > 0 && (
+              <>
+                <span className="text-neutral-700">·</span>
+                <span className="font-bold text-primary/80">Max +{maxPoints}</span>
+              </>
+            )}
           </div>
         )}
       </div>
       <div className="flex-shrink-0">
-        <StateBadge state={outcome.state} points={outcome.points} />
+        <StateBadge state={outcome.state} points={outcome.points} status={outcome.status} />
       </div>
     </div>
   );
@@ -276,14 +320,27 @@ function StakeStrip({ stake, flagsByCode }: { stake: StakeInfo; flagsByCode: Rec
 }
 
 function Dashboard({
-  totalPoints, groupCorrect, groupTotal, knockoutPoints, pendingCount, pointsToday, hasAnyResults, rankInfo, onOpenBreakdown, onNavigate,
+  totalPoints,
+  groupCorrect,
+  groupTotal,
+  knockoutPoints,
+  pointsToday,
+  activeCount,
+  settledCount,
+  maxRemaining,
+  hasAnyResults,
+  rankInfo,
+  onOpenBreakdown,
+  onNavigate,
 }: {
   totalPoints: number;
   groupCorrect: number;
   groupTotal: number;
   knockoutPoints: number;
-  pendingCount: number;
   pointsToday: number;
+  activeCount: number;
+  settledCount: number;
+  maxRemaining: number;
   hasAnyResults: boolean;
   rankInfo: RankInfo | null;
   onOpenBreakdown: () => void;
@@ -302,19 +359,35 @@ function Dashboard({
             <div className="text-lg font-black text-wc-green tabular-nums leading-tight">+{pointsToday}</div>
           </div>
         )}
+        {pointsToday === 0 && maxRemaining > 0 && (
+          <div className="text-right">
+            <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wide">Max Left</div>
+            <div className="text-lg font-black text-primary tabular-nums leading-tight">+{maxRemaining}</div>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-3 border-t border-white/10 text-center">
         <div className="py-2.5 border-r border-white/10">
-          <div className="text-base font-black text-wc-green tabular-nums">{groupCorrect}/{groupTotal}</div>
-          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Groups</div>
+          <div className="text-base font-black text-wc-green tabular-nums">{activeCount}</div>
+          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Active</div>
         </div>
         <div className="py-2.5 border-r border-white/10">
-          <div className="text-base font-black text-blue-400 tabular-nums">{knockoutPoints}</div>
-          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Knockout</div>
+          <div className="text-base font-black text-blue-400 tabular-nums">{settledCount}</div>
+          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Settled</div>
         </div>
         <div className="py-2.5">
-          <div className="text-base font-black text-neutral-200 tabular-nums">{pendingCount}</div>
-          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Pending</div>
+          <div className="text-base font-black text-neutral-200 tabular-nums">+{maxRemaining}</div>
+          <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Max Left</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 border-t border-white/10 text-center bg-white/[0.015]">
+        <div className="py-2 border-r border-white/10">
+          <div className="text-xs font-black text-wc-green tabular-nums">{groupCorrect}/{groupTotal}</div>
+          <div className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Groups</div>
+        </div>
+        <div className="py-2">
+          <div className="text-xs font-black text-blue-400 tabular-nums">{knockoutPoints}</div>
+          <div className="text-[9px] font-bold text-neutral-500 uppercase tracking-wider">Knockout pts</div>
         </div>
       </div>
       {rankInfo && <RankLine info={rankInfo} onNavigate={onNavigate} />}
@@ -334,7 +407,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   const { user } = useAuth();
   const { prediction: active, loading: loadingActive } = useActivePrediction();
   const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(active, liveMatches);
-  const [filter, setFilter] = useState<FilterId>('all');
+  const [trackerTab, setTrackerTab] = useState<TrackerTabId>('active');
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Leaderboard + predictions fan-out — used for the rank line and pre-tournament social snapshot.
@@ -425,9 +498,17 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   }, [user, leaderboard]);
 
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);
+  const activeCount = useMemo(() => outcomes.filter(isActiveOutcome).length, [outcomes]);
+  const settledCount = useMemo(() => outcomes.filter(isSettledOutcome).length, [outcomes]);
+  const maxRemaining = useMemo(
+    () => outcomes.reduce((sum, outcome) => (
+      isActiveOutcome(outcome) ? sum + maxPointsForOutcome(outcome) : sum
+    ), 0),
+    [outcomes],
+  );
   const filteredOutcomes = useMemo(
-    () => outcomes.filter(o => matchesFilter(o.state, o.status, filter)),
-    [outcomes, filter],
+    () => outcomes.filter(o => matchesTrackerTab(o, trackerTab)),
+    [outcomes, trackerTab],
   );
   const groupedByDate = useMemo(() => groupItemsByDate(filteredOutcomes), [filteredOutcomes]);
 
@@ -551,8 +632,10 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           groupCorrect={summary.groupCorrect}
           groupTotal={summary.groupTotal}
           knockoutPoints={summary.knockoutPoints}
-          pendingCount={summary.pendingCount}
           pointsToday={summary.pointsToday}
+          activeCount={activeCount}
+          settledCount={settledCount}
+          maxRemaining={maxRemaining}
           hasAnyResults={summary.hasAnyResults}
           rankInfo={rankInfo}
           onOpenBreakdown={() => setShowBreakdown(true)}
@@ -561,20 +644,22 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       </div>
 
       <div className="px-4">
-        <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1 no-scrollbar">
-          {FILTERS.map(f => {
-            const isActive = filter === f.id;
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-white/[0.025] p-1">
+          {TRACKER_TABS.map(tab => {
+            const isActive = trackerTab === tab.id;
+            const count = tab.id === 'active' ? activeCount : tab.id === 'settled' ? settledCount : outcomes.length;
             return (
               <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-colors font-body ${
+                key={tab.id}
+                onClick={() => setTrackerTab(tab.id)}
+                className={`min-w-0 px-2 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors font-body ${
                   isActive
                     ? 'bg-primary text-black'
-                    : 'bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-neutral-200'
+                    : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
                 }`}
               >
-                {f.label}
+                <span>{tab.label}</span>
+                <span className={`ml-1 tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{count}</span>
               </button>
             );
           })}
@@ -585,7 +670,9 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
         <div className="px-4">
           <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
             <span className="material-symbols-outlined text-neutral-500 text-3xl">filter_alt_off</span>
-            <p className="text-xs text-neutral-500 font-body mt-2">Nothing matches this filter.</p>
+            <p className="text-xs text-neutral-500 font-body mt-2">
+              {trackerTab === 'active' ? 'No active picks right now.' : 'Nothing to show here yet.'}
+            </p>
           </div>
         </div>
       ) : (

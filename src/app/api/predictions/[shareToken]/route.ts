@@ -10,7 +10,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, group_tiebreakers, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
+    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
     .eq('share_token', shareToken)
     .eq('is_complete', true)
     .single();

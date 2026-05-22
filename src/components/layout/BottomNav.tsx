@@ -13,8 +13,8 @@ const PREDICTION_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 const navItems = [
   { label: 'Home', icon: 'home', navigateTo: 'home' as TabId, activeTabs: ['home', 'profile'] as TabId[] },
   { label: 'Predictions', icon: 'emoji_events', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
+  { label: 'My Picks', icon: 'event_available', navigateTo: 'tracker' as TabId, activeTabs: ['tracker'] as TabId[] },
   { label: 'Ranking', icon: 'leaderboard', navigateTo: 'ranking' as TabId, activeTabs: ['ranking'] as TabId[] },
-  { label: 'News', icon: 'newspaper', navigateTo: 'news' as TabId, activeTabs: ['news'] as TabId[] },
 ];
 
 export default function BottomNav({ activeTab, nextPredictionTab, onTabChange }: Props) {

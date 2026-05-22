@@ -1,5 +1,5 @@
-import { KnockoutMatch, KnockoutRound, GroupLetter, MatchResult, KnockoutResult, GroupTiebreakers } from '@/types';
-import { getGroupQualifiers, getBestThirdPlaceTeams, areAllGroupsFinalized } from './standings';
+import { KnockoutMatch, KnockoutRound, GroupLetter, MatchResult, KnockoutResult } from '@/types';
+import { getGroupQualifiers, getBestThirdPlaceTeams, areAllGroupsComplete } from './standings';
 import { lookupAnnexC, WINNER_SLOTS, type AnnexCAssignment, type WinnerSlot } from './annexC';
 
 // FIFA World Cup 26 bracket structure — codified from the official Regulations
@@ -232,6 +232,14 @@ export function getAffectedR32Matches(groupLetter: GroupLetter): string[] {
   return Array.from(affected);
 }
 
+// R32 matches whose source on either side is a best-third qualifier — the eight
+// matches that depend on which 8 of the 12 third-place teams advance.
+export function getBestThirdDependentR32Matches(): string[] {
+  return R32_SOURCES
+    .filter(s => s.home.type === 'best3From' || s.away.type === 'best3From')
+    .map(s => s.id);
+}
+
 // Reverse adjacency: for each upstream match ID, the downstream match IDs it feeds into.
 const FEEDS_INTO: Record<string, string[]> = (() => {
   const map: Record<string, string[]> = {};
@@ -319,13 +327,12 @@ export function generateBracket(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): KnockoutMatch[] {
-  const allGroupsDone = areAllGroupsFinalized(groupPredictions, groupTiebreakers);
-  const { winners, runnersUp } = getGroupQualifiers(groupPredictions, groupTiebreakers);
+  const allGroupsDone = areAllGroupsComplete(groupPredictions);
+  const { winners, runnersUp } = getGroupQualifiers(groupPredictions);
 
-  // Resolve third-place qualifiers via Annex C (only when all groups done + ties resolved).
-  const bestThirds = allGroupsDone ? getBestThirdPlaceTeams(groupPredictions, thirdPlaceTiebreaker, groupTiebreakers) : [];
+  // Resolve third-place qualifiers via Annex C (only when all groups done).
+  const bestThirds = allGroupsDone ? getBestThirdPlaceTeams(groupPredictions, thirdPlaceTiebreaker) : [];
   const thirdsResolved = bestThirds.length === 8;
   const thirdByGroup: Partial<Record<GroupLetter, string>> = {};
   let annexC: AnnexCAssignment | undefined;
@@ -436,13 +443,12 @@ export function generateBracket(
 export function generateRandomKnockoutPredictions(
   groupPredictions: Record<string, MatchResult>,
   thirdPlaceTiebreaker?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): Record<string, KnockoutResult> {
   const predictions: Record<string, KnockoutResult> = {};
   const pick = (): KnockoutResult => Math.random() < 0.5 ? 'home' : 'away';
 
   const fillRound = (round: KnockoutRound) => {
-    const bracket = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker, groupTiebreakers);
+    const bracket = generateBracket(groupPredictions, predictions, thirdPlaceTiebreaker);
     for (const m of bracket.filter(m => m.round === round)) {
       if (m.home && m.away && !isPlaceholder(m.home) && !isPlaceholder(m.away)) {
         predictions[m.id] = pick();
@@ -464,9 +470,8 @@ export function getChampion(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): string | undefined {
-  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const final = bracket.find(m => m.id === 'FIN-1');
   if (!final || !final.result) return undefined;
   const winner = final.result === 'home' ? final.home : final.away;
@@ -478,9 +483,8 @@ export function getTopThree(
   groupPredictions: Record<string, MatchResult>,
   knockoutPredictions: Record<string, KnockoutResult>,
   thirdPlaceTiebreaker?: string[],
-  groupTiebreakers: GroupTiebreakers = {}
 ): { first?: string; second?: string; third?: string } {
-  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const bracket = generateBracket(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const final = bracket.find(m => m.id === 'FIN-1');
   const thirdMatch = bracket.find(m => m.id === '3RD-1');
 

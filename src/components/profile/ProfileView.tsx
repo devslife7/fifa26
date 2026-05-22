@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { MatchResult, KnockoutResult, SavedPrediction, TabId, GroupTiebreakers } from '@/types';
+import { MatchResult, KnockoutResult, SavedPrediction, TabId } from '@/types';
 import { useAuth } from '@/components/providers/AuthProvider';
 import {
   loadPredictions, getEditingPredictionId, getEditingPredictionName,
@@ -19,7 +19,6 @@ import ChampionScreen from '@/components/champion/ChampionScreen';
 interface ProfileViewProps {
   groupPredictions: Record<string, MatchResult>;
   knockoutPredictions: Record<string, KnockoutResult>;
-  groupTiebreakers?: GroupTiebreakers;
   thirdPlaceTiebreaker?: string[];
   onNavigate: (tab: TabId) => void;
   onNavigateToPredictions: (view?: TabId) => void;
@@ -29,7 +28,7 @@ interface ProfileViewProps {
 }
 
 export default function ProfileView({
-  groupPredictions, knockoutPredictions, groupTiebreakers = {}, thirdPlaceTiebreaker,
+  groupPredictions, knockoutPredictions, thirdPlaceTiebreaker,
   onNavigate, onNavigateToPredictions, onLoadPrediction, onNewPrediction, onClearPredictions,
 }: ProfileViewProps) {
   const { user } = useAuth();
@@ -43,7 +42,7 @@ export default function ProfileView({
   const [showNameModal, setShowNameModal] = useState(false);
   const [newPredName, setNewPredName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const predictionsSnapshot = createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const predictionsSnapshot = createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   const [submitted, setSubmitted] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -65,7 +64,7 @@ export default function ProfileView({
   const groupCount = Object.keys(groupPredictions).length;
   const knockoutCount = Object.keys(knockoutPredictions).length;
   const hasPredictions = groupCount > 0 || knockoutCount > 0;
-  const flowState = getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? [], groupTiebreakers);
+  const flowState = getPredictionFlowState(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker ?? []);
 
   // Also check at runtime when predictions change via props
   useEffect(() => {
@@ -79,7 +78,7 @@ export default function ProfileView({
   }, [predictionsSnapshot, submitted]);
 
   const d = darkMode;
-  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers);
+  const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
 
   // Fetch saved predictions
   const fetchSaved = useCallback(async () => {
@@ -112,7 +111,7 @@ export default function ProfileView({
       const predictionId = currentEditingId;
 
       // Compute champion from current state
-      const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, groupTiebreakers) ?? null;
+      const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker) ?? null;
 
       // Preserve completion status if this prediction was previously completed
       const existing = savedPredictions.find(p => p.id === predictionId);
@@ -126,7 +125,6 @@ export default function ProfileView({
           name: name || currentEditingName || 'My Predictions',
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
-          groupTiebreakers: local.groupTiebreakers,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete,
@@ -213,7 +211,6 @@ export default function ProfileView({
         <ChampionScreen
           groupPredictions={groupPredictions}
           knockoutPredictions={knockoutPredictions}
-          groupTiebreakers={groupTiebreakers}
           thirdPlaceTiebreaker={thirdPlaceTiebreaker}
           onSaved={() => {
             setSubmitted(true);

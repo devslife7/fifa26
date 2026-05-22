@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendPredictionEmail } from '@/lib/services/email';
 import { generatePredictionPdf } from '@/lib/services/prediction-pdf';
 import { uploadPredictionPdf } from '@/lib/services/prediction-pdf-storage';
-import type { GroupTiebreakers, KnockoutResult, MatchResult } from '@/types';
+import type { KnockoutResult, MatchResult } from '@/types';
 
 interface SendPredictionConfirmationParams {
   supabase: SupabaseClient;
@@ -19,7 +19,6 @@ interface SendPredictionConfirmationParams {
   origin: string;
   groupMatches: Record<string, MatchResult>;
   knockoutMatches: Record<string, KnockoutResult>;
-  groupTiebreakers?: GroupTiebreakers | null;
   thirdPlaceTiebreaker?: string[] | null;
 }
 
@@ -43,7 +42,6 @@ export async function sendPredictionConfirmation({
   origin,
   groupMatches,
   knockoutMatches,
-  groupTiebreakers,
   thirdPlaceTiebreaker,
 }: SendPredictionConfirmationParams) {
   if (!prediction.share_token) return;
@@ -59,7 +57,6 @@ export async function sendPredictionConfirmation({
       submittedAt: prediction.completed_at,
       groupMatches,
       knockoutMatches,
-      groupTiebreakers,
       thirdPlaceTiebreaker,
       shareUrl,
     });

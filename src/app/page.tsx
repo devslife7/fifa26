@@ -633,9 +633,7 @@ export default function Home() {
           <div>
             <div className="mt-4">
               <h2 className="text-[21px] font-black text-white">Group Stage</h2>
-              {groupCount === 0 && (
-                <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mt-0.5">Tap a team or TIE to predict each match</p>
-              )}
+              <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mt-0.5">Tap a team or TIE to predict each match</p>
               <div className="mt-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
                 <button
                   onClick={() => setShowClearConfirm(true)}

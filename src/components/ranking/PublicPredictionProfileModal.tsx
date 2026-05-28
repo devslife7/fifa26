@@ -41,7 +41,6 @@ function toSavedPrediction(prediction: LeaderboardPrediction): SavedPrediction {
     id: `public-${prediction.prediction_number ?? prediction.user_id}`,
     prediction_number: prediction.prediction_number,
     name: predictionTitle(prediction),
-    is_active: false,
     is_complete: true,
     champion_code: prediction.champion_code,
     share_token: null,

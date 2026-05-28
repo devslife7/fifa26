@@ -160,17 +160,6 @@ export default function ProfileView({
     } catch { setError('Failed to delete prediction.'); }
   };
 
-  const handleSetActive = async (id: string) => {
-    try {
-      await fetch('/api/predictions/active', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ predictionId: id }),
-      });
-      await fetchSaved();
-    } catch { setError('Failed to set active prediction.'); }
-  };
-
   const handleRename = async (id: string, newName: string) => {
     try {
       await fetch(`/api/predictions/manage/${id}`, {
@@ -185,10 +174,7 @@ export default function ProfileView({
     } catch { setError('Failed to rename prediction.'); }
   };
 
-  const activePrediction = savedPredictions.find(p => p.is_active) ?? null;
-
-  // Determine if the working draft is different from the active prediction
-  const isEditingActive = currentEditingId && activePrediction && currentEditingId === activePrediction.id;
+  const isEditingSavedPrediction = currentEditingId && savedPredictions.some(p => p.id === currentEditingId);
 
   return (
     <div className="pt-2 pb-12 space-y-4">
@@ -229,8 +215,8 @@ export default function ProfileView({
 
       {user ? (
         <>
-          {/* Zone 3: Working Draft (only if editing something, not the active prediction, and no champion section showing) */}
-          {hasPredictions && !isEditingActive && !championCode && (
+          {/* Zone 3: Working Draft */}
+          {hasPredictions && !isEditingSavedPrediction && !championCode && (
             <WorkingDraftCard
               name={currentEditingName}
               predictionId={currentEditingId}
@@ -263,7 +249,6 @@ export default function ProfileView({
             onLoadPrediction={onLoadPrediction}
             onNewPrediction={onNewPrediction}
             onRename={handleRename}
-            onSetActive={handleSetActive}
             onDelete={handleDelete}
           />
 
@@ -354,7 +339,11 @@ export default function ProfileView({
       {showAuth && (
         <AuthModal
           onClose={() => setShowAuth(false)}
-          onAuthenticated={() => { setShowAuth(false); fetchSaved(); }}
+          onAuthenticated={() => {
+            setShowAuth(false);
+            fetchSaved();
+            onNavigate('home');
+          }}
         />
       )}
     </div>

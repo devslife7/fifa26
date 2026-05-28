@@ -18,13 +18,12 @@ interface PredictionsListProps {
   onLoadPrediction: (prediction: SavedPrediction) => void;
   onNewPrediction: () => void;
   onRename: (id: string, name: string) => void;
-  onSetActive: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
 export default function PredictionsList({
   predictions, liveMatches, teamFlagsByCode, loading, currentEditingId, darkMode: d, hasPredictions,
-  onLoadPrediction, onNewPrediction, onRename, onSetActive, onDelete,
+  onLoadPrediction, onNewPrediction, onRename, onDelete,
 }: PredictionsListProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewingPrediction, setViewingPrediction] = useState<SavedPrediction | null>(null);
@@ -91,7 +90,7 @@ export default function PredictionsList({
         </div>
       ) : (
         <div className="space-y-2">
-          {[...predictions].sort((a, b) => (a.is_active === b.is_active ? 0 : a.is_active ? -1 : 1)).map(p => (
+          {[...predictions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(p => (
             <PredictionRow
               key={p.id}
               prediction={p}
@@ -104,7 +103,6 @@ export default function PredictionsList({
               onView={() => setViewingPrediction(p)}
               onEdit={() => onLoadPrediction(p)}
               onRename={(name) => onRename(p.id, name)}
-              onSetActive={() => onSetActive(p.id)}
               onCopyLink={() => {
                 if (p.share_token) {
                   navigator.clipboard.writeText(`${window.location.origin}/shared/${p.share_token}`);

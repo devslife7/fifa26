@@ -8,6 +8,7 @@ import NextMatchCard from '@/components/home/NextMatchCard';
 import { TOURNAMENT_KICKOFF } from '@/data/tournament';
 import { useAuth } from '@/components/providers/AuthProvider';
 import AppFooter from '@/components/layout/AppFooter';
+import AuthModal from '@/components/auth/AuthModal';
 
 interface HomeViewProps {
   flowState: PredictionFlowState;
@@ -438,15 +439,6 @@ function StartAgainAction({
 }
 
 function PredictionStatus({ prediction }: { prediction: SavedPrediction }) {
-  if (prediction.is_active) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-primary">
-        <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
-        Active
-      </span>
-    );
-  }
-
   if (prediction.is_complete) {
     return (
       <span className="inline-flex items-center gap-1 rounded-md bg-wc-green/15 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-wc-green">
@@ -476,6 +468,7 @@ function HomePredictionsPanel({ onStartAgain }: { onStartAgain: () => void }) {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [usernameSaving, setUsernameSaving] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
@@ -522,7 +515,51 @@ function HomePredictionsPanel({ onStartAgain }: { onStartAgain: () => void }) {
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [accountMenuOpen]);
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <>
+        <section className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.035] shadow-[0_18px_50px_-28px_rgba(0,0,0,0.85)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-black text-neutral-100">My Predictions</h2>
+              <p className="mt-0.5 font-body text-[11px] font-semibold text-neutral-500">
+                Sign in to attach and manage your submissions.
+              </p>
+            </div>
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-neutral-400">
+              <span className="material-symbols-outlined text-[22px]">person</span>
+            </span>
+          </div>
+
+          <div className="px-4 py-8 text-center">
+            <span className="material-symbols-outlined block text-3xl text-white/20">emoji_events</span>
+            <p className="mt-2 text-sm font-bold text-neutral-300">Sign in to see your predictions</p>
+            <p className="mx-auto mt-1 max-w-[260px] font-body text-xs font-semibold leading-relaxed text-neutral-500">
+              Use the same email you submitted with to claim saved predictions and manage them here.
+            </p>
+          </div>
+
+          <div className="border-t border-white/8 px-3 py-3">
+            <button
+              type="button"
+              onClick={() => setShowAuth(true)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-[16px] bg-primary px-4 py-3 font-body text-xs font-black text-black transition-colors hover:bg-primary/90"
+            >
+              <span className="material-symbols-outlined text-[16px]">login</span>
+              Sign in with a one-time password
+            </button>
+          </div>
+        </section>
+
+        {showAuth && (
+          <AuthModal
+            onClose={() => setShowAuth(false)}
+            onAuthenticated={() => setShowAuth(false)}
+          />
+        )}
+      </>
+    );
+  }
 
   const handleSaveUsername = async () => {
     const nextName = usernameInput.trim();
@@ -581,7 +618,6 @@ function HomePredictionsPanel({ onStartAgain }: { onStartAgain: () => void }) {
   };
 
   const sortedPredictions = [...predictions].sort((a, b) => {
-    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 

@@ -6,12 +6,11 @@ import FakeResultsSeeder from '@/components/admin/FakeResultsSeeder';
 interface AdminPrediction {
   id: string;
   prediction_number: number | null;
-  user_id: string;
+  user_id: string | null;
   submitter_name: string | null;
   submitter_email: string | null;
   champion_code: string | null;
   is_approved: boolean;
-  is_active: boolean;
   is_complete: boolean;
   completed_at: string | null;
   created_at: string;
@@ -260,21 +259,20 @@ export default function AdminPage() {
           <>
             {/* Desktop table */}
             <div className="hidden md:block space-y-2">
-              <div className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_90px_140px] gap-3 px-4 py-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              <div className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_140px] gap-3 px-4 py-2 text-xs font-bold text-neutral-500 uppercase tracking-wider">
                 <div>#</div>
                 <div>Name</div>
                 <div>Email</div>
                 <div>Champion</div>
                 <div>Submitted</div>
                 <div>Status</div>
-                <div>Active</div>
                 <div>Actions</div>
               </div>
 
               {predictions.map(p => (
                 <div
                   key={p.id}
-                  className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_90px_140px] gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 items-center"
+                  className="grid grid-cols-[60px_1fr_1fr_120px_130px_100px_140px] gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 items-center"
                 >
                   <div className="text-neutral-400 font-mono">
                     {p.prediction_number ?? '—'}
@@ -302,13 +300,6 @@ export default function AdminPage() {
                         <span className="material-symbols-outlined text-[12px]">schedule</span>
                         Pending
                       </span>
-                    )}
-                  </div>
-                  <div>
-                    {p.is_active ? (
-                      <span className="text-[10px] font-bold text-wc-green">Active</span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-neutral-500">Inactive</span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -381,9 +372,6 @@ export default function AdminPage() {
                           <span className="material-symbols-outlined text-[12px]">schedule</span>
                           Pending
                         </span>
-                      )}
-                      {!p.is_active && (
-                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-800 text-neutral-500">Inactive</span>
                       )}
                     </div>
                   </div>

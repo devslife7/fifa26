@@ -222,8 +222,7 @@ export default function Home() {
         .then(data => {
           // API now returns an array of predictions
           const predictions: SavedPrediction[] = data.predictions ?? [];
-          // Pick the active prediction, or fall back to the most recent
-          const toLoad = predictions.find(p => p.is_active) ?? predictions[0];
+          const toLoad = predictions.find(p => p.is_complete) ?? predictions[0];
           if (toLoad) {
             loadFromServer(toLoad);
             setGroupPredictions(toLoad.group_matches ?? {});
@@ -793,6 +792,9 @@ export default function Home() {
             }}
             onNavigateToRanking={() => {
               navigateTo('ranking');
+            }}
+            onAuthenticated={() => {
+              navigateTo('home');
             }}
           />
         )}

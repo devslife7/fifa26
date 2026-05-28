@@ -17,7 +17,6 @@ interface PredictionRowProps {
   onView: () => void;
   onEdit: () => void;
   onRename: (newName: string) => void;
-  onSetActive: () => void;
   onCopyLink: () => void;
   onDelete: () => void;
   onCopyImage: () => void;
@@ -27,7 +26,7 @@ interface PredictionRowProps {
 
 export default function PredictionRow({
   prediction: p, liveMatches, teamFlagsByCode, isCurrentlyEditing, isExpanded, darkMode: d,
-  onToggleExpand, onView, onEdit, onRename, onSetActive, onCopyLink, onDelete, onCopyImage, isCopyingImage, copySuccess,
+  onToggleExpand, onView, onEdit, onRename, onCopyLink, onDelete, onCopyImage, isCopyingImage, copySuccess,
 }: PredictionRowProps) {
   const [deleting, setDeleting] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -110,14 +109,10 @@ export default function PredictionRow({
         d
           ? isCurrentlyEditing
             ? 'bg-white/10 border-primary/40 ring-1 ring-primary/20'
-            : p.is_active
-              ? 'bg-white/5 border-primary/30'
-              : 'bg-white/5 border-white/10'
+            : 'bg-white/5 border-white/10'
           : isCurrentlyEditing
             ? 'bg-white border-primary/40 ring-1 ring-primary/20'
-            : p.is_active
-              ? 'bg-white border-primary/30'
-              : 'bg-white border-neutral-100'
+            : 'bg-white border-neutral-100'
       }`}
     >
       {/* Main row — tap to expand */}
@@ -154,12 +149,6 @@ export default function PredictionRow({
                 <span className={`font-mono ml-1.5 ${d ? 'text-white/30' : 'text-neutral-400'}`}>#{p.prediction_number}</span>
               )}
             </p>
-            {p.is_active && (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-primary/15 text-primary text-[10px] font-bold flex-shrink-0">
-                <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
-                Active
-              </span>
-            )}
             {isCurrentlyEditing && !p.is_complete && (
               <span className="inline-flex px-1.5 py-0.5 rounded-md bg-wc-blue-light text-wc-blue text-[10px] font-bold flex-shrink-0">
                 Editing
@@ -251,15 +240,6 @@ export default function PredictionRow({
               <span className="material-symbols-outlined text-[14px]">drive_file_rename_outline</span>
               Rename
             </button>
-            {p.is_complete && !p.is_active && (
-              <button
-                onClick={onSetActive}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[14px] font-variation-fill">star</span>
-                Set Active
-              </button>
-            )}
             {p.share_token && (
               <button
                 onClick={onCopyLink}

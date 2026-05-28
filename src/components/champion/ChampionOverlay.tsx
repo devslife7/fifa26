@@ -22,6 +22,7 @@ interface ChampionOverlayProps {
   onDismiss: () => void;
   onSubmitted: (confirmation: SubmittedPredictionConfirmation) => void;
   onNavigateToRanking: () => void;
+  onAuthenticated?: () => void;
   isSubmitted?: boolean;
   isPage?: boolean;
 }
@@ -34,6 +35,7 @@ export default function ChampionOverlay({
   onDismiss,
   onSubmitted,
   onNavigateToRanking,
+  onAuthenticated,
   isSubmitted,
   isPage,
 }: ChampionOverlayProps) {
@@ -472,7 +474,7 @@ export default function ChampionOverlay({
                         {[
                           { icon: 'cloud_done', text: 'Save predictions to your account' },
                           { icon: 'devices', text: 'Access from any device' },
-                          { icon: 'leaderboard', text: 'Compete on the leaderboard' },
+                          { icon: 'edit', text: 'Change username and prediction name' },
                         ].map((b) => (
                           <div key={b.icon} className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary/70 text-[14px]">{b.icon}</span>
@@ -532,6 +534,7 @@ export default function ChampionOverlay({
                             return;
                           }
                           setOtpStep('done');
+                          onAuthenticated?.();
                         }}
                         disabled={otpStep === 'verifying' || otpCode.length < 6}
                         className="w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/15 transition-colors disabled:opacity-50"
@@ -811,7 +814,7 @@ export default function ChampionOverlay({
                         {[
                           { icon: 'cloud_done', text: 'Save predictions to your account' },
                           { icon: 'devices', text: 'Access from any device' },
-                          { icon: 'leaderboard', text: 'Compete on the leaderboard' },
+                          { icon: 'edit', text: 'Change username and prediction name' },
                         ].map((b) => (
                           <div key={b.icon} className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary/70 text-[14px]">{b.icon}</span>
@@ -871,6 +874,7 @@ export default function ChampionOverlay({
                             return;
                           }
                           setOtpStep('done');
+                          onAuthenticated?.();
                         }}
                         disabled={otpStep === 'verifying' || otpCode.length < 6}
                         className="w-full py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/15 transition-colors disabled:opacity-50"

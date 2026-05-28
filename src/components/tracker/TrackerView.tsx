@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LiveMatch, MatchResult, KnockoutResult, KnockoutRound, TabId, LeaderboardPrediction, LeaderboardEntry } from '@/types';
 import { teamsByCode } from '@/data/teams';
-import { useActivePrediction } from '@/hooks/useActivePrediction';
+import { useLatestPrediction } from '@/hooks/useLatestPrediction';
 import {
   GROUP_POINTS,
   QUALIFIER_POINTS,
@@ -472,8 +472,8 @@ function Dashboard({
 
 export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }: Props) {
   const { user } = useAuth();
-  const { prediction: active, loading: loadingActive } = useActivePrediction();
-  const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(active, liveMatches);
+  const { prediction: trackedPrediction, loading: loadingPrediction } = useLatestPrediction();
+  const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(trackedPrediction, liveMatches);
   const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
   const [trackerTab, setTrackerTab] = useState<TrackerTabId>('active');
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -497,13 +497,13 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       setLeaderboard(entries);
       setTotalUsers(predData.total_users ?? preds.length);
       setPredictionsLockedCount(preds.length);
-      if (active?.champion_code) {
-        const same = preds.filter(p => p.champion_code === active.champion_code).length;
+      if (trackedPrediction?.champion_code) {
+        const same = preds.filter(p => p.champion_code === trackedPrediction.champion_code).length;
         setChampionAdoptionCount(same);
       }
     });
     return () => { cancelled = true; };
-  }, [user, active?.champion_code]);
+  }, [user, trackedPrediction?.champion_code]);
 
   // Eliminated teams: lost a finished knockout match. Drives the stake-alive strip.
   const eliminatedTeams = useMemo(() => {
@@ -518,7 +518,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   }, [bracket, liveMatches]);
 
   const stakeInfo = useMemo<StakeInfo>(() => {
-    const championCode = active?.champion_code ?? null;
+    const championCode = trackedPrediction?.champion_code ?? null;
     let championStatus: ChampionStatus;
     if (!championCode) {
       championStatus = 'awaiting';
@@ -543,11 +543,15 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       // Only useful once any knockout match has finished
       showR16: hasSignal.R32 && predicted.R16.size > 0,
     };
-  }, [active?.champion_code, predicted.R16, eliminatedTeams, actual.finalWinner, hasSignal.R32]);
+  }, [trackedPrediction?.champion_code, predicted.R16, eliminatedTeams, actual.finalWinner, hasSignal.R32]);
 
   const rankInfo = useMemo<RankInfo | null>(() => {
     if (!user || leaderboard.length === 0) return null;
-    const idx = leaderboard.findIndex(e => e.user_id === user.id);
+    const idx = leaderboard.findIndex(e => (
+      e.prediction_number != null && trackedPrediction?.prediction_number != null
+        ? e.prediction_number === trackedPrediction.prediction_number
+        : e.user_id === user.id
+    ));
     if (idx === -1) return null;
     const me = leaderboard[idx];
     const rank = idx + 1;
@@ -561,9 +565,9 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       rank,
       total: leaderboard.length,
       gap: leader.total_points - me.total_points,
-      leaderName: leader.display_name,
+      leaderName: leader.name?.trim() || leader.display_name,
     };
-  }, [user, leaderboard]);
+  }, [user, leaderboard, trackedPrediction?.prediction_number]);
 
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);
   const activeCount = useMemo(() => outcomes.filter(isActiveOutcome).length, [outcomes]);
@@ -604,22 +608,22 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
 
   // Self-view modal prediction (LeaderboardPrediction shape)
   const selfLeaderboardPred = useMemo<LeaderboardPrediction | null>(() => {
-    if (!active || !user) return null;
+    if (!trackedPrediction || !user) return null;
     return {
-      prediction_number: active.prediction_number,
-      name: active.name,
+      prediction_number: trackedPrediction.prediction_number,
+      name: trackedPrediction.name,
       user_id: user.id,
       display_name: user.display_name ?? 'You',
-      champion_code: active.champion_code,
-      group_matches: active.group_matches ?? {},
-      knockout_matches: active.knockout_matches ?? {},
-      group_tiebreakers: active.group_tiebreakers ?? {},
-      third_place_tiebreaker: active.third_place_tiebreaker,
-      is_approved: active.is_approved ?? false,
-      created_at: active.created_at,
-      updated_at: active.updated_at,
+      champion_code: trackedPrediction.champion_code,
+      group_matches: trackedPrediction.group_matches ?? {},
+      knockout_matches: trackedPrediction.knockout_matches ?? {},
+      group_tiebreakers: trackedPrediction.group_tiebreakers ?? {},
+      third_place_tiebreaker: trackedPrediction.third_place_tiebreaker,
+      is_approved: trackedPrediction.is_approved ?? false,
+      created_at: trackedPrediction.created_at,
+      updated_at: trackedPrediction.updated_at,
     };
-  }, [active, user]);
+  }, [trackedPrediction, user]);
 
   // ── Empty states ──
   if (!user) {
@@ -642,7 +646,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     );
   }
 
-  if (loadingActive) {
+  if (loadingPrediction) {
     return (
       <div className="pt-8 pb-12 px-4 flex flex-col items-center text-center">
         <span className="material-symbols-outlined text-neutral-500 animate-spin">progress_activity</span>
@@ -651,13 +655,13 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     );
   }
 
-  if (!active) {
+  if (!trackedPrediction) {
     return (
       <div className="pt-8 pb-12 px-4 flex flex-col items-center text-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-5">
           <span className="material-symbols-outlined text-primary text-3xl">emoji_events</span>
         </div>
-        <h2 className="text-xl font-black mb-2">No active prediction</h2>
+        <h2 className="text-xl font-black mb-2">No saved prediction</h2>
         <p className="text-sm text-neutral-400 font-body leading-relaxed max-w-[300px] mb-6">
           Make a prediction to start tracking your picks against live results.
         </p>
@@ -676,7 +680,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     return (
       <>
         <PredictionLockedView
-          active={active}
+          prediction={trackedPrediction}
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
           totalUsers={totalUsers}

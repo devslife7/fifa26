@@ -16,6 +16,14 @@ const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p3', display_name: 'Luca Rossi', total_points: 76, champion_code: 'IT', calculated_at: '', position_change: -1 },
 ];
 
+function getLeaderboardEntryKey(entry: LeaderboardEntry, index: number): string {
+  return entry.prediction_id ?? `${entry.user_id ?? 'prediction'}-${entry.prediction_number ?? index}`;
+}
+
+function getLeaderboardEntryName(entry: LeaderboardEntry): string {
+  return entry.name?.trim() || entry.display_name;
+}
+
 function getPredictionCardNames(pred: LeaderboardPrediction) {
   const accountName = pred.display_name && pred.display_name !== 'Unknown' ? pred.display_name : null;
   const predictionName = pred.name?.trim() || null;
@@ -68,7 +76,7 @@ function generatePlaceholderPredictions(): LeaderboardPrediction[] {
     const { tied, slotsToFill } = detectThirdPlaceTie(gm);
     const tiebreaker = slotsToFill > 0 ? tied.slice(0, slotsToFill).map(t => t.team) : null;
     return {
-      user_id: u.user_id,
+      user_id: u.user_id ?? `placeholder-${ui + 1}`,
       display_name: u.display_name,
       champion_code: u.champion_code,
       group_matches: gm,
@@ -217,6 +225,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     return a.user_id === b.user_id && a.name === b.name;
   };
 
+  const entryMatchesPrediction = (entry: LeaderboardEntry, prediction: LeaderboardPrediction) => {
+    if (entry.prediction_number != null && prediction.prediction_number != null) {
+      return entry.prediction_number === prediction.prediction_number;
+    }
+    return entry.user_id === prediction.user_id;
+  };
+
   const openPredictionDetails = (prediction: LeaderboardPrediction, rank?: number) => {
     setSelectedPrediction(prediction);
     setSelectedRank(rank);
@@ -331,7 +346,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
                     const renderCard = (pred: LeaderboardPrediction, idx: number) => {
                       const { primaryName, secondaryName } = getPredictionCardNames(pred);
-                      const lbIdx = leaderboard.findIndex(e => e.user_id === pred.user_id);
+                      const lbIdx = leaderboard.findIndex(e => entryMatchesPrediction(e, pred));
                       const rank = lbIdx >= 0 ? lbIdx + 1 : undefined;
                       return (
                       <div
@@ -409,7 +424,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 const rank = idx + 1;
                 const isCurrentUser = !usePlaceholder && user?.id === entry.user_id;
                 const medal = getMedalIcon(rank);
-                const userPrediction = predictions.find(p => p.user_id === entry.user_id);
+                const userPrediction = predictions.find(p => entryMatchesPrediction(entry, p));
+                const entryName = getLeaderboardEntryName(entry);
                 
                 const renderPositionChange = (change?: number) => {
                   if (!change) return (
@@ -434,7 +450,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 if (isCurrentUser) {
                   return (
                     <div
-                      key={entry.user_id} 
+                      key={getLeaderboardEntryKey(entry, idx)} 
                       className={`w-full flex items-center gap-3 bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'hover:bg-neutral-800 transition-colors group' : ''}`}
                     >
                       <div className="w-10 text-center font-black text-primary text-lg">
@@ -447,7 +463,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
                         <div className="font-bold flex items-center gap-2">
-                          {entry.display_name}
+                          {entryName}
                           {renderPositionChange(entry.position_change)}
                           <span className="bg-primary text-black text-[9px] px-1.5 py-0.5 rounded font-black">YOU</span>
                         </div>
@@ -471,7 +487,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 if (rank <= 3) {
                   return (
                     <div
-                      key={entry.user_id} 
+                      key={getLeaderboardEntryKey(entry, idx)} 
                       className={`w-full flex items-center gap-3 bg-neutral-900 p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-white/10'} ${userPrediction ? 'hover:bg-white/5 hover:border-primary/30 transition-colors group' : ''}`}
                     >
                       <div className="w-10 flex justify-center">
@@ -484,7 +500,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
                         <div className={`font-bold ${rank === 1 ? 'text-lg' : ''} flex items-center gap-2 ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
-                          {entry.display_name}
+                          {entryName}
                           {renderPositionChange(entry.position_change)}
                         </div>
                         {entry.champion_code && (
@@ -508,7 +524,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
                 return (
                   <div
-                    key={entry.user_id} 
+                    key={getLeaderboardEntryKey(entry, idx)} 
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
                   >
                     <div className="w-10 text-center text-sm font-bold text-neutral-400">
@@ -520,7 +536,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       disabled={!userPrediction}
                       className="ml-1 flex-grow flex items-center gap-2 text-left disabled:cursor-default"
                     >
-                      <span className={`font-medium ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entry.display_name}</span>
+                      <span className={`font-medium ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entryName}</span>
                       {renderPositionChange(entry.position_change)}
                     </button>
                     <div className="text-right flex items-center gap-3">

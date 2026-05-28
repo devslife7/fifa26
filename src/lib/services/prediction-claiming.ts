@@ -10,7 +10,6 @@ type ClaimablePrediction = {
 
 export type PredictionClaimResult = {
   claimedCount: number;
-  activatedPredictionId: string | null;
 };
 
 export async function claimPredictionsForUser(
@@ -19,7 +18,7 @@ export async function claimPredictionsForUser(
   email: string,
 ): Promise<PredictionClaimResult> {
   const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail) return { claimedCount: 0, activatedPredictionId: null };
+  if (!normalizedEmail) return { claimedCount: 0 };
 
   const { data: candidates, error: candidateError } = await supabase
     .from('predictions')
@@ -35,7 +34,7 @@ export async function claimPredictionsForUser(
     .filter(prediction => prediction.submitter_email?.trim().toLowerCase() === normalizedEmail);
 
   if (claimable.length === 0) {
-    return { claimedCount: 0, activatedPredictionId: null };
+    return { claimedCount: 0 };
   }
 
   const claimableIds = claimable.map(prediction => prediction.id);
@@ -49,56 +48,5 @@ export async function claimPredictionsForUser(
     throw claimError;
   }
 
-  const { data: activePredictions, error: activeError } = await supabase
-    .from('predictions')
-    .select('id, is_complete')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .limit(10);
-
-  if (activeError) {
-    throw activeError;
-  }
-
-  if ((activePredictions ?? []).some(prediction => prediction.is_complete)) {
-    return { claimedCount: claimable.length, activatedPredictionId: null };
-  }
-
-  const newestCompleted = claimable
-    .filter(prediction => prediction.is_complete)
-    .sort((a, b) => {
-      const aTime = new Date(a.completed_at ?? a.created_at ?? 0).getTime();
-      const bTime = new Date(b.completed_at ?? b.created_at ?? 0).getTime();
-      return bTime - aTime;
-    })[0];
-
-  if (!newestCompleted) {
-    return { claimedCount: claimable.length, activatedPredictionId: null };
-  }
-
-  if ((activePredictions ?? []).length > 0) {
-    const { error: deactivateError } = await supabase
-      .from('predictions')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('is_active', true);
-
-    if (deactivateError) {
-      throw deactivateError;
-    }
-  }
-
-  const { error: activateError } = await supabase
-    .from('predictions')
-    .update({ is_active: true, updated_at: new Date().toISOString() })
-    .eq('id', newestCompleted.id)
-    .eq('user_id', userId)
-    .eq('is_complete', true)
-    .eq('is_active', false);
-
-  if (activateError) {
-    throw activateError;
-  }
-
-  return { claimedCount: claimable.length, activatedPredictionId: newestCompleted.id };
+  return { claimedCount: claimable.length };
 }

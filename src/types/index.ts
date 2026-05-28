@@ -64,7 +64,10 @@ export interface Predictions {
 export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'news' | 'submit' | 'profile';
 
 export interface LeaderboardEntry {
-  user_id: string;
+  prediction_id?: string;
+  prediction_number?: number;
+  user_id: string | null;
+  name?: string | null;
   display_name: string;
   total_points: number;
   champion_code: string | null;
@@ -76,7 +79,6 @@ export interface SavedPrediction {
   id: string;
   prediction_number?: number;
   name: string;
-  is_active: boolean;
   is_complete: boolean;
   champion_code: string | null;
   share_token: string | null;

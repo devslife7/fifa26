@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from('predictions')
-    .select('id, prediction_number, user_id, submitter_name, submitter_email, champion_code, is_approved, is_active, is_complete, completed_at, created_at, profiles!left(display_name, email)')
+    .select('id, prediction_number, user_id, submitter_name, submitter_email, champion_code, is_approved, is_complete, completed_at, created_at, profiles!left(display_name, email)')
     .eq('is_complete', true)
     .order('completed_at', { ascending: false });
 

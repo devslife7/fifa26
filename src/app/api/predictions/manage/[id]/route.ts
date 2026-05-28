@@ -14,10 +14,10 @@ export async function DELETE(
 
   const supabase = createServiceClient();
 
-  // Verify ownership and check if active
+  // Verify ownership
   const { data: prediction } = await supabase
     .from('predictions')
-    .select('id, is_active')
+    .select('id')
     .eq('id', id)
     .eq('user_id', user.sub)
     .single();
@@ -25,8 +25,6 @@ export async function DELETE(
   if (!prediction) {
     return NextResponse.json({ error: 'Prediction not found' }, { status: 404 });
   }
-
-  const wasActive = prediction.is_active;
 
   // Delete the prediction
   const { error } = await supabase
@@ -37,25 +35,6 @@ export async function DELETE(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // If the deleted prediction was active, promote the most recent complete prediction
-  if (wasActive) {
-    const { data: nextActive } = await supabase
-      .from('predictions')
-      .select('id')
-      .eq('user_id', user.sub)
-      .eq('is_complete', true)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (nextActive) {
-      await supabase
-        .from('predictions')
-        .update({ is_active: true })
-        .eq('id', nextActive.id);
-    }
   }
 
   return NextResponse.json({ success: true });

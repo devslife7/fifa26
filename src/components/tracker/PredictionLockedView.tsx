@@ -24,7 +24,7 @@ function FlagChip({ code, flagUrl, size = 'md' }: { code: string | null; flagUrl
 }
 
 interface Props {
-  active: SavedPrediction;
+  prediction: SavedPrediction;
   liveMatches: Record<string, LiveMatch>;
   teamFlagsByCode: Record<string, string>;
   totalUsers: number;
@@ -35,7 +35,7 @@ interface Props {
 }
 
 export default function PredictionLockedView({
-  active,
+  prediction,
   liveMatches,
   teamFlagsByCode,
   totalUsers,
@@ -53,7 +53,7 @@ export default function PredictionLockedView({
     return scheduled[0] ?? null;
   }, [liveMatches]);
 
-  const championCode = active.champion_code;
+  const championCode = prediction.champion_code;
   const championTeam = championCode ? teamsByCode[championCode] : null;
   const championFlag = championCode ? teamFlagsByCode[championCode] : undefined;
 
@@ -63,7 +63,7 @@ export default function PredictionLockedView({
     return allGroupMatches.find(m => m.id === firstMatch.localMatchId) ?? null;
   }, [firstMatch?.localMatchId]);
 
-  const firstMatchPick = firstGroupMatch ? active.group_matches?.[firstGroupMatch.id] : undefined;
+  const firstMatchPick = firstGroupMatch ? prediction.group_matches?.[firstGroupMatch.id] : undefined;
   const firstMatchPickedTeamCode =
     firstMatchPick === 'home' ? firstGroupMatch?.home ?? null :
     firstMatchPick === 'away' ? firstGroupMatch?.away ?? null :
@@ -82,7 +82,7 @@ export default function PredictionLockedView({
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Prediction locked in</span>
               </div>
               <h2 className="truncate text-3xl font-black leading-none text-white">
-                {active.name || `Prediction #${active.prediction_number ?? ''}`}
+                {prediction.name || `Prediction #${prediction.prediction_number ?? ''}`}
               </h2>
               <p className="mt-2 max-w-[230px] font-body text-[12px] font-semibold leading-snug text-neutral-400">
                 {firstMatch?.localMatchId
@@ -90,7 +90,7 @@ export default function PredictionLockedView({
                   : 'Tournament starts Jun 11, 2026'}
               </p>
             </div>
-            {active.is_approved ? (
+            {prediction.is_approved ? (
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-wc-green/30 bg-wc-green/10 px-3 py-1.5">
                 <span className="material-symbols-outlined text-wc-green text-[14px] font-variation-fill">check_circle</span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-wc-green">Approved</span>

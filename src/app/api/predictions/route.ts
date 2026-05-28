@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { getAuthUser } from '@/lib/services/auth-server';
 import { sendPredictionConfirmation } from '@/lib/services/prediction-confirmation';
+import { claimPredictionsForUser } from '@/lib/services/prediction-claiming';
 
 const MAX_PREDICTIONS = 10;
 
@@ -15,12 +16,12 @@ export async function GET() {
 
   const supabase = createServiceClient();
 
-  // Claim any unclaimed predictions that match the user's email
-  await supabase
-    .from('predictions')
-    .update({ user_id: user.sub })
-    .is('user_id', null)
-    .eq('submitter_email', user.email);
+  try {
+    await claimPredictionsForUser(supabase, user.sub, user.email);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to claim predictions';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 
   const { data, error } = await supabase
     .from('predictions')
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
   } = body;
   const normalizedName = typeof name === 'string' ? name.trim() : '';
   const normalizedSubmitterName = typeof submitterName === 'string' ? submitterName.trim() : '';
-  const normalizedSubmitterEmail = typeof submitterEmail === 'string' ? submitterEmail.trim() : '';
+  const normalizedSubmitterEmail = typeof submitterEmail === 'string' ? submitterEmail.trim().toLowerCase() : '';
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (resendEmail || resendShareToken) {

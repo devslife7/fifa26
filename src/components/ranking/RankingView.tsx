@@ -6,7 +6,8 @@ import { teamsByCode } from '@/data/teams';
 import { allGroupMatches } from '@/data/matches';
 import { detectThirdPlaceTie } from '@/lib/logic/standings';
 import { useAuth } from '@/components/providers/AuthProvider';
-import UserPredictionsModal from './UserPredictionsModal';
+import PublicPredictionProfileModal from './PublicPredictionProfileModal';
+import PredictionCompareModal from './PredictionCompareModal';
 import ScoringExplainer from '@/components/scoring/ScoringExplainer';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
@@ -14,6 +15,31 @@ const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p2', display_name: 'Sarah Jenkins', total_points: 82, champion_code: 'FR', calculated_at: '', position_change: 1 },
   { user_id: 'p3', display_name: 'Luca Rossi', total_points: 76, champion_code: 'IT', calculated_at: '', position_change: -1 },
 ];
+
+function getPredictionCardNames(pred: LeaderboardPrediction) {
+  const accountName = pred.display_name && pred.display_name !== 'Unknown' ? pred.display_name : null;
+  const predictionName = pred.name?.trim() || null;
+  const primaryName = predictionName || accountName || 'Anonymous';
+  const secondaryName = accountName && accountName !== primaryName ? accountName : null;
+
+  return { primaryName, secondaryName };
+}
+
+function savedPredictionToLeaderboardPrediction(prediction: SavedPrediction, userId: string, displayName: string): LeaderboardPrediction {
+  return {
+    prediction_number: prediction.prediction_number,
+    name: prediction.name,
+    user_id: userId,
+    display_name: displayName,
+    champion_code: prediction.champion_code,
+    group_matches: prediction.group_matches ?? {},
+    knockout_matches: prediction.knockout_matches ?? {},
+    third_place_tiebreaker: prediction.third_place_tiebreaker,
+    is_approved: prediction.is_approved ?? false,
+    created_at: prediction.created_at,
+    updated_at: prediction.updated_at,
+  };
+}
 
 // Generate placeholder predictions from PLACEHOLDER_USERS
 function generatePlaceholderPredictions(): LeaderboardPrediction[] {
@@ -67,6 +93,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [totalUsers, setTotalUsers] = useState(0);
   const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
+  const [comparisonBasePrediction, setComparisonBasePrediction] = useState<LeaderboardPrediction | null>(null);
+  const [selectedComparePrediction, setSelectedComparePrediction] = useState<LeaderboardPrediction | null>(null);
+  const [selectedCompareRank, setSelectedCompareRank] = useState<number | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
   const [justRefreshed, setJustRefreshed] = useState(false);
 
@@ -97,22 +126,11 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       }
 
       // Build all of the user's completed predictions as LeaderboardPredictions
+      const displayName = user?.display_name ?? 'You';
       const myLeaderboardPreds: LeaderboardPrediction[] = user
         ? myPreds
             .filter((p: SavedPrediction) => p.is_complete)
-            .map((p: SavedPrediction) => ({
-              prediction_number: p.prediction_number,
-              name: p.name,
-              user_id: user.id,
-              display_name: user.display_name ?? 'You',
-              champion_code: p.champion_code,
-              group_matches: p.group_matches ?? {},
-              knockout_matches: p.knockout_matches ?? {},
-              third_place_tiebreaker: p.third_place_tiebreaker,
-              is_approved: p.is_approved ?? false,
-              created_at: p.created_at,
-              updated_at: p.updated_at,
-            }))
+            .map((p: SavedPrediction) => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
         : [];
 
       if (preds.length === 0) {
@@ -154,22 +172,11 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
         setUsePlaceholder(false);
       }
 
+      const displayName = user?.display_name ?? 'You';
       const myLeaderboardPreds: LeaderboardPrediction[] = user
         ? myPreds
             .filter(p => p.is_complete)
-            .map(p => ({
-              prediction_number: p.prediction_number,
-              name: p.name,
-              user_id: user.id,
-              display_name: user.display_name ?? 'You',
-              champion_code: p.champion_code,
-              group_matches: p.group_matches ?? {},
-              knockout_matches: p.knockout_matches ?? {},
-              third_place_tiebreaker: p.third_place_tiebreaker,
-              is_approved: p.is_approved ?? false,
-              created_at: p.created_at,
-              updated_at: p.updated_at,
-            }))
+            .map(p => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
         : [];
 
       if (preds.length === 0) {
@@ -202,8 +209,70 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     return team ? `${team.flag} ${team.name}` : code;
   };
 
+  const isSamePrediction = (a?: LeaderboardPrediction | null, b?: LeaderboardPrediction | null) => {
+    if (!a || !b) return false;
+    if (a.prediction_number != null && b.prediction_number != null) {
+      return a.prediction_number === b.prediction_number;
+    }
+    return a.user_id === b.user_id && a.name === b.name;
+  };
+
+  const openPredictionDetails = (prediction: LeaderboardPrediction, rank?: number) => {
+    setSelectedPrediction(prediction);
+    setSelectedRank(rank);
+  };
+
+  const openPredictionCompare = (prediction: LeaderboardPrediction, rank?: number) => {
+    if (!comparisonBasePrediction) {
+      setComparisonBasePrediction(prediction);
+      return;
+    }
+    if (isSamePrediction(comparisonBasePrediction, prediction)) {
+      setComparisonBasePrediction(null);
+      return;
+    }
+    setSelectedComparePrediction(prediction);
+    setSelectedCompareRank(rank);
+  };
+
+  const renderPredictionActions = (prediction: LeaderboardPrediction, rank?: number) => {
+    const isSelectedForCompare = isSamePrediction(comparisonBasePrediction, prediction);
+    const compareLabel = isSelectedForCompare ? 'Selected' : comparisonBasePrediction ? 'Compare' : 'Pick';
+    return (
+      <div className="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openPredictionDetails(prediction, rank);
+          }}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-neutral-300 transition-colors hover:border-primary/30 hover:text-primary"
+        >
+          <span className="material-symbols-outlined text-[14px]">visibility</span>
+          View
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            openPredictionCompare(prediction, rank);
+          }}
+          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-black transition-colors ${
+            isSelectedForCompare
+              ? 'bg-wc-green/15 text-wc-green hover:bg-wc-green/20'
+              : 'bg-primary text-black hover:bg-primary/90'
+          }`}
+          title={isSelectedForCompare ? 'Click to clear comparison selection' : undefined}
+        >
+          <span className="material-symbols-outlined text-[14px]">{isSelectedForCompare ? 'check' : 'compare_arrows'}</span>
+          {compareLabel}
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex-grow pt-4 pb-24">
+    <div className="flex-grow pt-4 pb-2">
 
       <div className="md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
@@ -239,8 +308,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       {justRefreshed ? 'Updated' : 'Refresh'}
                     </button>
                   </div>
-
-
                   {(() => {
                     const approved = predictions.filter(p => p.is_approved).sort((a, b) => {
                       if (!a.updated_at || !b.updated_at) return 0;
@@ -263,24 +330,23 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                     };
 
                     const renderCard = (pred: LeaderboardPrediction, idx: number) => {
-                      const hasProfile = pred.display_name && pred.display_name !== 'Unknown';
-                      const primaryName = hasProfile ? pred.display_name : pred.name;
-                      const showSecondary = hasProfile && pred.name;
+                      const { primaryName, secondaryName } = getPredictionCardNames(pred);
+                      const lbIdx = leaderboard.findIndex(e => e.user_id === pred.user_id);
+                      const rank = lbIdx >= 0 ? lbIdx + 1 : undefined;
                       return (
-                      <button
+                      <div
                         key={`${pred.user_id}-${pred.prediction_number ?? idx}`}
-                        onClick={() => {
-                          const lbIdx = leaderboard.findIndex(e => e.user_id === pred.user_id);
-                          setSelectedPrediction(pred);
-                          setSelectedRank(lbIdx >= 0 ? lbIdx + 1 : undefined);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left cursor-pointer group"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 hover:bg-white/5 hover:border-primary/30 transition-colors text-left group"
                       >
-                        <div className="flex-grow min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => openPredictionDetails(pred, rank)}
+                          className="flex-grow min-w-0 text-left"
+                        >
                           <div className="font-semibold text-sm truncate group-hover:text-primary transition-colors">
                             {primaryName}
                             <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
-                            {showSecondary && <span className="text-neutral-400 font-normal ml-1.5">— {pred.name}</span>}
+                            {secondaryName && <span className="text-neutral-400 font-normal ml-1.5">— {secondaryName}</span>}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-neutral-400 truncate font-body">
@@ -295,9 +361,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                               </>
                             )}
                           </div>
-                        </div>
-                        <span className="material-symbols-outlined text-neutral-500 text-[14px] group-hover:text-primary transition-colors shrink-0">expand_content</span>
-                      </button>
+                        </button>
+                        {renderPredictionActions(pred, rank)}
+                      </div>
                       );
                     };
 
@@ -367,15 +433,19 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
 
                 if (isCurrentUser) {
                   return (
-                    <button 
+                    <div
                       key={entry.user_id} 
-                      onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
-                      className={`w-full flex items-center bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'cursor-pointer hover:bg-neutral-800 transition-colors' : ''}`}
+                      className={`w-full flex items-center gap-3 bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${userPrediction ? 'hover:bg-neutral-800 transition-colors group' : ''}`}
                     >
                       <div className="w-10 text-center font-black text-primary text-lg">
                         {medal ?? rank}
                       </div>
-                      <div className="ml-4 flex-grow">
+                      <button
+                        type="button"
+                        onClick={() => { if (userPrediction) openPredictionDetails(userPrediction, rank); }}
+                        disabled={!userPrediction}
+                        className="ml-1 flex-grow text-left disabled:cursor-default"
+                      >
                         <div className="font-bold flex items-center gap-2">
                           {entry.display_name}
                           {renderPositionChange(entry.position_change)}
@@ -386,26 +456,33 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                             Champion Pick: {getChampionLabel(entry.champion_code)}
                           </div>
                         )}
+                      </button>
+                      <div className="text-right flex items-center gap-3">
+                        <div>
+                          <div className="font-black text-lg text-primary">{entry.total_points}</div>
+                          <div className="text-[10px] font-bold text-white/50 uppercase">Points</div>
+                        </div>
+                        {userPrediction && renderPredictionActions(userPrediction, rank)}
                       </div>
-                      <div className="text-right">
-                        <div className="font-black text-lg text-primary">{entry.total_points}</div>
-                        <div className="text-[10px] font-bold text-white/50 uppercase">Points</div>
-                      </div>
-                    </button>
+                    </div>
                   );
                 }
 
                 if (rank <= 3) {
                   return (
-                    <button 
+                    <div
                       key={entry.user_id} 
-                      onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
-                      className={`w-full flex items-center bg-neutral-900 p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-white/10'} ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:border-primary/30 transition-colors group' : ''}`}
+                      className={`w-full flex items-center gap-3 bg-neutral-900 p-4 rounded-xl shadow-sm border mb-2 text-left ${rank === 1 ? 'border-primary/20' : 'border-white/10'} ${userPrediction ? 'hover:bg-white/5 hover:border-primary/30 transition-colors group' : ''}`}
                     >
                       <div className="w-10 flex justify-center">
                         {medal}
                       </div>
-                      <div className="ml-4 flex-grow">
+                      <button
+                        type="button"
+                        onClick={() => { if (userPrediction) openPredictionDetails(userPrediction, rank); }}
+                        disabled={!userPrediction}
+                        className="ml-1 flex-grow text-left disabled:cursor-default"
+                      >
                         <div className={`font-bold ${rank === 1 ? 'text-lg' : ''} flex items-center gap-2 ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
                           {entry.display_name}
                           {renderPositionChange(entry.position_change)}
@@ -415,7 +492,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                             Predicted {getChampionLabel(entry.champion_code)} as Champion
                           </div>
                         )}
-                      </div>
+                      </button>
                       <div className="text-right flex items-center gap-3">
                         <div>
                           <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-neutral-300'}`}>
@@ -423,30 +500,34 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                           </div>
                           <div className="text-[10px] font-bold text-neutral-400 uppercase">Points</div>
                         </div>
-                        {userPrediction && <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
+                        {userPrediction && renderPredictionActions(userPrediction, rank)}
                       </div>
-                    </button>
+                    </div>
                   );
                 }
 
                 return (
-                  <button 
+                  <div
                     key={entry.user_id} 
-                    onClick={() => { if (userPrediction) { setSelectedPrediction(userPrediction); setSelectedRank(rank); } }}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'cursor-pointer hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors mb-1 text-left ${userPrediction ? 'hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
                   >
                     <div className="w-10 text-center text-sm font-bold text-neutral-400">
                       {rank}
                     </div>
-                    <div className="ml-4 flex-grow flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { if (userPrediction) openPredictionDetails(userPrediction, rank); }}
+                      disabled={!userPrediction}
+                      className="ml-1 flex-grow flex items-center gap-2 text-left disabled:cursor-default"
+                    >
                       <span className={`font-medium ${userPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entry.display_name}</span>
                       {renderPositionChange(entry.position_change)}
-                    </div>
+                    </button>
                     <div className="text-right flex items-center gap-3">
                       <div className="font-bold">{entry.total_points}</div>
-                      {userPrediction && <span className="material-symbols-outlined text-neutral-300 text-[20px] group-hover:text-primary transition-colors">chevron_right</span>}
+                      {userPrediction && renderPredictionActions(userPrediction, rank)}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -460,10 +541,20 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
       </div>
 
       {selectedPrediction && (
-        <UserPredictionsModal
+        <PublicPredictionProfileModal
           prediction={selectedPrediction}
           rank={selectedRank}
           onClose={() => { setSelectedPrediction(null); setSelectedRank(undefined); }}
+          liveMatches={liveMatches}
+          teamFlagsByCode={teamFlagsByCode}
+        />
+      )}
+      {comparisonBasePrediction && selectedComparePrediction && (
+        <PredictionCompareModal
+          mine={comparisonBasePrediction}
+          friend={selectedComparePrediction}
+          friendRank={selectedCompareRank}
+          onClose={() => { setSelectedComparePrediction(null); setSelectedCompareRank(undefined); }}
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
         />

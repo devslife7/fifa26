@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { createSessionToken, SESSION_COOKIE, COOKIE_OPTIONS } from '@/lib/services/auth';
+import { claimPredictionsForUser } from '@/lib/services/prediction-claiming';
 
 export async function POST(request: Request) {
   const { email, code } = await request.json();
@@ -61,6 +62,13 @@ export async function POST(request: Request) {
       console.error('Profile insert error:', insertError);
       return NextResponse.json({ error: 'Failed to create profile' }, { status: 500 });
     }
+  }
+
+  try {
+    await claimPredictionsForUser(supabase, userId, normalizedEmail);
+  } catch (error) {
+    console.error('Prediction claim error:', error);
+    return NextResponse.json({ error: 'Failed to claim predictions' }, { status: 500 });
   }
 
   // Create JWT

@@ -93,6 +93,7 @@ export interface SavedPrediction {
   pdf_generation_error?: string | null;
   confirmation_email_sent_at?: string | null;
   confirmation_email_error?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
 }

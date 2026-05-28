@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { LiveMatch, SavedPrediction } from '@/types';
 import PredictionRow from './PredictionRow';
-import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
+import PublicPredictionProfileModal from '@/components/ranking/PublicPredictionProfileModal';
 import PredictionCapture from '@/components/shared/PredictionCapture';
 import { copyImageToClipboard } from '@/lib/client/clipboard';
 
@@ -119,14 +119,20 @@ export default function PredictionsList({
         </div>
       )}
       {viewingPrediction && (
-        <UserPredictionsModal
+        <PublicPredictionProfileModal
           prediction={{
+            prediction_number: viewingPrediction.prediction_number,
             user_id: '',
             display_name: viewingPrediction.name,
+            name: viewingPrediction.name,
             champion_code: viewingPrediction.champion_code ?? null,
             group_matches: viewingPrediction.group_matches ?? {},
             knockout_matches: viewingPrediction.knockout_matches ?? {},
             third_place_tiebreaker: viewingPrediction.third_place_tiebreaker,
+            group_tiebreakers: viewingPrediction.group_tiebreakers,
+            is_approved: viewingPrediction.is_approved,
+            created_at: viewingPrediction.created_at,
+            updated_at: viewingPrediction.updated_at,
           }}
           onClose={() => setViewingPrediction(null)}
           liveMatches={liveMatches}

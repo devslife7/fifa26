@@ -78,9 +78,14 @@ export async function PATCH(
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from('predictions')
-    .update({ name, updated_at: new Date().toISOString() })
+    .update({ name: normalizedName, updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('user_id', user.sub)
     .select()

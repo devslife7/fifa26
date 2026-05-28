@@ -14,7 +14,7 @@ import {
 } from '@/hooks/usePredictionResults';
 import { groupItemsByDate, formatMatchTime } from '@/lib/utils/match-dates';
 import { useAuth } from '@/components/providers/AuthProvider';
-import UserPredictionsModal from '@/components/ranking/UserPredictionsModal';
+import PublicPredictionProfileModal from '@/components/ranking/PublicPredictionProfileModal';
 import PredictionLockedView from './PredictionLockedView';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
@@ -39,6 +39,12 @@ const STAGE_TABS: { id: TrackerStageId; label: string; icon: string }[] = [
   { id: 'group', label: 'Group Stage', icon: 'grid_view' },
   { id: 'knockout', label: 'Bracket Stage', icon: 'account_tree' },
 ];
+
+type SlidingTab<T extends string> = {
+  id: T;
+  label: string;
+  icon?: string;
+};
 
 interface Props {
   liveMatches: Record<string, LiveMatch>;
@@ -68,6 +74,57 @@ function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean
 
 function matchesTrackerStage(outcome: PerMatchOutcome, stage: TrackerStageId): boolean {
   return outcome.kind === stage;
+}
+
+function SlidingTabRail<T extends string>({
+  tabs,
+  activeId,
+  counts,
+  onSelect,
+  surfaceClassName,
+}: {
+  tabs: SlidingTab<T>[];
+  activeId: T;
+  counts: Record<T, number>;
+  onSelect: (id: T) => void;
+  surfaceClassName: string;
+}) {
+  const activeIndex = Math.max(0, tabs.findIndex(tab => tab.id === activeId));
+  const pillWidth = `calc((100% - 0.5rem) / ${tabs.length})`;
+
+  return (
+    <div
+      className={`relative grid gap-1 overflow-hidden rounded-xl border border-white/10 p-1 ${surfaceClassName}`}
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute left-1 top-1 bottom-1 rounded-lg bg-primary shadow-[0_8px_24px_rgba(245,197,66,0.25)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+        style={{
+          width: pillWidth,
+          transform: `translateX(${activeIndex * 100}%)`,
+        }}
+      />
+      {tabs.map(tab => {
+        const isActive = activeId === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={`relative z-10 flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2.5 text-[11px] font-black uppercase tracking-wider font-body transition-colors duration-200 ${
+              isActive
+                ? 'text-black'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            {tab.icon && <span className="material-symbols-outlined text-[16px] flex-shrink-0">{tab.icon}</span>}
+            <span className="truncate">{tab.label}</span>
+            <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{counts[tab.id]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function maxPointsForOutcome(outcome: PerMatchOutcome): number {
@@ -629,7 +686,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           onNavigate={onNavigate}
         />
         {showBreakdown && selfLeaderboardPred && (
-          <UserPredictionsModal
+          <PublicPredictionProfileModal
             prediction={selfLeaderboardPred}
             onClose={() => setShowBreakdown(false)}
             liveMatches={liveMatches}
@@ -668,50 +725,27 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       </div>
 
       <div className="px-4">
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-neutral-950/50 p-1">
-          {STAGE_TABS.map(tab => {
-            const isActive = trackerStage === tab.id;
-            const count = stageCounts[tab.id];
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setTrackerStage(tab.id)}
-                className={`min-w-0 px-2.5 py-2.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-colors font-body flex items-center justify-center gap-1.5 ${
-                  isActive
-                    ? 'bg-primary text-black'
-                    : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px] flex-shrink-0">{tab.icon}</span>
-                <span className="truncate">{tab.label}</span>
-                <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
+        <SlidingTabRail
+          tabs={STAGE_TABS}
+          activeId={trackerStage}
+          counts={stageCounts}
+          onSelect={setTrackerStage}
+          surfaceClassName="bg-neutral-950/50"
+        />
       </div>
 
       <div className="px-4">
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/10 bg-white/[0.025] p-1">
-          {TRACKER_TABS.map(tab => {
-            const isActive = trackerTab === tab.id;
-            const count = tab.id === 'active' ? stageActiveCount : tab.id === 'settled' ? stageSettledCount : stageOutcomes.length;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setTrackerTab(tab.id)}
-                className={`min-w-0 px-2 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors font-body ${
-                  isActive
-                    ? 'bg-primary text-black'
-                    : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span className={`ml-1 tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{count}</span>
-              </button>
-            );
-          })}
-        </div>
+        <SlidingTabRail
+          tabs={TRACKER_TABS}
+          activeId={trackerTab}
+          counts={{
+            active: stageActiveCount,
+            settled: stageSettledCount,
+            all: stageOutcomes.length,
+          }}
+          onSelect={setTrackerTab}
+          surfaceClassName="bg-white/[0.025]"
+        />
       </div>
 
       {groupStats.length === 0 ? (
@@ -747,7 +781,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       )}
 
       {showBreakdown && selfLeaderboardPred && (
-        <UserPredictionsModal
+        <PublicPredictionProfileModal
           prediction={selfLeaderboardPred}
           onClose={() => setShowBreakdown(false)}
           liveMatches={liveMatches}

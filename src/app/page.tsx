@@ -27,6 +27,7 @@ import ThirdPlaceTable from '@/components/groups/ThirdPlaceTable';
 import BracketView from '@/components/bracket/BracketView';
 import BottomNav from '@/components/layout/BottomNav';
 import StepperBar from '@/components/layout/StepperBar';
+import AppFooter from '@/components/layout/AppFooter';
 import SaveIndicator from '@/components/ui/SaveIndicator';
 import RankingView from '@/components/ranking/RankingView';
 import PullToRefresh from '@/components/ui/PullToRefresh';
@@ -750,10 +751,13 @@ export default function Home() {
         )}
 
         {activeTab === 'ranking' && (
-          <RankingView
-            liveMatches={liveMatchesByLocalId}
-            teamFlagsByCode={teamFlagsByCode}
-          />
+          <div className="flex flex-col gap-3 pb-8">
+            <RankingView
+              liveMatches={liveMatchesByLocalId}
+              teamFlagsByCode={teamFlagsByCode}
+            />
+            <AppFooter onNavigate={navigateTo} />
+          </div>
         )}
 
         {activeTab === 'news' && <NewsView />}

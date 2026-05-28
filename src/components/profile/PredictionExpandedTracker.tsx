@@ -36,11 +36,17 @@ const TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
   { id: 'all', label: 'All' },
 ];
 
+type SlidingTab<T extends string> = {
+  id: T;
+  label: string;
+  icon?: string;
+};
+
 interface Props {
   prediction: SavedPrediction;
   liveMatches: Record<string, LiveMatch>;
   teamFlagsByCode: Record<string, string>;
-  onCompare: () => void;
+  onCompare?: () => void;
 }
 
 function isLiveStatus(status: PerMatchOutcome['status']): boolean {
@@ -60,6 +66,61 @@ function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean
   if (tab === 'all') return true;
   if (tab === 'active') return isActiveOutcome(outcome);
   return isSettledOutcome(outcome);
+}
+
+function SlidingTabRail<T extends string>({
+  tabs,
+  activeId,
+  counts,
+  onSelect,
+  surfaceClassName,
+  tall = false,
+}: {
+  tabs: SlidingTab<T>[];
+  activeId: T;
+  counts: Record<T, number>;
+  onSelect: (id: T) => void;
+  surfaceClassName: string;
+  tall?: boolean;
+}) {
+  const activeIndex = Math.max(0, tabs.findIndex(tab => tab.id === activeId));
+  const pillWidth = `calc((100% - 0.5rem) / ${tabs.length})`;
+
+  return (
+    <div
+      className={`relative grid gap-1 overflow-hidden rounded-2xl border border-white/10 p-1 ${surfaceClassName}`}
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute left-1 top-1 bottom-1 rounded-xl bg-primary shadow-[0_8px_24px_rgba(245,197,66,0.25)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+        style={{
+          width: pillWidth,
+          transform: `translateX(${activeIndex * 100}%)`,
+        }}
+      />
+      {tabs.map(tab => {
+        const isActive = activeId === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onSelect(tab.id)}
+            className={`relative z-10 flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[12px] font-black uppercase tracking-wider font-body transition-colors duration-200 ${
+              tall ? 'py-3' : 'py-2.5'
+            } ${
+              isActive
+                ? 'text-black'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            {tab.icon && <span className="material-symbols-outlined text-[18px] flex-shrink-0">{tab.icon}</span>}
+            <span className="truncate">{tab.label}</span>
+            <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{counts[tab.id]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function maxPointsForOutcome(outcome: PerMatchOutcome): number {
@@ -215,7 +276,7 @@ function MatchCard({
         </div>
         {label && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] font-body">
-            <span className="font-black uppercase tracking-wider text-neutral-500">Your pick:</span>
+            <span className="font-black uppercase tracking-wider text-neutral-500">Pick:</span>
             <span className={`font-black ${
               outcome.state === 'hit'
                 ? 'text-wc-green'
@@ -323,60 +384,37 @@ export default function PredictionExpandedTracker({
           </div>
         </div>
 
-        <button
-          onClick={onCompare}
-          className="flex w-full items-center justify-center gap-2 border-t border-white/10 px-4 py-3 text-[15px] font-black text-primary transition-colors hover:bg-white/5"
-        >
-          <span className="material-symbols-outlined text-[20px]">bar_chart</span>
-          Compare with other predictions
-        </button>
+        {onCompare && (
+          <button
+            onClick={onCompare}
+            className="flex w-full items-center justify-center gap-2 border-t border-white/10 px-4 py-3 text-[15px] font-black text-primary transition-colors hover:bg-white/5"
+          >
+            <span className="material-symbols-outlined text-[20px]">bar_chart</span>
+            Compare with other predictions
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-2xl border border-white/10 bg-neutral-950/50 p-1">
-        {STAGE_TABS.map(tab => {
-          const isActive = trackerStage === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setTrackerStage(tab.id)}
-              className={`min-w-0 rounded-xl px-2.5 py-3 text-[12px] font-black uppercase tracking-wider transition-colors font-body flex items-center justify-center gap-1.5 ${
-                isActive
-                  ? 'bg-primary text-black'
-                  : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px] flex-shrink-0">{tab.icon}</span>
-              <span className="truncate">{tab.label}</span>
-              <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{stageCounts[tab.id]}</span>
-            </button>
-          );
-        })}
-      </div>
+      <SlidingTabRail
+        tabs={STAGE_TABS}
+        activeId={trackerStage}
+        counts={stageCounts}
+        onSelect={setTrackerStage}
+        surfaceClassName="bg-neutral-950/50"
+        tall
+      />
 
-      <div className="grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-white/[0.025] p-1">
-        {TRACKER_TABS.map(tab => {
-          const isActive = trackerTab === tab.id;
-          const count = tab.id === 'active'
-            ? stageActiveCount
-            : tab.id === 'settled'
-              ? stageSettledCount
-              : stageOutcomes.length;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setTrackerTab(tab.id)}
-              className={`min-w-0 rounded-xl px-2 py-2.5 text-[12px] font-black uppercase tracking-wider transition-colors font-body ${
-                isActive
-                  ? 'bg-primary text-black'
-                  : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`ml-1 tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <SlidingTabRail
+        tabs={TRACKER_TABS}
+        activeId={trackerTab}
+        counts={{
+          active: stageActiveCount,
+          settled: stageSettledCount,
+          all: stageOutcomes.length,
+        }}
+        onSelect={setTrackerTab}
+        surfaceClassName="bg-white/[0.025]"
+      />
 
       {groupedByDate.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">

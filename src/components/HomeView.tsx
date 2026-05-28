@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { LiveMatch, TabId } from '@/types';
+import { useState, useEffect, useRef } from 'react';
+import { LiveMatch, SavedPrediction, TabId } from '@/types';
 import { PredictionFlowState } from '@/lib/logic/prediction-flow';
 import { teamsByCode } from '@/data/teams';
 import NextMatchCard from '@/components/home/NextMatchCard';
 import { TOURNAMENT_KICKOFF } from '@/data/tournament';
+import { useAuth } from '@/components/providers/AuthProvider';
+import AppFooter from '@/components/layout/AppFooter';
 
 interface HomeViewProps {
   flowState: PredictionFlowState;
@@ -377,7 +379,15 @@ function PrimaryAction({ action, onNavigate }: { action: HomeAction; onNavigate:
   );
 }
 
-function StartAgainAction({ onStartAgain }: { onStartAgain: () => void }) {
+function StartAgainAction({
+  onStartAgain,
+  label = 'Clear predictions and start again',
+  icon = 'restart_alt',
+}: {
+  onStartAgain: () => void;
+  label?: string;
+  icon?: string;
+}) {
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -386,8 +396,8 @@ function StartAgainAction({ onStartAgain }: { onStartAgain: () => void }) {
         onClick={() => setConfirming(true)}
         className="flex w-full items-center justify-center gap-1.5 rounded-[16px] border border-white/10 bg-white/[0.035] px-4 py-2.5 font-body text-xs font-black text-neutral-200 transition-colors hover:bg-white/[0.06]"
       >
-        <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-        Clear predictions and start again
+        <span className="material-symbols-outlined text-[16px]">{icon}</span>
+        {label}
       </button>
 
       {confirming && (
@@ -427,56 +437,397 @@ function StartAgainAction({ onStartAgain }: { onStartAgain: () => void }) {
   );
 }
 
-function HomeFooter({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
-  const footerLinks: Array<{ label: string; target: TabId }> = [
-    { label: 'Home', target: 'home' },
-    { label: 'Predictor', target: 'groups' },
-    { label: 'Leaderboard', target: 'ranking' },
-    { label: 'News', target: 'news' },
-  ];
+function PredictionStatus({ prediction }: { prediction: SavedPrediction }) {
+  if (prediction.is_active) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-primary">
+        <span className="material-symbols-outlined text-[12px] font-variation-fill">star</span>
+        Active
+      </span>
+    );
+  }
+
+  if (prediction.is_complete) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-wc-green/15 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-wc-green">
+        <span className="material-symbols-outlined text-[12px]">check_circle</span>
+        Submitted
+      </span>
+    );
+  }
 
   return (
-    <footer className="md:col-span-2 mt-2 overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.025] px-4 py-5 shadow-[0_18px_50px_-28px_rgba(0,0,0,0.85)] sm:px-5">
-      <div className="grid gap-6 sm:grid-cols-[1.3fr_1fr]">
-        <div>
-          <div className="mb-3 flex items-center gap-2.5">
-            <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="size-9 shrink-0" />
-            <p className="text-base font-black text-neutral-100">FIFA 26 Predictor</p>
+    <span className="inline-flex items-center gap-1 rounded-md bg-wc-amber-light px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-wc-amber">
+      <span className="material-symbols-outlined text-[12px]">pending</span>
+      Draft
+    </span>
+  );
+}
+
+function HomePredictionsPanel({ onStartAgain }: { onStartAgain: () => void }) {
+  const { user, updateDisplayName, signOut } = useAuth();
+  const [predictions, setPredictions] = useState<SavedPrediction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+  const [savingRenameId, setSavingRenameId] = useState<string | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setPredictions([]);
+      setError(null);
+      setRenamingId(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetch('/api/predictions', { cache: 'no-store' })
+      .then(async res => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Failed to load predictions');
+        if (!cancelled) setPredictions(data.predictions ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Unable to load your predictions.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [accountMenuOpen]);
+
+  if (!user) return null;
+
+  const handleSaveUsername = async () => {
+    const nextName = usernameInput.trim();
+    if (!nextName) {
+      setError('Username is required.');
+      return;
+    }
+
+    setUsernameSaving(true);
+    setError(null);
+
+    try {
+      const result = await updateDisplayName(nextName);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setEditingUsername(false);
+    } finally {
+      setUsernameSaving(false);
+    }
+  };
+
+  const handleRename = async (predictionId: string) => {
+    const nextName = renameInput.trim();
+    if (!nextName) {
+      setError('Prediction name is required.');
+      return;
+    }
+
+    setSavingRenameId(predictionId);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/predictions/manage/${predictionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nextName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to rename prediction.');
+        return;
+      }
+      const updated = data.prediction as SavedPrediction;
+      setPredictions(current => current.map(prediction => (
+        prediction.id === predictionId ? updated : prediction
+      )));
+      setRenamingId(null);
+      setRenameInput('');
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setSavingRenameId(null);
+    }
+  };
+
+  const sortedPredictions = [...predictions].sort((a, b) => {
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  return (
+    <>
+      <section className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.035] shadow-[0_18px_50px_-28px_rgba(0,0,0,0.85)]">
+        <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-black text-neutral-100">My Predictions</h2>
+            <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 font-body text-[11px] font-semibold">
+              <span className="truncate text-neutral-300">{user.display_name || 'Player'}</span>
+              <span className="text-neutral-700">/</span>
+              <span className="truncate text-neutral-500">{user.email}</span>
+            </div>
           </div>
-          <p className="max-w-sm font-body text-xs font-semibold leading-relaxed text-neutral-500">
-            A matchday companion for following the 2026 tournament with friends and family.
-          </p>
+          <div className="relative shrink-0" ref={accountMenuRef}>
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen(open => !open)}
+              className="flex size-9 items-center justify-center rounded-lg border border-white/10 text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-neutral-100"
+              aria-label="Open account menu"
+              aria-expanded={accountMenuOpen}
+            >
+              <span className="material-symbols-outlined text-[22px]">more_vert</span>
+            </button>
+            {accountMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/10 bg-neutral-800 shadow-[0_18px_45px_-18px_rgba(0,0,0,0.9)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsernameInput(user.display_name || '');
+                    setEditingUsername(true);
+                    setAccountMenuOpen(false);
+                    setError(null);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-neutral-100 transition-colors hover:bg-white/[0.08]"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                  Edit username
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSignOutConfirm(true);
+                    setAccountMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-wc-red transition-colors hover:bg-white/[0.08]"
+                >
+                  <span className="material-symbols-outlined text-[20px]">logout</span>
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        <nav aria-label="Footer navigation">
-          <p className="mb-3 font-body text-[10px] font-black uppercase tracking-[0.16em] text-neutral-500">
-            Explore
-          </p>
-          <div className="grid gap-2">
-            {footerLinks.map(link => (
-              <button
-                key={link.label}
-                onClick={() => onNavigate(link.target)}
-                className="w-fit font-body text-xs font-bold text-neutral-300 transition-colors hover:text-primary"
-              >
-                {link.label}
-              </button>
-            ))}
-            <a
-              href="/admin"
-              className="w-fit font-body text-xs font-bold text-neutral-300 transition-colors hover:text-primary"
-            >
-              Admin
-            </a>
+        {error && (
+          <div className="mx-3 mt-3 rounded-lg border border-wc-red/30 bg-wc-red/15 px-3 py-2 text-xs font-semibold text-wc-red">
+            {error}
           </div>
-        </nav>
-      </div>
+        )}
 
-      <div className="mt-6 flex flex-col gap-2 border-t border-white/8 pt-3 font-body text-[11px] font-semibold text-neutral-600 sm:flex-row sm:items-center sm:justify-between">
-        <span>Unofficial fan project. Not affiliated with FIFA.</span>
-        <span>&copy; 2026 FIFA 26 Predictor</span>
-      </div>
-    </footer>
+        {loading ? (
+          <div className="space-y-2 p-3">
+            {[1, 2, 3].map(index => (
+              <div key={index} className="h-[72px] animate-pulse rounded-xl bg-white/[0.055]" />
+            ))}
+          </div>
+        ) : sortedPredictions.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <span className="material-symbols-outlined block text-3xl text-white/20">emoji_events</span>
+            <p className="mt-2 text-sm font-bold text-neutral-300">No predictions attached yet</p>
+            <p className="mt-1 font-body text-xs font-semibold leading-relaxed text-neutral-500">
+              Predictions submitted with this email will appear here after sign in.
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[430px] overflow-y-auto p-3">
+            <div className="space-y-2">
+              {sortedPredictions.map(prediction => {
+                const champion = prediction.champion_code ? teamsByCode[prediction.champion_code] : null;
+                const dateValue = prediction.completed_at ?? prediction.created_at;
+                const formattedDate = dateValue
+                  ? new Date(dateValue).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                  : null;
+
+                return (
+                  <div key={prediction.id} className="rounded-xl border border-white/8 bg-black/20 px-3 py-3">
+                    {renamingId === prediction.id ? (
+                      <form
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          handleRename(prediction.id);
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <input
+                          value={renameInput}
+                          onChange={event => setRenameInput(event.target.value)}
+                          autoFocus
+                          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-white/[0.08] px-3 py-2 text-sm font-bold text-white outline-none transition-colors placeholder:text-white/30 focus:border-primary/50"
+                          placeholder="Prediction name"
+                        />
+                        <button
+                          type="submit"
+                          disabled={savingRenameId === prediction.id}
+                          className="flex size-9 items-center justify-center rounded-lg bg-primary text-black transition-colors hover:bg-primary/90 disabled:opacity-50"
+                          aria-label="Save prediction name"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">
+                            {savingRenameId === prediction.id ? 'hourglass_empty' : 'check'}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRenamingId(null);
+                            setRenameInput('');
+                          }}
+                          className="flex size-9 items-center justify-center rounded-lg bg-white/[0.08] text-neutral-400 transition-colors hover:bg-white/[0.12] hover:text-white"
+                          aria-label="Cancel rename"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex items-start gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-xl">
+                          {champion ? champion.flag : <span className="material-symbols-outlined text-[20px] text-primary">emoji_events</span>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate text-sm font-black text-neutral-100">{prediction.name}</p>
+                            {prediction.prediction_number != null && (
+                              <span className="shrink-0 font-mono text-[11px] font-bold text-neutral-500">#{prediction.prediction_number}</span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <PredictionStatus prediction={prediction} />
+                            {champion && (
+                              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-bold text-neutral-300">
+                                {champion.code}
+                              </span>
+                            )}
+                            {formattedDate && (
+                              <span className="text-[10px] font-semibold text-neutral-500">{formattedDate}</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setRenamingId(prediction.id);
+                            setRenameInput(prediction.name);
+                            setError(null);
+                          }}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-neutral-400 transition-colors hover:bg-white/[0.08] hover:text-primary"
+                          aria-label={`Rename ${prediction.name}`}
+                        >
+                          <span className="material-symbols-outlined text-[17px]">drive_file_rename_outline</span>
+                          Rename
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className="border-t border-white/8 px-3 py-3">
+          <StartAgainAction
+            onStartAgain={onStartAgain}
+            label="Add another prediction"
+            icon="add_circle"
+          />
+        </div>
+      </section>
+
+      {editingUsername && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditingUsername(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <h3 className="text-lg font-black text-neutral-100">Edit username</h3>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSaveUsername();
+              }}
+              className="mt-4"
+            >
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={event => setUsernameInput(event.target.value)}
+                autoFocus
+                placeholder="Username"
+                className="w-full rounded-xl border border-white/15 bg-white/[0.08] px-4 py-3 text-base font-bold text-white outline-none transition-colors placeholder:text-white/30 focus:border-primary/50"
+              />
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingUsername(false)}
+                  className="flex-1 rounded-xl bg-white/[0.08] py-3 text-sm font-bold text-neutral-300 transition-colors hover:bg-white/[0.12] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={usernameSaving || !usernameInput.trim()}
+                  className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-black transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {usernameSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showSignOutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowSignOutConfirm(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-900 p-5 shadow-2xl" onClick={event => event.stopPropagation()}>
+            <h3 className="text-lg font-black text-neutral-100">Sign out?</h3>
+            <p className="mt-2 font-body text-sm font-semibold text-neutral-400">You can sign back in with your email anytime.</p>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSignOutConfirm(false)}
+                className="flex-1 rounded-xl bg-white/[0.08] py-3 text-sm font-bold text-neutral-300 transition-colors hover:bg-white/[0.12] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSignOutConfirm(false);
+                  signOut();
+                }}
+                className="flex-1 rounded-xl bg-wc-red py-3 text-sm font-bold text-white transition-colors hover:bg-wc-red/90"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -509,7 +860,6 @@ export default function HomeView({
         />
         <div className="flex flex-col gap-2">
           <PrimaryAction action={action} onNavigate={onNavigate} />
-          <StartAgainAction onStartAgain={onStartAgain} />
         </div>
       </div>
 
@@ -520,9 +870,10 @@ export default function HomeView({
           teamFlagsByCode={teamFlagsByCode}
           onNavigate={onNavigate}
         />
+        <HomePredictionsPanel onStartAgain={onStartAgain} />
       </div>
 
-      <HomeFooter onNavigate={onNavigate} />
+      <AppFooter onNavigate={onNavigate} className="md:col-span-2" />
     </div>
   );
 }

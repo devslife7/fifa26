@@ -261,10 +261,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
             e.stopPropagation();
             openPredictionDetails(prediction, rank);
           }}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-neutral-300 transition-colors hover:border-primary/30 hover:text-primary"
+          className="inline-flex h-9 w-10 items-center justify-center gap-1 rounded-lg border border-white/10 bg-white/5 px-0 text-[11px] font-bold text-neutral-300 transition-colors hover:border-primary/30 hover:text-primary sm:h-auto sm:w-auto sm:px-2.5 sm:py-1.5"
+          aria-label="View prediction"
+          title="View prediction"
         >
-          <span className="material-symbols-outlined text-[14px]">visibility</span>
-          View
+          <span className="material-symbols-outlined text-[18px] sm:text-[14px]">visibility</span>
+          <span className="hidden sm:inline">View</span>
         </button>
         <button
           type="button"
@@ -272,15 +274,16 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
             e.stopPropagation();
             openPredictionCompare(prediction, rank);
           }}
-          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-black transition-colors ${
+          className={`inline-flex h-9 w-10 items-center justify-center gap-1 rounded-lg px-0 text-[11px] font-black transition-colors sm:h-auto sm:w-auto sm:px-2.5 sm:py-1.5 ${
             isSelectedForCompare
               ? 'bg-wc-green/15 text-wc-green hover:bg-wc-green/20'
               : 'bg-primary text-black hover:bg-primary/90'
           }`}
-          title={isSelectedForCompare ? 'Click to clear comparison selection' : undefined}
+          aria-label={isSelectedForCompare ? 'Clear comparison selection' : compareLabel}
+          title={isSelectedForCompare ? 'Click to clear comparison selection' : compareLabel}
         >
-          <span className="material-symbols-outlined text-[14px]">{isSelectedForCompare ? 'check' : 'compare_arrows'}</span>
-          {compareLabel}
+          <span className="material-symbols-outlined text-[18px] sm:text-[14px]">{isSelectedForCompare ? 'check' : 'compare_arrows'}</span>
+          <span className="hidden sm:inline">{compareLabel}</span>
         </button>
       </div>
     );
@@ -311,7 +314,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       disabled={refreshing}
                       aria-label="Refresh leaderboard"
                       title={justRefreshed ? 'Updated' : 'Refresh'}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold font-body transition-colors ${
+                      className={`flex h-9 w-10 items-center justify-center gap-1.5 rounded-lg border px-0 text-xs font-bold font-body transition-colors sm:h-auto sm:w-auto sm:px-3 sm:py-1.5 ${
                         justRefreshed
                           ? 'border-wc-green/50 text-wc-green bg-wc-green/10'
                           : 'border-white/10 text-neutral-300 hover:border-primary/30 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
@@ -320,7 +323,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>
                         {justRefreshed ? 'check' : 'refresh'}
                       </span>
-                      {justRefreshed ? 'Updated' : 'Refresh'}
+                      <span className="hidden sm:inline">{justRefreshed ? 'Updated' : 'Refresh'}</span>
                     </button>
                   </div>
                   {(() => {

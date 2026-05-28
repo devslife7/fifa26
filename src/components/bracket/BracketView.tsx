@@ -426,6 +426,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
                         teamFlagsByCode={teamFlagsByCode}
                         readOnly={readOnly}
                         venue={KNOCKOUT_VENUES[match.id]}
+                        showPathHighlight={false}
                       />
                     </div>
                   ));

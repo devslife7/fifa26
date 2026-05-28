@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     submitterEmail,
     shareToken: resendShareToken,
   } = body;
+  const normalizedName = typeof name === 'string' ? name.trim() : '';
+  const normalizedSubmitterName = typeof submitterName === 'string' ? submitterName.trim() : '';
+  const normalizedSubmitterEmail = typeof submitterEmail === 'string' ? submitterEmail.trim() : '';
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (resendEmail || resendShareToken) {
     if (!resendEmail || typeof resendEmail !== 'string') {
@@ -58,7 +62,7 @@ export async function POST(request: Request) {
     if (!resendShareToken || typeof resendShareToken !== 'string') {
       return NextResponse.json({ error: 'Share token is required' }, { status: 400 });
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resendEmail)) {
+    if (!emailRegex.test(resendEmail)) {
       return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
     }
 
@@ -96,10 +100,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   }
 
-  // Anonymous submission (no predictionId, has submitterEmail)
-  if (!predictionId && submitterEmail) {
-    if (!submitterEmail) {
+  const user = await getAuthUser();
+
+  // Anonymous submission
+  if (!user) {
+    if (predictionId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (isComplete && !normalizedName) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+    if (!normalizedSubmitterEmail) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
+    if (!emailRegex.test(normalizedSubmitterEmail)) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
+    }
+    if (isComplete && !normalizedSubmitterName) {
+      return NextResponse.json({ error: 'Submitter name is required' }, { status: 400 });
     }
 
     const serviceClient = createServiceClient();
@@ -112,9 +130,9 @@ export async function POST(request: Request) {
       .from('predictions')
       .insert({
         user_id: null,
-        name: name || 'My Predictions',
-        submitter_name: submitterName || submitterEmail.split('@')[0],
-        submitter_email: submitterEmail,
+        name: normalizedName || 'My Predictions',
+        submitter_name: normalizedSubmitterName || null,
+        submitter_email: normalizedSubmitterEmail,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},
         third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
@@ -135,8 +153,8 @@ export async function POST(request: Request) {
       await sendPredictionConfirmation({
         supabase: serviceClient,
         prediction: data,
-        to: submitterEmail,
-        displayName: submitterName || name || 'Predictor',
+        to: normalizedSubmitterEmail,
+        displayName: normalizedSubmitterName,
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
@@ -148,9 +166,8 @@ export async function POST(request: Request) {
   }
 
   // Authenticated flow
-  const user = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (isComplete && !normalizedName) {
+    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
   const supabase = createServiceClient();
@@ -185,7 +202,7 @@ export async function POST(request: Request) {
         completed_at: isComplete ? new Date().toISOString() : null,
         share_token: shareToken,
         updated_at: new Date().toISOString(),
-        ...(name ? { name } : {}),
+        ...(normalizedName ? { name: normalizedName } : {}),
       })
       .eq('id', predictionId)
       .eq('user_id', user.sub)
@@ -207,7 +224,7 @@ export async function POST(request: Request) {
         supabase,
         prediction: data,
         to: user.email,
-        displayName: user.display_name || name || data.name || 'Predictor',
+        displayName: user.display_name || normalizedName || data.name || 'Predictor',
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},
@@ -218,7 +235,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ predictions: data });
   } else {
     // --- CREATE new prediction (authenticated) ---
-    if (!name) {
+    if (!normalizedName) {
       return NextResponse.json({ error: 'Name is required for new predictions' }, { status: 400 });
     }
 
@@ -240,7 +257,7 @@ export async function POST(request: Request) {
       .from('predictions')
       .insert({
         user_id: user.sub,
-        name,
+        name: normalizedName,
         group_matches: groupMatches ?? {},
         knockout_matches: knockoutMatches ?? {},
         third_place_tiebreaker: thirdPlaceTiebreaker ?? null,
@@ -262,7 +279,7 @@ export async function POST(request: Request) {
         supabase,
         prediction: data,
         to: user.email,
-        displayName: user.display_name || name || 'Predictor',
+        displayName: user.display_name || normalizedName || 'Predictor',
         origin,
         groupMatches: groupMatches ?? {},
         knockoutMatches: knockoutMatches ?? {},

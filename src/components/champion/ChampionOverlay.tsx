@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MatchResult, KnockoutResult } from '@/types';
 import { getChampion, getTopThree } from '@/lib/logic/bracket';
 import { teamsByCode } from '@/data/teams';
@@ -42,6 +42,7 @@ export default function ChampionOverlay({
   const [phase, setPhase] = useState<'form' | 'confirmation'>(() => isSubmitted ? 'confirmation' : 'form');
   const [name, setName] = useState(user?.display_name || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [validatingEmail, setValidatingEmail] = useState(false);
@@ -65,6 +66,7 @@ export default function ChampionOverlay({
   const [predictionNumber, setPredictionNumber] = useState<number | null>(null);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
   const topThree = getTopThree(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -91,6 +93,16 @@ export default function ChampionOverlay({
     if (user?.email && !email) setEmail(user.email);
   }, [user, name, email]);
 
+  useEffect(() => {
+    if (phase !== 'form' || isSubmitted) return;
+
+    const frame = requestAnimationFrame(() => {
+      nameInputRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [phase, isSubmitted]);
+
   // Lock body scroll (only in overlay/modal mode)
   useEffect(() => {
     if (isPage) return;
@@ -98,16 +110,38 @@ export default function ChampionOverlay({
     return () => { document.body.style.overflow = ''; };
   }, [isPage]);
 
+  const focusNameError = () => {
+    const input = nameInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    window.requestAnimationFrame(() => {
+      nameInputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
   const handleSubmit = async () => {
     setError(null);
+    setNameError(null);
     setEmailError(null);
 
-    if (!email.trim()) {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName) {
+      setNameError('Please enter your prediction name');
+      focusNameError();
+      return;
+    }
+
+    if (!trimmedEmail) {
       setEmailError('Please enter your email');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(trimmedEmail)) {
       setEmailError('Please enter a valid email address');
       return;
     }
@@ -118,7 +152,7 @@ export default function ChampionOverlay({
       const validateRes = await fetch('/api/validate-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: trimmedEmail }),
       });
       const validateData = await validateRes.json();
       if (!validateData.valid) {
@@ -136,22 +170,21 @@ export default function ChampionOverlay({
     try {
       const local = loadPredictions();
       const predictionId = getEditingPredictionId();
-      const predictionName = getEditingPredictionName();
+      const predictionName = getEditingPredictionName()?.trim();
 
       const body: Record<string, unknown> = {
-        name: predictionName || name.trim() || 'My Predictions',
+        name: predictionName || trimmedName,
         groupMatches: local.groupMatches,
         knockoutMatches: local.knockoutMatches,
         thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
         championCode,
         isComplete: true,
-        submitterEmail: email.trim(),
+        submitterName: trimmedName,
+        submitterEmail: trimmedEmail,
       };
 
       if (user) {
         body.predictionId = predictionId || undefined;
-      } else {
-        body.submitterName = name.trim() || undefined;
       }
 
       const res = await fetch('/api/predictions', {
@@ -171,7 +204,7 @@ export default function ChampionOverlay({
         predictionNumber: data.predictions?.prediction_number ?? null,
         shareToken: data.predictions?.share_token ?? null,
         createdAt: data.predictions?.created_at ?? null,
-        email: email.trim(),
+        email: trimmedEmail,
       };
 
       setPredictionNumber(confirmation.predictionNumber);
@@ -230,14 +263,22 @@ export default function ChampionOverlay({
               <div>
                 <label className="block mb-1 ml-1">
                   <span className="text-xs font-semibold text-neutral-400">Name</span>
-                  <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                  {nameError ? (
+                    <span className="text-[10px] text-wc-red ml-1.5">({nameError})</span>
+                  ) : (
+                    <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                  )}
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                  onChange={(e) => { setName(e.target.value); setNameError(null); }}
+                  placeholder="Prediction name"
+                  className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                    nameError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                  }`}
+                  autoFocus
                 />
               </div>
 
@@ -561,14 +602,22 @@ export default function ChampionOverlay({
               <div>
                 <label className="block mb-1 ml-1">
                   <span className="text-xs font-semibold text-neutral-400">Name</span>
-                  <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                  {nameError ? (
+                    <span className="text-[10px] text-wc-red ml-1.5">({nameError})</span>
+                  ) : (
+                    <span className="text-[10px] text-neutral-500 ml-1.5">(this is how others see you on the leaderboard)</span>
+                  )}
                 </label>
                 <input
+                  ref={nameInputRef}
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                  onChange={(e) => { setName(e.target.value); setNameError(null); }}
+                  placeholder="Prediction name"
+                  className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                    nameError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                  }`}
+                  autoFocus
                 />
               </div>
 

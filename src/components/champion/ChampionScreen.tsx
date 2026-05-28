@@ -179,10 +179,12 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const [copyingImage, setCopyingImage] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [submitterEmail, setSubmitterEmail] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [validatingEmail, setValidatingEmail] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [predictionNameInput, setPredictionNameInput] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
 
   const championCode = getChampion(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker);
@@ -191,17 +193,39 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
   const secondTeam = topThree.second ? teamsByCode[topThree.second] : null;
   const thirdTeam = topThree.third ? teamsByCode[topThree.third] : null;
 
+  const focusNameError = () => {
+    const input = nameInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    window.requestAnimationFrame(() => {
+      nameInputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
   const handleSubmit = async () => {
     setError(null);
+    setNameError(null);
     setEmailError(null);
 
+    const trimmedName = predictionNameInput.trim();
+    const trimmedEmail = submitterEmail.trim();
+
+    if (!trimmedName) {
+      setNameError('Please enter your prediction name');
+      focusNameError();
+      return;
+    }
+
     if (!user) {
-      if (!submitterEmail.trim()) {
+      if (!trimmedEmail) {
         setEmailError('Please enter your email');
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(submitterEmail)) {
+      if (!emailRegex.test(trimmedEmail)) {
         setEmailError('Please enter a valid email address');
         return;
       }
@@ -210,7 +234,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
         const validateRes = await fetch('/api/validate-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: submitterEmail }),
+          body: JSON.stringify({ email: trimmedEmail }),
         });
         const validateData = await validateRes.json();
         if (!validateData.valid) {
@@ -234,21 +258,24 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
     try {
       const local = loadPredictions();
       const predictionId = getEditingPredictionId();
-      const predictionName = getEditingPredictionName();
+      const predictionName = getEditingPredictionName()?.trim();
+      const trimmedName = predictionNameInput.trim();
+      const trimmedEmail = submitterEmail.trim();
 
       const res = await fetch('/api/predictions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           predictionId: user ? (predictionId || undefined) : undefined,
-          name: predictionName || predictionNameInput.trim() || 'My Predictions',
+          name: predictionName || trimmedName,
           groupMatches: local.groupMatches,
           knockoutMatches: local.knockoutMatches,
           thirdPlaceTiebreaker: local.thirdPlaceTiebreaker,
           championCode,
           isComplete: true,
           ...(!user && {
-            submitterEmail: submitterEmail.trim(),
+            submitterName: trimmedName,
+            submitterEmail: trimmedEmail,
           }),
         }),
       });
@@ -487,12 +514,18 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
 
             <div className="space-y-3 mb-5">
               <input
+                ref={nameInputRef}
                 type="text"
                 placeholder="Prediction name"
                 value={predictionNameInput}
-                onChange={(e) => setPredictionNameInput(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-primary/50 transition-colors"
+                onChange={(e) => { setPredictionNameInput(e.target.value); setNameError(null); }}
+                className={`w-full px-4 py-3 bg-white/5 border rounded-xl text-white placeholder-white/30 focus:outline-none transition-colors ${
+                  nameError ? 'border-wc-red/50 focus:border-wc-red/70' : 'border-white/10 focus:border-primary/50'
+                }`}
               />
+              {nameError && (
+                <p className="text-xs text-wc-red mt-1.5 ml-1">{nameError}</p>
+              )}
               {!user && (
                 <div>
                   <input
@@ -520,7 +553,7 @@ export default function ChampionScreen({ groupPredictions, knockoutPredictions, 
             )}
 
             <button
-              onClick={user ? () => savePredictions() : handleSubmit}
+              onClick={handleSubmit}
               disabled={saving || validatingEmail}
               className="w-full py-4 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
             >

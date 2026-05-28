@@ -26,6 +26,7 @@ interface Props {
   readOnly?: boolean;
   venue?: string;
   focused?: boolean;
+  showPathHighlight?: boolean;
 }
 
 function TeamFlag({ code, flagUrl, flagEmoji }: { code?: string; flagUrl?: string; flagEmoji: string }) {
@@ -63,6 +64,7 @@ export default function KnockoutMatchCard({
   readOnly = false,
   venue,
   focused = false,
+  showPathHighlight = true,
 }: Props) {
   const homePH = isPlaceholder(homeCode);
   const awayPH = isPlaceholder(awayCode);
@@ -81,6 +83,10 @@ export default function KnockoutMatchCard({
   const predictionCorrect = isFinished && pickedTeamCode && actualWinnerCode
     ? pickedTeamCode === actualWinnerCode
     : null;
+  const hasHeaderStatusContent =
+    (isFinished && !!liveMatch?.score) ||
+    predictionCorrect !== null ||
+    (!canPredict && !liveMatch);
 
   const TeamSlot = ({
     team,
@@ -150,7 +156,7 @@ export default function KnockoutMatchCard({
   };
 
   return (
-    <div className={`relative group min-w-[240px] path-highlight rounded-2xl transition-all duration-300 ${
+    <div className={`relative group min-w-[240px] ${showPathHighlight ? 'path-highlight' : ''} rounded-2xl transition-all duration-300 ${
       ''
     } ${!canPredict ? 'opacity-80' : ''}`}>
       <div className="px-3 pt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -175,28 +181,30 @@ export default function KnockoutMatchCard({
             </span>
           </>
         )}
-        <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
-          {isFinished && liveMatch?.score && (
-            <span className="text-[11px] font-bold tabular-nums text-neutral-300">
-              {liveMatch.score.home}–{liveMatch.score.away}
-            </span>
-          )}
-          {predictionCorrect !== null && (
-            <span className="inline-flex items-center gap-0.5">
-              <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
-                {predictionCorrect ? 'check_circle' : 'cancel'}
+        {hasHeaderStatusContent && (
+          <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
+            {isFinished && liveMatch?.score && (
+              <span className="text-[11px] font-bold tabular-nums text-neutral-300">
+                {liveMatch.score.home}–{liveMatch.score.away}
               </span>
-              {predictionCorrect && (
-                <span className="text-[11px] font-bold text-wc-green font-body">
-                  +{POINTS_FOR_MATCH_WIN[matchId.split('-')[0]] ?? 0}
+            )}
+            {predictionCorrect !== null && (
+              <span className="inline-flex items-center gap-0.5">
+                <span className={`material-symbols-outlined text-[14px] font-variation-fill ${predictionCorrect ? 'text-wc-green' : 'text-wc-red'}`}>
+                  {predictionCorrect ? 'check_circle' : 'cancel'}
                 </span>
-              )}
-            </span>
-          )}
-          {!canPredict && !liveMatch && (
-            <span className="text-[10px] font-semibold text-neutral-400 italic">Make earlier picks</span>
-          )}
-        </div>
+                {predictionCorrect && (
+                  <span className="text-[11px] font-bold text-wc-green font-body">
+                    +{POINTS_FOR_MATCH_WIN[matchId.split('-')[0]] ?? 0}
+                  </span>
+                )}
+              </span>
+            )}
+            {!canPredict && !liveMatch && (
+              <span className="text-[10px] font-semibold text-neutral-400 italic">Make earlier picks</span>
+            )}
+          </div>
+        )}
       </div>
       <div data-prediction-choice-area className="flex flex-col gap-2 px-2 py-2.5">
         <TeamSlot team={home} code={homeCode} side="home" isSelected={result === 'home'} />

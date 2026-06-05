@@ -392,6 +392,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                             <div className="flex items-center gap-1.5 mb-2">
                               <svg className="w-2.5 h-2.5 text-wc-green" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.59L7 10l-2.41-2.41L3.5 8.68 7 12.18l5.5-5.5-1.09-1.09z"/></svg>
                               <span className="text-xs font-bold font-body text-wc-green">Approved</span>
+                              <span className="text-xs font-black leading-none text-wc-green">
+                                {approved.length}
+                              </span>
                             </div>
                             <div className="space-y-2">
                               {approved.map((pred, idx) => renderCard(pred, idx))}
@@ -403,6 +406,9 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                             <div className="flex items-center gap-1.5 mb-2">
                               <svg className="w-2.5 h-2.5 text-wc-amber" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7.25 4v4.75H11v-1.5H8.75V4h-1.5z"/></svg>
                               <span className="text-xs font-bold font-body text-wc-amber">Pending</span>
+                              <span className="text-xs font-black leading-none text-wc-amber">
+                                {pending.length}
+                              </span>
                             </div>
                             <div className="space-y-2">
                               {pending.map((pred, idx) => renderCard(pred, idx))}

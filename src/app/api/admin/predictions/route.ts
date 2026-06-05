@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
+import { isLateSubmission } from '@/data/tournament';
 
 export async function GET(request: Request) {
   if (!(await isAdminRequest(request))) return forbiddenResponse();
@@ -17,5 +18,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ predictions: data });
+  const predictions = (data ?? []).map((prediction: Record<string, unknown>) => ({
+    ...prediction,
+    is_late_submission: isLateSubmission(prediction.completed_at as string | null),
+  }));
+
+  return NextResponse.json({ predictions });
 }

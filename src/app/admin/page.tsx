@@ -12,6 +12,7 @@ interface AdminPrediction {
   champion_code: string | null;
   is_approved: boolean;
   is_complete: boolean;
+  is_late_submission?: boolean;
   completed_at: string | null;
   created_at: string;
   profiles: { display_name: string; email: string } | null;
@@ -279,6 +280,11 @@ export default function AdminPage() {
                   </div>
                   <div className="font-semibold text-sm text-white truncate">
                     {getName(p)}
+                    {p.is_late_submission && (
+                      <span className="ml-1.5 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-red">
+                        Late
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-neutral-400 truncate">
                     {getEmail(p)}
@@ -299,6 +305,11 @@ export default function AdminPage() {
                       <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-amber/15 text-wc-amber">
                         <span className="material-symbols-outlined text-[12px]">schedule</span>
                         Pending
+                      </span>
+                    )}
+                    {p.is_late_submission && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-wc-red/15 text-wc-red">
+                        Late
                       </span>
                     )}
                   </div>

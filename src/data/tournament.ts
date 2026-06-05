@@ -6,3 +6,14 @@ export const TOURNAMENT_KICKOFF_DISPLAY = 'June 11, 2026';
 export function daysUntilKickoff(now: Date = new Date()): number {
   return Math.ceil((TOURNAMENT_KICKOFF.getTime() - now.getTime()) / 86400000);
 }
+
+export function arePredictionDetailsPublic(now: Date = new Date()): boolean {
+  return now.getTime() >= PREDICTIONS_LOCK.getTime();
+}
+
+export function isLateSubmission(completedAt?: string | Date | null): boolean {
+  if (!completedAt) return false;
+  const submittedAt = completedAt instanceof Date ? completedAt : new Date(completedAt);
+  if (Number.isNaN(submittedAt.getTime())) return false;
+  return submittedAt.getTime() > PREDICTIONS_LOCK.getTime();
+}

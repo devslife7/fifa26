@@ -282,8 +282,8 @@ export function usePredictionResults(
     if (!prediction) return [];
     try {
       return generateBracket(
-        prediction.group_matches as Record<string, MatchResult>,
-        prediction.knockout_matches as Record<string, KnockoutResult>,
+        (prediction.group_matches ?? {}) as Record<string, MatchResult>,
+        (prediction.knockout_matches ?? {}) as Record<string, KnockoutResult>,
         prediction.third_place_tiebreaker ?? undefined,
       );
     } catch {
@@ -296,8 +296,8 @@ export function usePredictionResults(
     try {
       return getPredictedQualifiers({
         user_id: '',
-        group_matches: prediction.group_matches,
-        knockout_matches: prediction.knockout_matches,
+        group_matches: prediction.group_matches ?? {},
+        knockout_matches: prediction.knockout_matches ?? {},
         champion_code: prediction.champion_code,
         third_place_tiebreaker: prediction.third_place_tiebreaker ?? null,
       });
@@ -322,9 +322,11 @@ export function usePredictionResults(
     // ── Group matches ──
     let groupCorrect = 0;
     let groupTotal = 0;
+    const groupMatches = prediction?.group_matches ?? {};
+    const knockoutMatches = prediction?.knockout_matches ?? {};
     for (const gm of allGroupMatches) {
       const live = safeLive[gm.id];
-      const picked = prediction?.group_matches[gm.id];
+      const picked = groupMatches[gm.id];
       const isFinished = live?.status === 'FINISHED' && !!live.actualResult;
       if (isFinished) hasAnyResults = true;
 
@@ -376,7 +378,7 @@ export function usePredictionResults(
     // ── Knockout matches ──
     for (const m of bracket) {
       const live = safeLive[m.id];
-      const pick = prediction?.knockout_matches[m.id] as KnockoutResult | undefined;
+      const pick = knockoutMatches[m.id] as KnockoutResult | undefined;
       const partial = computeKnockoutOutcome(m, live, predicted, pick);
       if (partial.status === 'FINISHED') hasAnyResults = true;
       if (partial.state === 'pending' || partial.state === 'upcoming') pendingCount++;

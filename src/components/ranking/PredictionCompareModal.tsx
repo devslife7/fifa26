@@ -274,9 +274,11 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
   const friendChampion = friendResults.predicted.finalWinner ?? friend.champion_code;
 
   const groupComparisons = useMemo(() => {
+    const mineGroupMatches = mine.group_matches ?? {};
+    const friendGroupMatches = friend.group_matches ?? {};
     return allGroupMatches.map(match => {
-      const minePick = mine.group_matches[match.id] ?? null;
-      const friendPick = friend.group_matches[match.id] ?? null;
+      const minePick = mineGroupMatches[match.id] ?? null;
+      const friendPick = friendGroupMatches[match.id] ?? null;
       const live = liveMatches?.[match.id];
       const mineOutcome = mineResults.perMatch[match.id];
       const friendOutcome = friendResults.perMatch[match.id];

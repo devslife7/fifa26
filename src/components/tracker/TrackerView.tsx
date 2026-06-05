@@ -16,6 +16,7 @@ import { groupItemsByDate, formatMatchTime } from '@/lib/utils/match-dates';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PublicPredictionProfileModal from '@/components/ranking/PublicPredictionProfileModal';
 import PredictionLockedView from './PredictionLockedView';
+import { isLateSubmission } from '@/data/tournament';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -620,6 +621,8 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       group_tiebreakers: trackedPrediction.group_tiebreakers ?? {},
       third_place_tiebreaker: trackedPrediction.third_place_tiebreaker,
       is_approved: trackedPrediction.is_approved ?? false,
+      details_available: true,
+      is_late_submission: isLateSubmission(trackedPrediction.completed_at),
       created_at: trackedPrediction.created_at,
       updated_at: trackedPrediction.updated_at,
     };

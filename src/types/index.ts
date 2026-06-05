@@ -106,11 +106,14 @@ export interface LeaderboardPrediction {
   name?: string | null;
   display_name: string;
   champion_code: string | null;
-  group_matches: Record<string, MatchResult>;
-  knockout_matches: Record<string, KnockoutResult>;
+  group_matches?: Record<string, MatchResult>;
+  knockout_matches?: Record<string, KnockoutResult>;
   group_tiebreakers?: GroupTiebreakers | null;
   third_place_tiebreaker?: string[] | null;
   is_approved?: boolean;
+  details_available?: boolean;
+  is_late_submission?: boolean;
+  completed_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

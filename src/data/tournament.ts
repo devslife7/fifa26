@@ -11,7 +11,15 @@ export function arePredictionDetailsPublic(now: Date = new Date()): boolean {
   return now.getTime() >= PREDICTIONS_LOCK.getTime();
 }
 
-export function isLateSubmission(completedAt?: string | Date | null): boolean {
+export const LATE_SUBMISSION_EXEMPT_PREDICTION_NUMBERS = new Set([189]);
+
+export function isLateSubmission(
+  completedAt?: string | Date | null,
+  predictionNumber?: number | null,
+): boolean {
+  if (predictionNumber != null && LATE_SUBMISSION_EXEMPT_PREDICTION_NUMBERS.has(predictionNumber)) {
+    return false;
+  }
   if (!completedAt) return false;
   const submittedAt = completedAt instanceof Date ? completedAt : new Date(completedAt);
   if (Number.isNaN(submittedAt.getTime())) return false;

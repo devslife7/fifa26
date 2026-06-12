@@ -20,7 +20,10 @@ export async function GET(request: Request) {
 
   const predictions = (data ?? []).map((prediction: Record<string, unknown>) => ({
     ...prediction,
-    is_late_submission: isLateSubmission(prediction.completed_at as string | null),
+    is_late_submission: isLateSubmission(
+      prediction.completed_at as string | null,
+      prediction.prediction_number as number | null,
+    ),
   }));
 
   return NextResponse.json({ predictions });

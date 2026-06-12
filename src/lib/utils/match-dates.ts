@@ -41,6 +41,29 @@ export function formatMatchTime(utcDate: string | undefined): string {
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+const MATCH_DATETIME_ET_DATE = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'America/New_York',
+});
+
+const MATCH_DATETIME_ET_TIME = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+  timeZone: 'America/New_York',
+});
+
+/** e.g. "May 24, 11:00AM ET" */
+export function formatMatchDateTimeET(utcDate: string | undefined): string {
+  if (!utcDate) return '';
+  const d = new Date(utcDate);
+  if (Number.isNaN(d.getTime())) return '';
+  const datePart = MATCH_DATETIME_ET_DATE.format(d);
+  const timePart = MATCH_DATETIME_ET_TIME.format(d).replace(/\s/g, '').toUpperCase();
+  return `${datePart}, ${timePart} ET`;
+}
+
 export interface DateGroup<T> {
   bucket: DateBucket;
   /** Local-day key (YYYY-MM-DD) so items on the same calendar day group together. */

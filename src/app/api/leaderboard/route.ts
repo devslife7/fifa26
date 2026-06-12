@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
+import { getFinishedActualResults } from '@/lib/services/actual-results';
 import {
   computeLeaderboardPositionChanges,
   getLastFinishedMatch,
@@ -12,7 +13,7 @@ export async function GET() {
   const [
     { data: scores, error: scoresError },
     { data: predictions, error: predictionsError },
-    { data: actualResults, error: resultsError },
+    actualResultsResult,
   ] = await Promise.all([
     supabase
       .from('scores')
@@ -23,9 +24,7 @@ export async function GET() {
       .from('predictions')
       .select('id, prediction_number, user_id, name, submitter_name, group_matches, knockout_matches, champion_code, third_place_tiebreaker, completed_at, profiles(display_name)')
       .eq('is_complete', true),
-    supabase
-      .from('actual_results')
-      .select('match_id, match_type, result, winning_team'),
+    getFinishedActualResults(supabase),
   ]);
 
   if (scoresError) {
@@ -34,8 +33,8 @@ export async function GET() {
   if (predictionsError) {
     return NextResponse.json({ error: predictionsError.message }, { status: 500 });
   }
-  if (resultsError) {
-    return NextResponse.json({ error: resultsError.message }, { status: 500 });
+  if (actualResultsResult.error) {
+    return NextResponse.json({ error: actualResultsResult.error }, { status: 500 });
   }
 
   const predictionRows = (predictions ?? []).map(pred => {
@@ -54,10 +53,11 @@ export async function GET() {
     };
   });
 
-  const lastMatch = await getLastFinishedMatch(supabase, actualResults ?? []);
+  const actualResults = actualResultsResult.data;
+  const lastMatch = await getLastFinishedMatch(supabase, actualResults);
   const positionChanges = computeLeaderboardPositionChanges(
     predictionRows,
-    actualResults ?? [],
+    actualResults,
     lastMatch,
   );
   const changesByPredictionId = positionChangesByKey(positionChanges);

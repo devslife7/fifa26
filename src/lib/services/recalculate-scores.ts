@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/services/supabase/server';
+import { getFinishedActualResults } from '@/lib/services/actual-results';
 import { calculateScore } from '@/lib/logic/scoring';
 
 export type RecalculateResult =
@@ -8,10 +9,8 @@ export type RecalculateResult =
 export async function recalculateScores(): Promise<RecalculateResult> {
   const supabase = createServiceClient();
 
-  const { data: actualResults, error: resultsError } = await supabase
-    .from('actual_results')
-    .select('*');
-  if (resultsError) return { ok: false, error: resultsError.message };
+  const { data: actualResults, error: resultsError } = await getFinishedActualResults(supabase);
+  if (resultsError) return { ok: false, error: resultsError };
 
   const { data: predictions, error: predError } = await supabase
     .from('predictions')

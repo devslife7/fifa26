@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { arePredictionDetailsPublic, isLateSubmission } from '@/data/tournament';
+import { getFinishedActualResults } from '@/lib/services/actual-results';
 import {
   computeLeaderboardPositionChanges,
   getLastFinishedMatch,
@@ -24,19 +25,17 @@ export async function GET() {
     }
 
     const [
-      { data: scoreRows },
-      { data: actualResults, error: resultsError },
+      { data: scoreRows, error: scoresError },
+      actualResultsResult,
     ] = await Promise.all([
       supabase
         .from('scores')
         .select('prediction_id, prediction_number, total_points'),
-      supabase
-        .from('actual_results')
-        .select('match_id, match_type, result, winning_team'),
+      getFinishedActualResults(supabase),
     ]);
 
-    if (resultsError) {
-      return NextResponse.json({ error: resultsError.message }, { status: 500 });
+    if (actualResultsResult.error) {
+      return NextResponse.json({ error: actualResultsResult.error }, { status: 500 });
     }
 
     const normalizePoints = (value: unknown): number | null => {
@@ -47,7 +46,8 @@ export async function GET() {
 
     const pointsByPredictionId = new Map<string, number>();
     const pointsByPredictionNumber = new Map<number, number>();
-    for (const row of scoreRows ?? []) {
+    const scoreCacheRows = scoresError ? [] : (scoreRows ?? []);
+    for (const row of scoreCacheRows) {
       const totalPoints = normalizePoints(row.total_points);
       if (totalPoints == null) continue;
       if (typeof row.prediction_id === 'string') {
@@ -101,10 +101,11 @@ export async function GET() {
       };
     });
 
-    const lastMatch = await getLastFinishedMatch(supabase, actualResults ?? []);
+    const actualResults = actualResultsResult.data;
+    const lastMatch = await getLastFinishedMatch(supabase, actualResults);
     const positionChanges = computeLeaderboardPositionChanges(
       predictionRows,
-      actualResults ?? [],
+      actualResults,
       lastMatch,
     );
     const changesByPredictionId = positionChangesByKey(positionChanges);

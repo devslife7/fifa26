@@ -1,12 +1,6 @@
 import { calculateScore } from '@/lib/logic/scoring';
+import type { ActualResult } from '@/lib/services/actual-results';
 import type { SupabaseClient } from '@supabase/supabase-js';
-
-interface ActualResult {
-  match_id: string;
-  match_type: 'group' | 'knockout';
-  result: 'home' | 'draw' | 'away';
-  winning_team: string | null;
-}
 
 export interface LeaderboardPredictionRow {
   id: string;

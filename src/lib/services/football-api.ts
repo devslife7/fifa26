@@ -99,7 +99,8 @@ const TLA_TO_APP_CODE: Record<string, string> = {
   AUS: 'AU',
   // Group E
   GER: 'DE',
-  CUR: 'CW',
+  CUW: 'CW', // Curaçao (API TLA)
+  CUR: 'CW', // legacy alias
   CIV: 'CI',
   ECU: 'EC',
   // Group F
@@ -115,7 +116,8 @@ const TLA_TO_APP_CODE: Record<string, string> = {
   ESP: 'ES',
   CPV: 'CV',
   KSA: 'SA',
-  URU: 'UY',
+  URY: 'UY', // Uruguay (API TLA)
+  URU: 'UY', // legacy alias
   // Group I
   FRA: 'FR',
   SEN: 'SN',

@@ -4,16 +4,14 @@ import { useMemo, useState } from 'react';
 import type { KnockoutRound, LiveMatch, SavedPrediction } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import {
-  GROUP_POINTS,
-  QUALIFIER_POINTS,
-  WINNER_POINTS,
   usePredictionResults,
   type MatchOutcomeState,
   type PerMatchOutcome,
 } from '@/hooks/usePredictionResults';
-import { formatMatchTime, groupItemsByDate } from '@/lib/utils/match-dates';
+import { formatMatchDateTimeET } from '@/lib/utils/match-dates';
 
 type TrackerTabId = 'active' | 'settled' | 'all';
+type KnockoutRoundTabId = 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
 type TrackerStageId = 'group' | 'knockout';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
@@ -25,15 +23,23 @@ const ROUND_LABELS: Record<KnockoutRound, string> = {
   FIN: 'Final',
 };
 
-const STAGE_TABS: { id: TrackerStageId; label: string; icon: string }[] = [
-  { id: 'group', label: 'Group Stage', icon: 'grid_view' },
-  { id: 'knockout', label: 'Bracket Stage', icon: 'account_tree' },
+const STAGE_TABS: { id: TrackerStageId; label: string }[] = [
+  { id: 'group', label: 'Group Stage' },
+  { id: 'knockout', label: 'Bracket Stage' },
 ];
 
-const TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
+const GROUP_TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'settled', label: 'Settled' },
   { id: 'all', label: 'All' },
+];
+
+const KNOCKOUT_ROUND_TABS: { id: KnockoutRoundTabId; label: string }[] = [
+  { id: 'R32', label: 'R32' },
+  { id: 'R16', label: 'R16' },
+  { id: 'QF', label: 'QF' },
+  { id: 'SF', label: 'Semis' },
+  { id: 'FIN', label: 'Final' },
 ];
 
 type SlidingTab<T extends string> = {
@@ -47,6 +53,7 @@ interface Props {
   liveMatches: Record<string, LiveMatch>;
   teamFlagsByCode: Record<string, string>;
   onCompare?: () => void;
+  hidePointsInStats?: boolean;
 }
 
 function isLiveStatus(status: PerMatchOutcome['status']): boolean {
@@ -68,6 +75,11 @@ function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean
   return isSettledOutcome(outcome);
 }
 
+function matchesKnockoutRound(outcome: PerMatchOutcome, round: KnockoutRoundTabId): boolean {
+  if (round === 'FIN') return outcome.round === 'FIN' || outcome.round === '3RD';
+  return outcome.round === round;
+}
+
 function SlidingTabRail<T extends string>({
   tabs,
   activeId,
@@ -78,7 +90,7 @@ function SlidingTabRail<T extends string>({
 }: {
   tabs: SlidingTab<T>[];
   activeId: T;
-  counts: Record<T, number>;
+  counts: Record<T, string | number>;
   onSelect: (id: T) => void;
   surfaceClassName: string;
   tall?: boolean;
@@ -115,23 +127,12 @@ function SlidingTabRail<T extends string>({
           >
             {tab.icon && <span className="material-symbols-outlined text-[18px] flex-shrink-0">{tab.icon}</span>}
             <span className="truncate">{tab.label}</span>
-            <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{counts[tab.id]}</span>
+            <span className={`text-[12px] font-black tabular-nums ${isActive ? 'text-black/80' : 'text-neutral-300'}`}>{counts[tab.id]}</span>
           </button>
         );
       })}
     </div>
   );
-}
-
-function maxPointsForOutcome(outcome: PerMatchOutcome): number {
-  if (outcome.kind === 'group') return GROUP_POINTS;
-  if (outcome.round === 'R32') return QUALIFIER_POINTS.R16;
-  if (outcome.round === 'R16') return QUALIFIER_POINTS.QF;
-  if (outcome.round === 'QF') return QUALIFIER_POINTS.SF;
-  if (outcome.round === 'SF') return QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD'];
-  if (outcome.round === '3RD') return WINNER_POINTS['3RD'];
-  if (outcome.round === 'FIN') return WINNER_POINTS.FIN;
-  return 0;
 }
 
 function pickLabel(outcome: PerMatchOutcome): string | null {
@@ -143,96 +144,132 @@ function pickLabel(outcome: PerMatchOutcome): string | null {
   return teamsByCode[outcome.pickedTeamCode ?? '']?.name ?? outcome.pickedTeamCode ?? null;
 }
 
-function TeamRow({
+function teamDisplayName(code: string | null): string {
+  if (!code) return 'TBD';
+  return teamsByCode[code]?.name ?? code;
+}
+
+function isPlaceholderCode(code: string | null): boolean {
+  return !code || code.startsWith('TBD') || code.startsWith('PH:');
+}
+
+function TeamFlag({
   code,
-  score,
   flagUrl,
+  size = 'sm',
 }: {
   code: string | null;
-  score: number | null;
   flagUrl?: string;
+  size?: 'sm' | 'md';
 }) {
-  if (!code) {
-    return <span className="text-sm text-neutral-500 italic font-body">TBD</span>;
+  if (isPlaceholderCode(code)) return null;
+
+  const team = teamsByCode[code!];
+  const imgClass = size === 'sm'
+    ? 'w-5 h-3.5 object-cover rounded-sm flex-shrink-0'
+    : 'w-6 h-4 object-cover rounded-sm flex-shrink-0';
+  const emojiClass = size === 'sm'
+    ? 'text-base leading-none flex-shrink-0'
+    : 'text-lg leading-none flex-shrink-0';
+
+  if (flagUrl) {
+    return (
+      <span className="inline-flex flex-shrink-0">
+        <img
+          src={flagUrl}
+          alt=""
+          className={imgClass}
+          onError={e => {
+            const img = e.currentTarget;
+            img.style.display = 'none';
+            (img.nextSibling as HTMLElement | null)?.removeAttribute('hidden');
+          }}
+        />
+        <span className={emojiClass} hidden>{team?.flag ?? ''}</span>
+      </span>
+    );
   }
 
-  const team = teamsByCode[code];
-  const isPlaceholder = code.startsWith('TBD') || code.startsWith('PH:');
+  if (!team?.flag || team.flag === '🏳️') return null;
+  return <span className={emojiClass}>{team.flag}</span>;
+}
+
+function MatchupLine({
+  outcome,
+  showScore,
+}: {
+  outcome: PerMatchOutcome;
+  showScore: boolean;
+}) {
+  const homeName = teamDisplayName(outcome.homeCode);
+  const awayName = teamDisplayName(outcome.awayCode);
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      {!isPlaceholder && (
-        flagUrl ? (
-          <img src={flagUrl} alt="" className="h-4 w-6 flex-shrink-0 rounded-sm object-cover" />
-        ) : (
-          <span className="flex-shrink-0 text-xl leading-none">{team?.flag}</span>
-        )
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+      <span>{homeName}</span>
+      {showScore && outcome.score && (
+        <span className="tabular-nums">{outcome.score.home}</span>
       )}
-      <span className="truncate text-[15px] font-semibold text-neutral-200 font-body">{team?.name ?? code}</span>
-      {score !== null && (
-        <span className="ml-auto text-sm font-black tabular-nums text-white">{score}</span>
+      <span className="text-neutral-600">v</span>
+      <span>{awayName}</span>
+      {showScore && outcome.score && (
+        <span className="tabular-nums">{outcome.score.away}</span>
       )}
-    </div>
+    </span>
   );
 }
 
-function StateBadge({
+function cardStatusLabel(outcome: PerMatchOutcome): string {
+  if (isLiveStatus(outcome.status)) return 'Live';
+  if (outcome.status === 'FINISHED') return 'Finished';
+  if (outcome.utcDate) return formatMatchDateTimeET(outcome.utcDate);
+  return 'TBD';
+}
+
+const RAIL_ICON_SIZE_PX = 24;
+
+function MatchCardRailIcon({
   state,
-  points,
   status,
 }: {
   state: MatchOutcomeState;
-  points: number;
   status: PerMatchOutcome['status'];
 }) {
   if (isLiveStatus(status)) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-wc-green/30 bg-wc-green/15 px-2.5 py-1 text-wc-green">
-        <span className="size-1.5 rounded-full bg-wc-green animate-pulse" />
-        <span className="text-[10px] font-black uppercase tracking-wider font-body">Live</span>
+      <span className="relative z-10 flex size-6 items-center justify-center rounded-full border border-wc-green/40 bg-background-dark">
+        <span className="size-2.5 rounded-full bg-wc-green animate-pulse" />
       </span>
     );
   }
 
   if (state === 'hit') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-wc-green/30 bg-wc-green/15 px-2.5 py-1 text-wc-green">
-        <span className="material-symbols-outlined text-[16px] font-variation-fill">check_circle</span>
-        <span className="text-[11px] font-black font-body">+{points}</span>
+      <span className="relative z-10 flex size-6 items-center justify-center">
+        <span className="material-symbols-outlined text-[22px] font-variation-fill leading-none text-wc-green">check_circle</span>
       </span>
     );
   }
 
   if (state === 'miss') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-wc-red/30 bg-wc-red/15 px-2.5 py-1 text-wc-red">
-        <span className="material-symbols-outlined text-[16px] font-variation-fill">cancel</span>
-        <span className="text-[10px] font-black uppercase tracking-wider font-body">Miss</span>
+      <span className="relative z-10 flex size-6 items-center justify-center">
+        <span className="material-symbols-outlined text-[22px] font-variation-fill leading-none text-wc-red">cancel</span>
       </span>
     );
   }
 
-  if (state === 'upcoming') {
+  if (state === 'pending') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-neutral-400">
-        <span className="material-symbols-outlined text-[16px]">schedule</span>
-        <span className="text-[10px] font-black uppercase tracking-wider font-body">Upcoming</span>
-      </span>
-    );
-  }
-
-  if (state === 'no-pick') {
-    return (
-      <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-neutral-500">
-        <span className="text-[10px] font-black uppercase tracking-wider font-body">No pick</span>
+      <span className="relative z-10 flex size-6 items-center justify-center rounded-full border border-white/10 bg-background-dark text-neutral-500">
+        <span className="material-symbols-outlined text-[16px] leading-none">hourglass_empty</span>
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-primary">
-      <span className="material-symbols-outlined text-[16px]">hourglass_top</span>
-      <span className="text-[10px] font-black uppercase tracking-wider font-body">Pending</span>
+    <span className="relative z-10 flex size-6 items-center justify-center rounded-full border border-white/10 bg-background-dark">
+      <span className="size-2 rounded-full bg-neutral-600" />
     </span>
   );
 }
@@ -240,61 +277,70 @@ function StateBadge({
 function MatchCard({
   outcome,
   flagsByCode,
+  showTopDivider = false,
+  showRailConnector = false,
 }: {
   outcome: PerMatchOutcome;
   flagsByCode: Record<string, string>;
+  showTopDivider?: boolean;
+  showRailConnector?: boolean;
 }) {
   const showScore = outcome.status === 'FINISHED' || outcome.status === 'IN_PLAY' || outcome.status === 'PAUSED';
   const label = pickLabel(outcome);
-  const maxPoints = maxPointsForOutcome(outcome);
-  const active = isActiveOutcome(outcome);
+  const pickedFlagUrl = outcome.pickedTeamCode ? flagsByCode[outcome.pickedTeamCode] : undefined;
+  const meta = outcome.kind === 'group'
+    ? `Group ${outcome.group ?? ''} · ${outcome.matchId}`
+    : ROUND_LABELS[outcome.round ?? 'R32'];
+  const statusLabel = cardStatusLabel(outcome);
 
   return (
-    <div className="border-b border-white/5 px-3 py-3 last:border-0 sm:flex sm:items-center sm:gap-3">
-      <div className="min-w-0 flex-1">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[11px] text-neutral-500">
-          <span className="font-black uppercase tracking-wider">
-            {outcome.kind === 'group'
-              ? `Group ${outcome.group ?? ''} · ${outcome.matchId}`
-              : ROUND_LABELS[outcome.round ?? 'R32']}
-          </span>
-          {outcome.utcDate && (
-            <span className="font-black uppercase tabular-nums">{formatMatchTime(outcome.utcDate)}</span>
-          )}
-        </div>
-        <div className="space-y-1.5">
-          <TeamRow
-            code={outcome.homeCode}
-            score={showScore ? outcome.score?.home ?? null : null}
-            flagUrl={outcome.homeCode ? flagsByCode[outcome.homeCode] : undefined}
+    <div className="relative flex gap-3 px-1 py-3 md:px-3">
+      {showTopDivider && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-0 h-px bg-white/5"
+          style={{ left: `calc(0.75rem + ${RAIL_ICON_SIZE_PX}px + 0.75rem)` }}
+        />
+      )}
+      <div className="relative flex w-6 shrink-0 justify-center self-stretch">
+        {showRailConnector && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-px -translate-x-1/2 bg-white/10"
+            style={{ height: 'calc(100% + 1.5rem)' }}
           />
-          <TeamRow
-            code={outcome.awayCode}
-            score={showScore ? outcome.score?.away ?? null : null}
-            flagUrl={outcome.awayCode ? flagsByCode[outcome.awayCode] : undefined}
-          />
-        </div>
-        {label && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] font-body">
-            <span className="font-black uppercase tracking-wider text-neutral-500">Pick:</span>
-            <span className={`font-black ${
-              outcome.state === 'hit'
-                ? 'text-wc-green'
-                : outcome.state === 'miss'
-                  ? 'text-wc-red'
-                  : 'text-neutral-300'
-            }`}>{label}</span>
-            {active && maxPoints > 0 && (
-              <>
-                <span className="text-neutral-700">·</span>
-                <span className="font-black text-primary/85">Max +{maxPoints}</span>
-              </>
-            )}
-          </div>
         )}
+        <div className="relative flex h-full items-center pt-0.5">
+          <MatchCardRailIcon state={outcome.state} status={outcome.status} />
+        </div>
       </div>
-      <div className="mt-3 flex justify-end sm:mt-0 sm:flex-shrink-0">
-        <StateBadge state={outcome.state} points={outcome.points} status={outcome.status} />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          {label ? (
+            <span className="flex min-w-0 items-center gap-1.5">
+              {outcome.picked !== 'draw' && outcome.pickedTeamCode && (
+                <TeamFlag code={outcome.pickedTeamCode} flagUrl={pickedFlagUrl} size="md" />
+              )}
+              <span className="min-w-0 truncate text-lg font-bold leading-snug text-white font-body md:text-[15px]">{label}</span>
+              {outcome.state === 'hit' && (
+                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{outcome.points}</span>
+              )}
+            </span>
+          ) : (
+            <span className="text-base font-semibold text-neutral-500 font-body md:text-[13px]">No pick</span>
+          )}
+          <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">{meta}</span>
+        </div>
+
+        <div className="mt-1.5 flex items-start justify-between gap-3">
+          <span className="min-w-0 text-base leading-snug text-neutral-400 font-body md:text-[13px]">
+            <MatchupLine outcome={outcome} showScore={showScore} />
+          </span>
+          <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
+            {statusLabel}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -305,95 +351,80 @@ export default function PredictionExpandedTracker({
   liveMatches,
   teamFlagsByCode,
   onCompare,
+  hidePointsInStats = false,
 }: Props) {
   const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
-  const [trackerTab, setTrackerTab] = useState<TrackerTabId>('active');
+  const [groupTab, setGroupTab] = useState<TrackerTabId>('active');
+  const [knockoutRound, setKnockoutRound] = useState<KnockoutRoundTabId>('R32');
   const { perMatch, summary } = usePredictionResults(prediction, liveMatches);
 
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);
-  const activeCount = useMemo(() => outcomes.filter(isActiveOutcome).length, [outcomes]);
-  const settledCount = useMemo(() => outcomes.filter(isSettledOutcome).length, [outcomes]);
-  const maxRemaining = useMemo(
-    () => outcomes.reduce((sum, outcome) => (
-      isActiveOutcome(outcome) ? sum + maxPointsForOutcome(outcome) : sum
-    ), 0),
-    [outcomes],
-  );
   const stageOutcomes = useMemo(
     () => outcomes.filter(outcome => outcome.kind === trackerStage),
     [outcomes, trackerStage],
   );
   const stageCounts = useMemo(
     () => ({
-      group: outcomes.filter(outcome => outcome.kind === 'group').length,
-      knockout: outcomes.filter(outcome => outcome.kind === 'knockout').length,
+      group: `${summary.groupCorrect}/${summary.groupTotal}`,
+      knockout: summary.knockoutPoints,
     }),
-    [outcomes],
+    [summary.groupCorrect, summary.groupTotal, summary.knockoutPoints],
   );
   const stageActiveCount = useMemo(() => stageOutcomes.filter(isActiveOutcome).length, [stageOutcomes]);
   const stageSettledCount = useMemo(() => stageOutcomes.filter(isSettledOutcome).length, [stageOutcomes]);
+  const knockoutRoundCounts = useMemo(() => {
+    const counts: Record<KnockoutRoundTabId, number> = { R32: 0, R16: 0, QF: 0, SF: 0, FIN: 0 };
+    for (const outcome of stageOutcomes) {
+      if (outcome.round === 'R32') counts.R32++;
+      else if (outcome.round === 'R16') counts.R16++;
+      else if (outcome.round === 'QF') counts.QF++;
+      else if (outcome.round === 'SF') counts.SF++;
+      else if (outcome.round === 'FIN' || outcome.round === '3RD') counts.FIN++;
+    }
+    return counts;
+  }, [stageOutcomes]);
   const filteredOutcomes = useMemo(
-    () => stageOutcomes.filter(outcome => matchesTrackerTab(outcome, trackerTab)),
-    [stageOutcomes, trackerTab],
+    () => (
+      trackerStage === 'group'
+        ? stageOutcomes.filter(outcome => matchesTrackerTab(outcome, groupTab))
+        : stageOutcomes.filter(outcome => matchesKnockoutRound(outcome, knockoutRound))
+    ),
+    [stageOutcomes, trackerStage, groupTab, knockoutRound],
   );
-  const groupedByDate = useMemo(() => groupItemsByDate(filteredOutcomes), [filteredOutcomes]);
+  const sortedOutcomes = useMemo(
+    () => [...filteredOutcomes].sort((a, b) => {
+      const ta = a.utcDate ? new Date(a.utcDate).getTime() : Number.POSITIVE_INFINITY;
+      const tb = b.utcDate ? new Date(b.utcDate).getTime() : Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+      return a.matchId.localeCompare(b.matchId);
+    }),
+    [filteredOutcomes],
+  );
+
+  const showHeader = !hidePointsInStats || onCompare;
 
   return (
-    <div className="space-y-4 px-3 pb-3">
-      <div className="overflow-hidden rounded-[1.4rem] border border-white/10 bg-neutral-900/80">
-        <div className="flex items-end justify-between px-5 py-5">
-          <div>
-            <div className="text-[13px] font-black uppercase tracking-wider text-neutral-400">Total Points</div>
-            <div className="text-5xl font-black leading-tight tabular-nums text-primary">{summary.totalPoints}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[12px] font-black uppercase tracking-wider text-neutral-400">
-              {summary.pointsToday > 0 ? 'Today' : 'Max Left'}
+    <div className="flex flex-col gap-2 px-1.5 pb-3 md:px-3">
+      {showHeader && (
+        <div className="flex flex-col gap-2">
+          {!hidePointsInStats && (
+            <div className="px-1">
+              <span className="text-2xl font-black tabular-nums text-primary">{summary.totalPoints}</span>
+              <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">points</span>
             </div>
-            <div className={`text-2xl font-black leading-tight tabular-nums ${
-              summary.pointsToday > 0 ? 'text-wc-green' : 'text-primary'
-            }`}>
-              +{summary.pointsToday > 0 ? summary.pointsToday : maxRemaining}
-            </div>
-          </div>
-        </div>
+          )}
 
-        <div className="grid grid-cols-3 border-t border-white/10 text-center">
-          <div className="border-r border-white/10 py-3">
-            <div className="text-2xl font-black tabular-nums text-wc-green">{activeCount}</div>
-            <div className="text-[12px] font-black uppercase tracking-wider text-neutral-400">Active</div>
-          </div>
-          <div className="border-r border-white/10 py-3">
-            <div className="text-2xl font-black tabular-nums text-blue-400">{settledCount}</div>
-            <div className="text-[12px] font-black uppercase tracking-wider text-neutral-400">Settled</div>
-          </div>
-          <div className="py-3">
-            <div className="text-2xl font-black tabular-nums text-neutral-200">+{maxRemaining}</div>
-            <div className="text-[12px] font-black uppercase tracking-wider text-neutral-400">Max Left</div>
-          </div>
+          {onCompare && (
+            <button
+              onClick={onCompare}
+              className="flex items-center gap-1.5 px-1 text-[13px] font-bold text-primary transition-colors hover:text-primary/80"
+            >
+              <span className="material-symbols-outlined text-[18px]">bar_chart</span>
+              Compare with other predictions
+            </button>
+          )}
         </div>
-
-        <div className="grid grid-cols-2 border-t border-white/10 bg-white/[0.015] text-center">
-          <div className="border-r border-white/10 py-2.5">
-            <div className="text-lg font-black tabular-nums text-wc-green">{summary.groupCorrect}/{summary.groupTotal}</div>
-            <div className="text-[11px] font-black uppercase tracking-wider text-neutral-500">Groups</div>
-          </div>
-          <div className="py-2.5">
-            <div className="text-lg font-black tabular-nums text-blue-400">{summary.knockoutPoints}</div>
-            <div className="text-[11px] font-black uppercase tracking-wider text-neutral-500">Knockout pts</div>
-          </div>
-        </div>
-
-        {onCompare && (
-          <button
-            onClick={onCompare}
-            className="flex w-full items-center justify-center gap-2 border-t border-white/10 px-4 py-3 text-[15px] font-black text-primary transition-colors hover:bg-white/5"
-          >
-            <span className="material-symbols-outlined text-[20px]">bar_chart</span>
-            Compare with other predictions
-          </button>
-        )}
-      </div>
+      )}
 
       <SlidingTabRail
         tabs={STAGE_TABS}
@@ -404,48 +435,47 @@ export default function PredictionExpandedTracker({
         tall
       />
 
-      <SlidingTabRail
-        tabs={TRACKER_TABS}
-        activeId={trackerTab}
-        counts={{
-          active: stageActiveCount,
-          settled: stageSettledCount,
-          all: stageOutcomes.length,
-        }}
-        onSelect={setTrackerTab}
-        surfaceClassName="bg-white/[0.025]"
-      />
+      {trackerStage === 'group' ? (
+        <SlidingTabRail
+          tabs={GROUP_TRACKER_TABS}
+          activeId={groupTab}
+          counts={{
+            active: stageActiveCount,
+            settled: stageSettledCount,
+            all: stageOutcomes.length,
+          }}
+          onSelect={setGroupTab}
+          surfaceClassName="bg-white/[0.025]"
+        />
+      ) : (
+        <SlidingTabRail
+          tabs={KNOCKOUT_ROUND_TABS}
+          activeId={knockoutRound}
+          counts={knockoutRoundCounts}
+          onSelect={setKnockoutRound}
+          surfaceClassName="bg-white/[0.025]"
+        />
+      )}
 
-      {groupedByDate.length === 0 ? (
+      {sortedOutcomes.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
           <span className="material-symbols-outlined text-3xl text-neutral-500">filter_alt_off</span>
           <p className="mt-2 text-xs text-neutral-500 font-body">
-            {trackerTab === 'active'
-              ? `No active ${trackerStage === 'group' ? 'group stage' : 'bracket stage'} picks right now.`
+            {trackerStage === 'group' && groupTab === 'active'
+              ? 'No active group stage picks right now.'
               : 'Nothing to show here yet.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {groupedByDate.map(group => (
-            <div key={group.dayKey}>
-              <div className="flex items-center justify-between px-1 pb-2 pt-1">
-                <span className="text-[13px] font-black uppercase tracking-widest text-white/60">{group.label}</span>
-                <span className="text-[12px] font-black uppercase tracking-wide tabular-nums text-neutral-500">
-                  {group.items.length} {group.items.length === 1 ? 'match' : 'matches'}
-                  {group.items.reduce((sum, outcome) => sum + outcome.points, 0) > 0 && (
-                    <span className="ml-1.5 text-wc-green">
-                      +{group.items.reduce((sum, outcome) => sum + outcome.points, 0)} pts
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-white/5 bg-neutral-900/50">
-                {group.items.map(outcome => (
-                  <MatchCard key={outcome.matchId} outcome={outcome} flagsByCode={teamFlagsByCode} />
-                ))}
-              </div>
-            </div>
+        <div className="relative">
+          {sortedOutcomes.map((outcome, index) => (
+            <MatchCard
+              key={outcome.matchId}
+              outcome={outcome}
+              flagsByCode={teamFlagsByCode}
+              showTopDivider={index > 0}
+              showRailConnector={index < sortedOutcomes.length - 1}
+            />
           ))}
         </div>
       )}

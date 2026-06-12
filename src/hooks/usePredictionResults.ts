@@ -272,29 +272,29 @@ function computeKnockoutOutcome(
   };
 }
 
-export function usePredictionResults(
+export function computePredictionResults(
   prediction: PredictionInput,
   liveMatches: Record<string, LiveMatch> | undefined,
 ): UsePredictionResultsValue {
   const safeLive = liveMatches ?? {};
 
-  const bracket = useMemo<KnockoutMatch[]>(() => {
-    if (!prediction) return [];
+  let bracket: KnockoutMatch[] = [];
+  if (prediction) {
     try {
-      return generateBracket(
+      bracket = generateBracket(
         (prediction.group_matches ?? {}) as Record<string, MatchResult>,
         (prediction.knockout_matches ?? {}) as Record<string, KnockoutResult>,
         prediction.third_place_tiebreaker ?? undefined,
       );
     } catch {
-      return [];
+      bracket = [];
     }
-  }, [prediction]);
+  }
 
-  const predicted = useMemo<Qualifiers>(() => {
-    if (!prediction) return EMPTY_QUALIFIERS;
+  let predicted = EMPTY_QUALIFIERS;
+  if (prediction) {
     try {
-      return getPredictedQualifiers({
+      predicted = getPredictedQualifiers({
         user_id: '',
         group_matches: prediction.group_matches ?? {},
         knockout_matches: prediction.knockout_matches ?? {},
@@ -302,22 +302,19 @@ export function usePredictionResults(
         third_place_tiebreaker: prediction.third_place_tiebreaker ?? null,
       });
     } catch {
-      return EMPTY_QUALIFIERS;
+      predicted = EMPTY_QUALIFIERS;
     }
-  }, [prediction]);
+  }
 
-  const { actual, hasSignal } = useMemo(() => {
-    if (!prediction) return { actual: EMPTY_QUALIFIERS, hasSignal: EMPTY_SIGNAL };
-    const { qualifiers, hasSignal } = deriveActualFromLive(bracket, safeLive);
-    return { actual: qualifiers, hasSignal };
-  }, [prediction, bracket, safeLive]);
+  const { qualifiers: actual, hasSignal } = prediction
+    ? deriveActualFromLive(bracket, safeLive)
+    : { qualifiers: EMPTY_QUALIFIERS, hasSignal: EMPTY_SIGNAL };
 
-  return useMemo<UsePredictionResultsValue>(() => {
-    const perMatch: Record<string, PerMatchOutcome> = {};
-    const now = new Date();
-    let pointsToday = 0;
-    let pendingCount = 0;
-    let hasAnyResults = false;
+  const perMatch: Record<string, PerMatchOutcome> = {};
+  const now = new Date();
+  let pointsToday = 0;
+  let pendingCount = 0;
+  let hasAnyResults = false;
 
     // ── Group matches ──
     let groupCorrect = 0;
@@ -409,25 +406,34 @@ export function usePredictionResults(
     const knockoutPoints = r32Pts + r16Pts + qfPts + sfPts + thirdPartPts + thirdWinPts + finPartPts + finWinPts;
     const championCorrect = Boolean(predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner);
 
-    return {
-      bracket,
-      predicted,
-      actual,
-      hasSignal,
-      perMatch,
-      summary: {
-        groupCorrect, groupTotal, groupPoints,
-        r32Pts, r16Pts, qfPts, sfPts,
-        thirdPartPts, thirdWinPts, finPartPts, finWinPts,
-        knockoutPoints,
-        championCorrect,
-        totalPoints: groupPoints + knockoutPoints,
-        pendingCount,
-        pointsToday,
-        hasAnyResults,
-      },
-    };
-  }, [prediction, safeLive, bracket, predicted, actual, hasSignal]);
+  return {
+    bracket,
+    predicted,
+    actual,
+    hasSignal,
+    perMatch,
+    summary: {
+      groupCorrect, groupTotal, groupPoints,
+      r32Pts, r16Pts, qfPts, sfPts,
+      thirdPartPts, thirdWinPts, finPartPts, finWinPts,
+      knockoutPoints,
+      championCorrect,
+      totalPoints: groupPoints + knockoutPoints,
+      pendingCount,
+      pointsToday,
+      hasAnyResults,
+    },
+  };
+}
+
+export function usePredictionResults(
+  prediction: PredictionInput,
+  liveMatches: Record<string, LiveMatch> | undefined,
+): UsePredictionResultsValue {
+  return useMemo(
+    () => computePredictionResults(prediction, liveMatches),
+    [prediction, liveMatches],
+  );
 }
 
 // Re-export for callers that just need the round mapping

@@ -61,7 +61,7 @@ export interface Predictions {
   completedAt?: string;
 }
 
-export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'news' | 'submit' | 'profile';
+export type TabId = 'groups' | 'bracket' | 'thirdplace' | 'ranking' | 'home' | 'matches' | 'submit' | 'profile';
 
 export interface LeaderboardEntry {
   prediction_id?: string;
@@ -106,6 +106,8 @@ export interface LeaderboardPrediction {
   name?: string | null;
   display_name: string;
   champion_code: string | null;
+  total_points?: number | null;
+  position_change?: number;
   group_matches?: Record<string, MatchResult>;
   knockout_matches?: Record<string, KnockoutResult>;
   group_tiebreakers?: GroupTiebreakers | null;

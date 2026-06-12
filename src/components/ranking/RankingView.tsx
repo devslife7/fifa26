@@ -499,17 +499,19 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                           openPredictionDetails(pred, rank);
                         }}
                         disabled={!pred.details_available}
-                        className={`w-full flex items-center gap-3 py-4 text-left group md:py-2.5 ${
+                        className={`w-full flex items-center gap-2 py-2 text-left group md:gap-3 md:py-2.5 ${
                           pred.details_available ? 'hover:bg-white/5 transition-colors cursor-pointer' : 'cursor-default'
                         } ${isSelectedForCompare ? 'bg-primary/10' : ''} ${isCompareTarget ? 'ring-1 ring-inset ring-primary/30' : ''}`}
                       >
-                        <div className="w-10 shrink-0 flex justify-center">
-                          {medal ?? (
-                            <span className="text-base font-bold text-neutral-400 tabular-nums md:text-xs">{rank}</span>
+                        <div className="w-8 shrink-0 flex justify-center md:w-10">
+                          {medal ? (
+                            <span className="scale-75 md:scale-100">{medal}</span>
+                          ) : (
+                            <span className="text-xs font-bold text-neutral-400 tabular-nums">{rank}</span>
                           )}
                         </div>
                         <div className="flex-grow min-w-0">
-                          <div className={`font-medium text-xl flex items-center gap-1.5 min-w-0 transition-colors md:text-base ${pred.details_available ? 'group-hover:text-primary' : ''}`}>
+                          <div className={`font-medium text-base flex items-center gap-1.5 min-w-0 transition-colors md:text-sm ${pred.details_available ? 'group-hover:text-primary' : ''}`}>
                             <span className="truncate">{primaryName}</span>
                             {renderPositionChange(positionChange)}
                             {pred.is_late_submission && (
@@ -527,15 +529,15 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                             {isSelectedForCompare && (
                               <span className="material-symbols-outlined text-primary text-[18px]">check</span>
                             )}
-                            <div className="w-16 pr-3 text-right font-bold text-xl tabular-nums md:w-14 md:text-base">{points ?? 0}</div>
+                            <div className="w-12 pr-1 text-right font-bold text-base tabular-nums md:w-14 md:pr-3">{points ?? 0}</div>
                           </div>
                         ) : (
                           <span
-                            className="inline-flex w-16 shrink-0 items-center justify-end pr-3 text-neutral-500 md:w-14"
+                            className="inline-flex w-12 shrink-0 items-center justify-end pr-1 text-neutral-500 md:w-14 md:pr-3"
                             aria-label="Prediction details unlock after kickoff"
                             title="Prediction details unlock after kickoff"
                           >
-                            <span className="material-symbols-outlined text-[18px]">lock</span>
+                            <span className="material-symbols-outlined text-[15px] md:text-[18px]">lock</span>
                           </span>
                         )}
                       </button>
@@ -546,10 +548,10 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       <>
                         {approved.length > 0 && (
                           <div className="mb-4">
-                            <div className="flex items-center gap-3 pb-2.5 border-b border-white/10">
-                              <div className="w-10 shrink-0 text-center text-base font-bold text-neutral-500 uppercase md:text-xs">#</div>
-                              <div className="flex-grow text-base font-bold text-neutral-500 uppercase md:text-xs">Name</div>
-                              <div className="w-16 shrink-0 pr-3 text-right text-base font-bold text-neutral-500 uppercase md:w-14 md:text-xs">Points</div>
+                            <div className="flex items-center gap-2 pb-2 border-b border-white/10 md:gap-3 md:pb-2.5">
+                              <div className="w-8 shrink-0 text-center text-[11px] font-bold text-neutral-500 uppercase md:w-10 md:text-xs">#</div>
+                              <div className="flex-grow text-[11px] font-bold text-neutral-500 uppercase md:text-xs">Name</div>
+                              <div className="w-12 shrink-0 pr-1 text-right text-[11px] font-bold text-neutral-500 uppercase md:w-14 md:pr-3 md:text-xs">Points</div>
                             </div>
                             <div className="divide-y divide-white/10">
                               {approved.map((pred, idx) => renderPredictionRow(pred, idx))}
@@ -595,7 +597,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         disabled={!canOpenPrediction}
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
-                        <div className="font-bold text-lg md:text-base flex items-center gap-2">
+                        <div className="font-bold text-base md:text-sm flex items-center gap-2">
                           <span className="truncate">{entryName}</span>
                           {renderPositionChange(entry.position_change)}
                           {userPrediction?.is_late_submission && (
@@ -635,7 +637,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         disabled={!canOpenPrediction}
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
-                        <div className={`font-bold ${rank === 1 ? 'text-xl md:text-lg' : 'text-lg md:text-base'} flex items-center gap-2 min-w-0 ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
+                        <div className={`font-bold ${rank === 1 ? 'text-lg md:text-base' : 'text-base md:text-sm'} flex items-center gap-2 min-w-0 ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
                           <span className="truncate">{entryName}</span>
                           {renderPositionChange(entry.position_change)}
                           {userPrediction?.is_late_submission && (
@@ -718,6 +720,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
         />
+      )}
+      {showResultDelayNotice && (
+        <div className="fixed bottom-24 left-1/2 z-50 flex w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 items-start gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-xs font-normal text-white shadow-lg animate-fade-in md:text-sm">
+          <span className="material-symbols-outlined mt-0.5 text-[16px] text-primary">info</span>
+          <span>Reload requested. Final match results can take up to 7 minutes to update on the server.</span>
+        </div>
       )}
     </div>
   );

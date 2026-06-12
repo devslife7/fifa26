@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { fetchLiveMatches } from '@/lib/services/football-api';
 import { getFixturesFromDb } from '@/lib/services/fixtures-db';
+import { syncMatches } from '@/lib/services/sync-matches';
 import type { GroupLetter, LiveMatch } from '@/types';
 
-const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=600' };
+const NO_STORE = { 'Cache-Control': 'no-store' };
 
 function buildGroupsResponse(matches: LiveMatch[], source: string) {
   const groupMatches = matches.filter(m => m.stage === 'GROUP' && m.group);
@@ -16,10 +17,18 @@ function buildGroupsResponse(matches: LiveMatch[], source: string) {
   for (const g of Object.keys(groups) as GroupLetter[]) {
     groups[g]!.sort((a, b) => a.utcDate.localeCompare(b.utcDate));
   }
-  return NextResponse.json({ groups, source }, { headers: CACHE_HEADERS });
+  return NextResponse.json({ groups, source }, { headers: NO_STORE });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const force = request.nextUrl.searchParams.get('force') === 'true';
+
+  try {
+    await syncMatches({ force });
+  } catch (e) {
+    console.error('syncMatches failed', e);
+  }
+
   const dbMatches = await getFixturesFromDb();
   if (dbMatches.length > 0) {
     return buildGroupsResponse(dbMatches, 'db');
@@ -30,7 +39,7 @@ export async function GET() {
   if (!result) {
     return NextResponse.json(
       { groups: {}, source: null, error: 'unavailable' },
-      { status: 200, headers: CACHE_HEADERS },
+      { status: 200, headers: NO_STORE },
     );
   }
 

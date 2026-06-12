@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { KnockoutRound, LiveMatch, SavedPrediction } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import {
@@ -8,11 +8,13 @@ import {
   type MatchOutcomeState,
   type PerMatchOutcome,
 } from '@/hooks/usePredictionResults';
+import {
+  useTrackerTabState,
+  type KnockoutRoundTabId,
+  type TrackerStageId,
+  type TrackerTabId,
+} from '@/hooks/useTrackerTabState';
 import { formatMatchDateTimeET } from '@/lib/utils/match-dates';
-
-type TrackerTabId = 'active' | 'settled' | 'all';
-type KnockoutRoundTabId = 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
-type TrackerStageId = 'group' | 'knockout';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -353,9 +355,7 @@ export default function PredictionExpandedTracker({
   onCompare,
   hidePointsInStats = false,
 }: Props) {
-  const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
-  const [groupTab, setGroupTab] = useState<TrackerTabId>('active');
-  const [knockoutRound, setKnockoutRound] = useState<KnockoutRoundTabId>('R32');
+  const { trackerStage, setTrackerStage, groupTab, setGroupTab, knockoutRound, setKnockoutRound } = useTrackerTabState();
   const { perMatch, summary } = usePredictionResults(prediction, liveMatches);
 
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);

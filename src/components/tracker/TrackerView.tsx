@@ -12,6 +12,12 @@ import {
   type PerMatchOutcome,
   type MatchOutcomeState,
 } from '@/hooks/usePredictionResults';
+import {
+  useTrackerTabState,
+  type KnockoutRoundTabId,
+  type TrackerStageId,
+  type TrackerTabId,
+} from '@/hooks/useTrackerTabState';
 import { groupItemsByDate, formatMatchTime } from '@/lib/utils/match-dates';
 import { useAuth } from '@/components/providers/AuthProvider';
 import PublicPredictionProfileModal from '@/components/ranking/PublicPredictionProfileModal';
@@ -27,10 +33,6 @@ const ROUND_LABELS: Record<KnockoutRound, string> = {
   '3RD': 'Third-place',
   FIN: 'Final',
 };
-
-type TrackerTabId = 'active' | 'settled' | 'all';
-type KnockoutRoundTabId = 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
-type TrackerStageId = 'group' | 'knockout';
 
 const GROUP_TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
   { id: 'active', label: 'Active' },
@@ -490,9 +492,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   const { user } = useAuth();
   const { prediction: trackedPrediction, loading: loadingPrediction } = useLatestPrediction();
   const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(trackedPrediction, liveMatches);
-  const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
-  const [groupTab, setGroupTab] = useState<TrackerTabId>('active');
-  const [knockoutRound, setKnockoutRound] = useState<KnockoutRoundTabId>('R32');
+  const { trackerStage, setTrackerStage, groupTab, setGroupTab, knockoutRound, setKnockoutRound } = useTrackerTabState();
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Leaderboard + predictions fan-out — used for the rank line and pre-tournament social snapshot.

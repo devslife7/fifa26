@@ -17,6 +17,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import PublicPredictionProfileModal from '@/components/ranking/PublicPredictionProfileModal';
 import PredictionLockedView from './PredictionLockedView';
 import { isLateSubmission } from '@/data/tournament';
+import { computeTiedRanks } from '@/lib/services/leaderboard-position';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -28,12 +29,21 @@ const ROUND_LABELS: Record<KnockoutRound, string> = {
 };
 
 type TrackerTabId = 'active' | 'settled' | 'all';
+type KnockoutRoundTabId = 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
 type TrackerStageId = 'group' | 'knockout';
 
-const TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
+const GROUP_TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
   { id: 'active', label: 'Active' },
   { id: 'settled', label: 'Settled' },
   { id: 'all', label: 'All' },
+];
+
+const KNOCKOUT_ROUND_TABS: { id: KnockoutRoundTabId; label: string }[] = [
+  { id: 'R32', label: 'R32' },
+  { id: 'R16', label: 'R16' },
+  { id: 'QF', label: 'QF' },
+  { id: 'SF', label: 'Semis' },
+  { id: 'FIN', label: 'Final' },
 ];
 
 const STAGE_TABS: { id: TrackerStageId; label: string; icon: string }[] = [
@@ -71,6 +81,11 @@ function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean
   if (tab === 'active') return isActiveOutcome(outcome);
   if (tab === 'settled') return isSettledOutcome(outcome);
   return true;
+}
+
+function matchesKnockoutRound(outcome: PerMatchOutcome, round: KnockoutRoundTabId): boolean {
+  if (round === 'FIN') return outcome.round === 'FIN' || outcome.round === '3RD';
+  return outcome.round === round;
 }
 
 function matchesTrackerStage(outcome: PerMatchOutcome, stage: TrackerStageId): boolean {
@@ -120,7 +135,7 @@ function SlidingTabRail<T extends string>({
           >
             {tab.icon && <span className="material-symbols-outlined text-[16px] flex-shrink-0">{tab.icon}</span>}
             <span className="truncate">{tab.label}</span>
-            <span className={`tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{counts[tab.id]}</span>
+            <span className={`text-[12px] tabular-nums ${isActive ? 'text-black/60' : 'text-neutral-600'}`}>{counts[tab.id]}</span>
           </button>
         );
       })}
@@ -476,7 +491,8 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   const { prediction: trackedPrediction, loading: loadingPrediction } = useLatestPrediction();
   const { perMatch, summary, bracket, predicted, actual, hasSignal } = usePredictionResults(trackedPrediction, liveMatches);
   const [trackerStage, setTrackerStage] = useState<TrackerStageId>('group');
-  const [trackerTab, setTrackerTab] = useState<TrackerTabId>('active');
+  const [groupTab, setGroupTab] = useState<TrackerTabId>('active');
+  const [knockoutRound, setKnockoutRound] = useState<KnockoutRoundTabId>('R32');
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Leaderboard + predictions fan-out — used for the rank line and pre-tournament social snapshot.
@@ -555,7 +571,8 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
     ));
     if (idx === -1) return null;
     const me = leaderboard[idx];
-    const rank = idx + 1;
+    const ranks = computeTiedRanks(leaderboard, entry => entry.total_points);
+    const rank = ranks[idx];
     if (rank === 1) {
       const next = leaderboard[1];
       const gap = next ? me.total_points - next.total_points : 0;
@@ -592,9 +609,24 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
   );
   const stageActiveCount = useMemo(() => stageOutcomes.filter(isActiveOutcome).length, [stageOutcomes]);
   const stageSettledCount = useMemo(() => stageOutcomes.filter(isSettledOutcome).length, [stageOutcomes]);
+  const knockoutRoundCounts = useMemo(() => {
+    const counts: Record<KnockoutRoundTabId, number> = { R32: 0, R16: 0, QF: 0, SF: 0, FIN: 0 };
+    for (const outcome of stageOutcomes) {
+      if (outcome.round === 'R32') counts.R32++;
+      else if (outcome.round === 'R16') counts.R16++;
+      else if (outcome.round === 'QF') counts.QF++;
+      else if (outcome.round === 'SF') counts.SF++;
+      else if (outcome.round === 'FIN' || outcome.round === '3RD') counts.FIN++;
+    }
+    return counts;
+  }, [stageOutcomes]);
   const filteredOutcomes = useMemo(
-    () => stageOutcomes.filter(o => matchesTrackerTab(o, trackerTab)),
-    [stageOutcomes, trackerTab],
+    () => (
+      trackerStage === 'group'
+        ? stageOutcomes.filter(o => matchesTrackerTab(o, groupTab))
+        : stageOutcomes.filter(o => matchesKnockoutRound(o, knockoutRound))
+    ),
+    [stageOutcomes, trackerStage, groupTab, knockoutRound],
   );
   const groupedByDate = useMemo(() => groupItemsByDate(filteredOutcomes), [filteredOutcomes]);
 
@@ -622,7 +654,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       third_place_tiebreaker: trackedPrediction.third_place_tiebreaker,
       is_approved: trackedPrediction.is_approved ?? false,
       details_available: true,
-      is_late_submission: isLateSubmission(trackedPrediction.completed_at),
+      is_late_submission: isLateSubmission(trackedPrediction.completed_at, trackedPrediction.prediction_number),
       created_at: trackedPrediction.created_at,
       updated_at: trackedPrediction.updated_at,
     };
@@ -742,17 +774,27 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
       </div>
 
       <div className="px-4">
-        <SlidingTabRail
-          tabs={TRACKER_TABS}
-          activeId={trackerTab}
-          counts={{
-            active: stageActiveCount,
-            settled: stageSettledCount,
-            all: stageOutcomes.length,
-          }}
-          onSelect={setTrackerTab}
-          surfaceClassName="bg-white/[0.025]"
-        />
+        {trackerStage === 'group' ? (
+          <SlidingTabRail
+            tabs={GROUP_TRACKER_TABS}
+            activeId={groupTab}
+            counts={{
+              active: stageActiveCount,
+              settled: stageSettledCount,
+              all: stageOutcomes.length,
+            }}
+            onSelect={setGroupTab}
+            surfaceClassName="bg-white/[0.025]"
+          />
+        ) : (
+          <SlidingTabRail
+            tabs={KNOCKOUT_ROUND_TABS}
+            activeId={knockoutRound}
+            counts={knockoutRoundCounts}
+            onSelect={setKnockoutRound}
+            surfaceClassName="bg-white/[0.025]"
+          />
+        )}
       </div>
 
       {groupStats.length === 0 ? (
@@ -760,8 +802,8 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
             <span className="material-symbols-outlined text-neutral-500 text-3xl">filter_alt_off</span>
             <p className="text-xs text-neutral-500 font-body mt-2">
-              {trackerTab === 'active'
-                ? `No active ${trackerStage === 'group' ? 'group stage' : 'bracket stage'} picks right now.`
+              {trackerStage === 'group' && groupTab === 'active'
+                ? 'No active group stage picks right now.'
                 : 'Nothing to show here yet.'}
             </p>
           </div>

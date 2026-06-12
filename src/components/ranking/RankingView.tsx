@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { isLateSubmission } from '@/data/tournament';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { computePredictionResults } from '@/hooks/usePredictionResults';
 import PublicPredictionProfileModal from './PublicPredictionProfileModal';
 import PredictionCompareModal from './PredictionCompareModal';
 import ScoringExplainer from '@/components/scoring/ScoringExplainer';
+import { computeTiedRanks } from '@/lib/services/leaderboard-position';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p1', display_name: 'Mateo Hernandez', total_points: 87, champion_code: 'BR', calculated_at: '', position_change: 0 },
@@ -23,13 +25,10 @@ function getLeaderboardEntryName(entry: LeaderboardEntry): string {
   return entry.name?.trim() || entry.display_name;
 }
 
-function getPredictionCardNames(pred: LeaderboardPrediction) {
+function getPredictionPrimaryName(pred: LeaderboardPrediction): string {
   const accountName = pred.display_name && pred.display_name !== 'Unknown' ? pred.display_name : null;
   const predictionName = pred.name?.trim() || null;
-  const primaryName = predictionName || accountName || 'Anonymous';
-  const secondaryName = accountName && accountName !== primaryName ? accountName : null;
-
-  return { primaryName, secondaryName };
+  return predictionName || accountName || 'Anonymous';
 }
 
 function savedPredictionToLeaderboardPrediction(prediction: SavedPrediction, userId: string, displayName: string): LeaderboardPrediction {
@@ -44,7 +43,7 @@ function savedPredictionToLeaderboardPrediction(prediction: SavedPrediction, use
     third_place_tiebreaker: prediction.third_place_tiebreaker,
     is_approved: prediction.is_approved ?? false,
     details_available: true,
-    is_late_submission: isLateSubmission(prediction.completed_at),
+    is_late_submission: isLateSubmission(prediction.completed_at, prediction.prediction_number),
     completed_at: prediction.completed_at,
     created_at: prediction.created_at,
     updated_at: prediction.updated_at,
@@ -62,7 +61,13 @@ function mergeOwnPredictions(
   );
   const merged = publicPredictions.map(prediction => {
     if (prediction.prediction_number == null) return prediction;
-    return ownByNumber.get(prediction.prediction_number) ?? prediction;
+    const own = ownByNumber.get(prediction.prediction_number);
+    if (!own) return prediction;
+    return {
+      ...own,
+      total_points: own.total_points ?? prediction.total_points,
+      position_change: own.position_change ?? prediction.position_change,
+    };
   });
   const publicNumbers = new Set(publicPredictions.map(prediction => prediction.prediction_number));
   const missingOwn = ownPredictions.filter(prediction => !publicNumbers.has(prediction.prediction_number));
@@ -72,10 +77,12 @@ function mergeOwnPredictions(
 function leaderboardEntriesToPredictions(entries: LeaderboardEntry[]): LeaderboardPrediction[] {
   return entries.map(entry => ({
     prediction_number: entry.prediction_number,
-    user_id: entry.prediction_id ? `prediction-${entry.prediction_id}` : entry.user_id ?? `prediction-${entry.prediction_number}`,
+    user_id: entry.user_id ?? `prediction-${entry.prediction_number}`,
     name: entry.name ?? null,
     display_name: entry.display_name,
     champion_code: entry.champion_code,
+    total_points: entry.total_points,
+    position_change: entry.position_change,
     details_available: false,
     is_late_submission: false,
     is_approved: true,
@@ -84,9 +91,74 @@ function leaderboardEntriesToPredictions(entries: LeaderboardEntry[]): Leaderboa
   }));
 }
 
+function PositionTrendIcon({ icon }: { icon: string }) {
+  return (
+    <span className="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden md:size-[18px]">
+      <span className="material-symbols-outlined origin-center scale-[0.95] text-[22px] leading-none md:scale-[0.88] md:text-xl">{icon}</span>
+    </span>
+  );
+}
+
+function renderPositionChange(change?: number) {
+  if (change == null || change === 0) {
+    return (
+      <span className="inline-flex shrink-0 items-center text-neutral-500" title="No change">
+        <PositionTrendIcon icon="remove" />
+      </span>
+    );
+  }
+  if (change > 0) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 font-medium text-wc-green" title={`Up ${change} positions`}>
+        <PositionTrendIcon icon="trending_up" />
+        <span className="text-base tabular-nums md:text-[12px]">{change}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 font-medium text-wc-red" title={`Down ${Math.abs(change)} positions`}>
+      <PositionTrendIcon icon="trending_down" />
+      <span className="text-base tabular-nums md:text-[12px]">{Math.abs(change)}</span>
+    </span>
+  );
+}
+
 function getFallbackPredictions(entries: LeaderboardEntry[]): LeaderboardPrediction[] {
   if (entries.length > 0) return leaderboardEntriesToPredictions(entries);
   return [];
+}
+
+function normalizePredictionNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getPredictionKey(prediction: LeaderboardPrediction): string {
+  if (prediction.prediction_number != null) return String(prediction.prediction_number);
+  return prediction.user_id;
+}
+
+function entryMatchesPrediction(entry: LeaderboardEntry, prediction: LeaderboardPrediction): boolean {
+  const entryNum = normalizePredictionNumber(entry.prediction_number);
+  const predNum = normalizePredictionNumber(prediction.prediction_number);
+  if (entryNum != null && predNum != null) {
+    return entryNum === predNum;
+  }
+
+  if (entry.user_id && prediction.user_id && entry.user_id === prediction.user_id) {
+    return true;
+  }
+
+  if (entryNum != null && prediction.user_id === `prediction-${entryNum}`) {
+    return true;
+  }
+
+  if (entry.prediction_id && prediction.user_id === `prediction-${entry.prediction_id}`) {
+    return true;
+  }
+
+  return false;
 }
 
 interface RankingViewProps {
@@ -106,8 +178,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [comparisonBasePrediction, setComparisonBasePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedComparePrediction, setSelectedComparePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedCompareRank, setSelectedCompareRank] = useState<number | undefined>(undefined);
-  const [refreshing, setRefreshing] = useState(false);
-  const [justRefreshed, setJustRefreshed] = useState(false);
 
   useEffect(() => {
     const fetchLeaderboard = fetch('/api/leaderboard')
@@ -156,54 +226,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     });
   }, [user]);
 
-  const handleRefresh = async () => {
-    if (refreshing) return;
-    setRefreshing(true);
-    try {
-      await fetch('/api/football/matches?force=true', { cache: 'no-store' });
-      const [lbRes, predsRes, myPredsRes] = await Promise.all([
-        fetch('/api/leaderboard', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ leaderboard: [] })),
-        fetch('/api/leaderboard/predictions', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ predictions: [], total_users: 0 })),
-        user
-          ? fetch('/api/predictions', { cache: 'no-store' }).then(r => r.json()).catch(() => ({ predictions: [] }))
-          : Promise.resolve({ predictions: [] }),
-      ]);
-      const entries: LeaderboardEntry[] = lbRes.leaderboard ?? [];
-      const preds: LeaderboardPrediction[] = predsRes.predictions ?? [];
-      const myPreds: SavedPrediction[] = myPredsRes.predictions ?? [];
-
-      const nextUsePlaceholder = entries.length === 0;
-      if (nextUsePlaceholder) {
-        setLeaderboard(PLACEHOLDER_USERS);
-        setUsePlaceholder(true);
-      } else {
-        setLeaderboard(entries);
-        setUsePlaceholder(false);
-      }
-
-      const displayName = user?.display_name ?? 'You';
-      const myLeaderboardPreds: LeaderboardPrediction[] = user
-        ? myPreds
-            .filter(p => p.is_complete)
-            .map(p => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
-        : [];
-
-      if (preds.length === 0) {
-        const fallbackPredictions = getFallbackPredictions(entries);
-        setPredictions(mergeOwnPredictions(fallbackPredictions, myLeaderboardPreds));
-        setTotalUsers(predsRes.total_users || fallbackPredictions.length || myLeaderboardPreds.length);
-      } else {
-        setPredictions(mergeOwnPredictions(preds, myLeaderboardPreds));
-        setTotalUsers(predsRes.total_users || preds.length);
-      }
-
-      setJustRefreshed(true);
-      setTimeout(() => setJustRefreshed(false), 2000);
-    } finally {
-      setTimeout(() => setRefreshing(false), 5000);
-    }
-  };
-
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
     if (rank === 2) return <span className="material-symbols-outlined text-medal-silver text-2xl font-variation-fill">emoji_events</span>;
@@ -225,11 +247,29 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     return a.user_id === b.user_id && a.name === b.name;
   };
 
-  const entryMatchesPrediction = (entry: LeaderboardEntry, prediction: LeaderboardPrediction) => {
-    if (entry.prediction_number != null && prediction.prediction_number != null) {
-      return entry.prediction_number === prediction.prediction_number;
+  const visiblePredictions = predictions.filter(prediction => prediction.is_approved);
+
+  const livePointsByPrediction = useMemo(() => {
+    if (!liveMatches) return new Map<string, number>();
+    const points = new Map<string, number>();
+    for (const prediction of visiblePredictions) {
+      if (!prediction.details_available) continue;
+      points.set(
+        getPredictionKey(prediction),
+        computePredictionResults(prediction, liveMatches).summary.totalPoints,
+      );
     }
-    return entry.user_id === prediction.user_id;
+    return points;
+  }, [visiblePredictions, liveMatches]);
+
+  const getPredictionPoints = (prediction: LeaderboardPrediction): number | null => {
+    if (prediction.details_available && liveMatches) {
+      const livePoints = livePointsByPrediction.get(getPredictionKey(prediction));
+      if (livePoints != null) return livePoints;
+    }
+    if (typeof prediction.total_points === 'number') return prediction.total_points;
+    const entry = leaderboard.find(e => entryMatchesPrediction(e, prediction));
+    return entry?.total_points ?? null;
   };
 
   const openPredictionDetails = (prediction: LeaderboardPrediction, rank?: number) => {
@@ -250,6 +290,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     }
     setSelectedComparePrediction(prediction);
     setSelectedCompareRank(rank);
+  };
+
+  const startCompareFromProfile = () => {
+    if (!selectedPrediction) return;
+    setComparisonBasePrediction(selectedPrediction);
+    setSelectedPrediction(null);
+    setSelectedRank(undefined);
   };
 
   const renderPredictionActions = (prediction: LeaderboardPrediction, rank?: number) => {
@@ -305,8 +352,29 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     );
   };
 
+  const comparisonBaseName = comparisonBasePrediction
+    ? getPredictionPrimaryName(comparisonBasePrediction)
+    : null;
+
   return (
     <div className="flex-grow pt-4 pb-2">
+
+      {comparisonBasePrediction && !selectedComparePrediction && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+          <span className="material-symbols-outlined shrink-0 text-primary text-xl">compare_arrows</span>
+          <p className="min-w-0 flex-1 text-sm text-white font-body">
+            Comparing with <span className="font-bold text-primary">{comparisonBaseName}</span>.
+            {' '}Select another prediction below to compare.
+          </p>
+          <button
+            type="button"
+            onClick={() => setComparisonBasePrediction(null)}
+            className="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-neutral-400 transition-colors hover:border-white/20 hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <div className="md:grid md:grid-cols-[1fr,300px] md:gap-8">
         <div className="flex-grow">
@@ -317,98 +385,94 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
           ) : (
             <div className="space-y-3">
               {/* Predictions Section */}
-              {predictions.length > 0 && (
+              {visiblePredictions.length > 0 && (
                 <div className="mb-6">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-xl font-variation-fill">assignment</span>
-                      <h2 className="font-bold text-lg">Predictions</h2>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleRefresh}
-                      disabled={refreshing}
-                      aria-label="Refresh leaderboard"
-                      title={justRefreshed ? 'Updated' : 'Refresh'}
-                      className={`flex h-9 w-10 items-center justify-center gap-1.5 rounded-lg border px-0 text-xs font-bold font-body transition-colors sm:h-auto sm:w-auto sm:px-3 sm:py-1.5 ${
-                        justRefreshed
-                          ? 'border-wc-green/50 text-wc-green bg-wc-green/10'
-                          : 'border-white/10 text-neutral-300 hover:border-primary/30 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed'
-                      }`}
-                    >
-                      <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>
-                        {justRefreshed ? 'check' : 'refresh'}
-                      </span>
-                      <span className="hidden sm:inline">{justRefreshed ? 'Updated' : 'Refresh'}</span>
-                    </button>
+                  <div className="mb-3">
+                    <h2 className="font-bold text-3xl md:text-xl">Leaderboard</h2>
+                    <p className="mt-1 text-base text-neutral-400 font-body md:text-sm">
+                      {visiblePredictions.length} {visiblePredictions.length === 1 ? 'participant' : 'participants'}
+                    </p>
                   </div>
                   {(() => {
-                    const approved = predictions.filter(p => p.is_approved).sort((a, b) => {
-                      if (!a.updated_at || !b.updated_at) return 0;
-                      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-                    });
-                    const pending = predictions.filter(p => !p.is_approved).sort((a, b) => {
-                      if (!a.created_at || !b.created_at) return 0;
-                      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                    const approved = [...visiblePredictions].sort((a, b) => {
+                      const pointsA = getPredictionPoints(a) ?? 0;
+                      const pointsB = getPredictionPoints(b) ?? 0;
+                      if (pointsB !== pointsA) return pointsB - pointsA;
+                      return getPredictionPrimaryName(a).localeCompare(
+                        getPredictionPrimaryName(b),
+                        undefined,
+                        { sensitivity: 'base' },
+                      );
                     });
 
-                    const formatCreatedAt = (date?: string | null) => {
-                      if (!date) return null;
-                      return new Date(date).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                      });
-                    };
+                    const ranks = computeTiedRanks(
+                      approved,
+                      pred => getPredictionPoints(pred) ?? 0,
+                    );
 
-                    const renderCard = (pred: LeaderboardPrediction, idx: number) => {
-                      const { primaryName, secondaryName } = getPredictionCardNames(pred);
-                      const lbIdx = leaderboard.findIndex(e => entryMatchesPrediction(e, pred));
-                      const rank = lbIdx >= 0 ? lbIdx + 1 : undefined;
-                      const championLabel = pred.details_available ? getChampionLabel(pred.champion_code) : null;
+                    const renderPredictionRow = (pred: LeaderboardPrediction, idx: number) => {
+                      const primaryName = getPredictionPrimaryName(pred);
+                      const rank = ranks[idx];
+                      const medal = getMedalIcon(rank);
+                      const points = getPredictionPoints(pred);
+                      const entry = leaderboard.find(e => entryMatchesPrediction(e, pred));
+                      const positionChange = pred.position_change ?? entry?.position_change;
+                      const isSelectedForCompare = isSamePrediction(comparisonBasePrediction, pred);
+                      const isCompareTarget = comparisonBasePrediction
+                        && !isSelectedForCompare
+                        && pred.details_available;
                       return (
-                      <div
+                      <button
                         key={`${pred.user_id}-${pred.prediction_number ?? idx}`}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-neutral-900 transition-colors text-left group ${
-                          pred.details_available ? 'hover:bg-white/5 hover:border-primary/30' : ''
-                        }`}
+                        type="button"
+                        onClick={() => {
+                          if (isCompareTarget) {
+                            openPredictionCompare(pred, rank);
+                            return;
+                          }
+                          openPredictionDetails(pred, rank);
+                        }}
+                        disabled={!pred.details_available}
+                        className={`w-full flex items-center gap-3 py-4 text-left group md:py-2.5 ${
+                          pred.details_available ? 'hover:bg-white/5 transition-colors cursor-pointer' : 'cursor-default'
+                        } ${isSelectedForCompare ? 'bg-primary/10' : ''} ${isCompareTarget ? 'ring-1 ring-inset ring-primary/30' : ''}`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => openPredictionDetails(pred, rank)}
-                          disabled={!pred.details_available}
-                          className="flex-grow min-w-0 text-left disabled:cursor-default"
-                        >
-                          <div className={`font-semibold text-sm truncate transition-colors ${pred.details_available ? 'group-hover:text-primary' : ''}`}>
-                            {primaryName}
-                            <span className="text-neutral-500 font-mono ml-1.5">#{pred.prediction_number ?? idx + 1}</span>
-                            {secondaryName && <span className="text-neutral-400 font-normal ml-1.5">— {secondaryName}</span>}
+                        <div className="w-10 shrink-0 flex justify-center">
+                          {medal ?? (
+                            <span className="text-base font-bold text-neutral-400 tabular-nums md:text-xs">{rank}</span>
+                          )}
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <div className={`font-medium text-xl flex items-center gap-1.5 min-w-0 transition-colors md:text-base ${pred.details_available ? 'group-hover:text-primary' : ''}`}>
+                            <span className="truncate">{primaryName}</span>
+                            {renderPositionChange(positionChange)}
                             {pred.is_late_submission && (
-                              <span className="ml-1.5 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-red">
+                              <span className="shrink-0 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-wc-red">
                                 Late
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {championLabel && (
-                              <span className="text-xs text-neutral-400 truncate font-body">
-                                {championLabel}
-                              </span>
+                        </div>
+                        {pred.details_available ? (
+                          <div className="flex shrink-0 items-center gap-2">
+                            {isCompareTarget && (
+                              <span className="hidden text-[11px] font-bold uppercase text-primary sm:inline">Compare</span>
                             )}
-                            {pred.created_at && (
-                              <>
-                                {championLabel && <span className="text-neutral-600 text-[10px]">·</span>}
-                                <span className="text-[11px] text-neutral-500 font-body shrink-0">
-                                  {formatCreatedAt(pred.created_at)}
-                                </span>
-                              </>
+                            {isSelectedForCompare && (
+                              <span className="material-symbols-outlined text-primary text-[18px]">check</span>
                             )}
+                            <div className="w-16 pr-3 text-right font-bold text-xl tabular-nums md:w-14 md:text-base">{points ?? 0}</div>
                           </div>
-                        </button>
-                        {renderPredictionActions(pred, rank)}
-                      </div>
+                        ) : (
+                          <span
+                            className="inline-flex w-16 shrink-0 items-center justify-end pr-3 text-neutral-500 md:w-14"
+                            aria-label="Prediction details unlock after kickoff"
+                            title="Prediction details unlock after kickoff"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">lock</span>
+                          </span>
+                        )}
+                      </button>
                       );
                     };
 
@@ -416,29 +480,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       <>
                         {approved.length > 0 && (
                           <div className="mb-4">
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <svg className="w-2.5 h-2.5 text-wc-green" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.41 5.59L7 10l-2.41-2.41L3.5 8.68 7 12.18l5.5-5.5-1.09-1.09z"/></svg>
-                              <span className="text-xs font-bold font-body text-wc-green">Approved</span>
-                              <span className="text-xs font-black leading-none text-wc-green">
-                                {approved.length}
-                              </span>
+                            <div className="flex items-center gap-3 pb-2.5 border-b border-white/10">
+                              <div className="w-10 shrink-0 text-center text-base font-bold text-neutral-500 uppercase md:text-xs">#</div>
+                              <div className="flex-grow text-base font-bold text-neutral-500 uppercase md:text-xs">Name</div>
+                              <div className="w-16 shrink-0 pr-3 text-right text-base font-bold text-neutral-500 uppercase md:w-14 md:text-xs">Points</div>
                             </div>
-                            <div className="space-y-2">
-                              {approved.map((pred, idx) => renderCard(pred, idx))}
-                            </div>
-                          </div>
-                        )}
-                        {pending.length > 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-2">
-                              <svg className="w-2.5 h-2.5 text-wc-amber" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM7.25 4v4.75H11v-1.5H8.75V4h-1.5z"/></svg>
-                              <span className="text-xs font-bold font-body text-wc-amber">Pending</span>
-                              <span className="text-xs font-black leading-none text-wc-amber">
-                                {pending.length}
-                              </span>
-                            </div>
-                            <div className="space-y-2">
-                              {pending.map((pred, idx) => renderCard(pred, idx))}
+                            <div className="divide-y divide-white/10">
+                              {approved.map((pred, idx) => renderPredictionRow(pred, idx))}
                             </div>
                           </div>
                         )}
@@ -452,45 +500,27 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
               {!usePlaceholder && (
               <div className="flex items-center gap-2 mb-3">
                 <span className="material-symbols-outlined text-primary text-xl font-variation-fill">emoji_events</span>
-                <h2 className="font-bold text-lg">Rankings</h2>
+                <h2 className="font-bold text-xl md:text-lg">Rankings</h2>
               </div>
               )}
 
-              {!usePlaceholder && leaderboard.map((entry, idx) => {
-                const rank = idx + 1;
+              {!usePlaceholder && (() => {
+                const ranks = computeTiedRanks(leaderboard, entry => entry.total_points);
+                return leaderboard.map((entry, idx) => {
+                const rank = ranks[idx];
                 const isCurrentUser = !usePlaceholder && user?.id === entry.user_id;
                 const medal = getMedalIcon(rank);
-                const userPrediction = predictions.find(p => entryMatchesPrediction(entry, p));
+                const userPrediction = visiblePredictions.find(p => entryMatchesPrediction(entry, p));
                 const canOpenPrediction = !!userPrediction?.details_available;
                 const entryName = getLeaderboardEntryName(entry);
                 
-                const renderPositionChange = (change?: number) => {
-                  if (!change) return (
-                    <div className="flex items-center justify-center text-neutral-300 ml-2" title="No change">
-                      <span className="material-symbols-outlined text-[14px]">remove</span>
-                    </div>
-                  );
-                  if (change > 0) return (
-                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-wc-green ml-2" title={`Up ${change} positions`}>
-                      <span className="material-symbols-outlined text-[16px] leading-none">trending_up</span>
-                      {change}
-                    </div>
-                  );
-                  return (
-                    <div className="flex items-center gap-0.5 text-[11px] font-bold text-wc-red ml-2" title={`Down ${Math.abs(change)} positions`}>
-                      <span className="material-symbols-outlined text-[16px] leading-none">trending_down</span>
-                      {Math.abs(change)}
-                    </div>
-                  );
-                };
-
                 if (isCurrentUser) {
                   return (
                     <div
                       key={getLeaderboardEntryKey(entry, idx)} 
                       className={`w-full flex items-center gap-3 bg-background-dark text-white p-4 rounded-xl border-2 border-primary shadow-lg ring-4 ring-primary/10 mb-2 text-left ${canOpenPrediction ? 'hover:bg-neutral-800 transition-colors group' : ''}`}
                     >
-                      <div className="w-10 text-center font-black text-primary text-lg">
+                      <div className="w-10 text-center font-black text-primary text-xl md:text-lg">
                         {medal ?? rank}
                       </div>
                       <button
@@ -499,13 +529,13 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         disabled={!canOpenPrediction}
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
-                        <div className="font-bold flex items-center gap-2">
-                          {entryName}
-                          {userPrediction?.is_late_submission && (
-                            <span className="rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-red">Late</span>
-                          )}
+                        <div className="font-bold text-lg md:text-base flex items-center gap-2">
+                          <span className="truncate">{entryName}</span>
                           {renderPositionChange(entry.position_change)}
-                          <span className="bg-primary text-black text-[9px] px-1.5 py-0.5 rounded font-black">YOU</span>
+                          {userPrediction?.is_late_submission && (
+                            <span className="shrink-0 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-wc-red">Late</span>
+                          )}
+                          <span className="shrink-0 bg-primary text-black text-[10px] md:text-[9px] px-1.5 py-0.5 rounded font-black">YOU</span>
                         </div>
                         {canOpenPrediction && entry.champion_code && (
                           <div className="text-xs text-neutral-400 flex items-center gap-1 font-body">
@@ -515,8 +545,8 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       </button>
                       <div className="text-right flex items-center gap-3">
                         <div>
-                          <div className="font-black text-lg text-primary">{entry.total_points}</div>
-                          <div className="text-[10px] font-bold text-white/50 uppercase">Points</div>
+                          <div className="font-black text-xl md:text-lg text-primary">{entry.total_points}</div>
+                          <div className="text-xs md:text-[10px] font-bold text-white/50 uppercase">Points</div>
                         </div>
                         {userPrediction && renderPredictionActions(userPrediction, rank)}
                       </div>
@@ -539,12 +569,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                         disabled={!canOpenPrediction}
                         className="ml-1 flex-grow text-left disabled:cursor-default"
                       >
-                        <div className={`font-bold ${rank === 1 ? 'text-lg' : ''} flex items-center gap-2 ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
-                          {entryName}
-                          {userPrediction?.is_late_submission && (
-                            <span className="rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-red">Late</span>
-                          )}
+                        <div className={`font-bold ${rank === 1 ? 'text-xl md:text-lg' : 'text-lg md:text-base'} flex items-center gap-2 min-w-0 ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>
+                          <span className="truncate">{entryName}</span>
                           {renderPositionChange(entry.position_change)}
+                          {userPrediction?.is_late_submission && (
+                            <span className="shrink-0 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-wc-red">Late</span>
+                          )}
                         </div>
                         {canOpenPrediction && entry.champion_code && (
                           <div className="text-xs text-neutral-400 font-body">
@@ -554,10 +584,10 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       </button>
                       <div className="text-right flex items-center gap-3">
                         <div>
-                          <div className={`font-bold ${rank === 1 ? 'font-black text-xl text-primary' : 'text-lg text-neutral-300'}`}>
+                          <div className={`font-bold ${rank === 1 ? 'font-black text-2xl md:text-xl text-primary' : 'text-xl md:text-lg text-neutral-300'}`}>
                             {rank === 1 ? '+' : ''}{entry.total_points}
                           </div>
-                          <div className="text-[10px] font-bold text-neutral-400 uppercase">Points</div>
+                          <div className="text-xs md:text-[10px] font-bold text-neutral-400 uppercase">Points</div>
                         </div>
                         {userPrediction && renderPredictionActions(userPrediction, rank)}
                       </div>
@@ -568,30 +598,31 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                 return (
                   <div
                     key={getLeaderboardEntryKey(entry, idx)} 
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors mb-1 text-left ${canOpenPrediction ? 'hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-4 rounded-xl transition-colors mb-1.5 text-left md:py-3 ${canOpenPrediction ? 'hover:bg-white/5 hover:shadow-sm border border-transparent hover:border-white/10 group' : 'hover:bg-white/5'}`}
                   >
-                    <div className="w-10 text-center text-sm font-bold text-neutral-400">
+                    <div className="w-10 text-center text-base md:text-sm font-bold text-neutral-400">
                       {rank}
                     </div>
                     <button
                       type="button"
                       onClick={() => { if (userPrediction) openPredictionDetails(userPrediction, rank); }}
                       disabled={!canOpenPrediction}
-                      className="ml-1 flex-grow flex items-center gap-2 text-left disabled:cursor-default"
+                      className="ml-1 flex-grow flex items-center gap-2 min-w-0 text-left disabled:cursor-default"
                     >
-                      <span className={`font-medium ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entryName}</span>
-                      {userPrediction?.is_late_submission && (
-                        <span className="rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-red">Late</span>
-                      )}
+                      <span className={`truncate font-medium text-lg md:text-base ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entryName}</span>
                       {renderPositionChange(entry.position_change)}
+                      {userPrediction?.is_late_submission && (
+                        <span className="shrink-0 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-wc-red">Late</span>
+                      )}
                     </button>
                     <div className="text-right flex items-center gap-3">
-                      <div className="font-bold">{entry.total_points}</div>
+                      <div className="font-bold text-lg md:text-base">{entry.total_points}</div>
                       {userPrediction && renderPredictionActions(userPrediction, rank)}
                     </div>
                   </div>
                 );
-              })}
+              });
+              })()}
             </div>
           )}
         </div>
@@ -607,6 +638,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
           prediction={selectedPrediction}
           rank={selectedRank}
           onClose={() => { setSelectedPrediction(null); setSelectedRank(undefined); }}
+          onCompare={startCompareFromProfile}
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
         />

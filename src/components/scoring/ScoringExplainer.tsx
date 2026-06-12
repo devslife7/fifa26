@@ -44,13 +44,13 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
   const content = (
     <>
       <div className={surface === 'card' ? 'px-4 pt-4 pb-1' : 'pb-1'}>
-        <h2 className="text-[11px] font-bold tracking-[0.2em] uppercase text-neutral-500 font-body">
+        <h2 className="text-xs font-bold tracking-[0.2em] uppercase text-neutral-500 font-body">
           Scoring
         </h2>
       </div>
 
       <div className={surface === 'card' ? 'px-4 pt-2 pb-3' : 'pt-2 pb-3'}>
-        <p className="text-[13px] leading-relaxed text-neutral-300 font-body">
+        <p className="text-sm leading-relaxed text-neutral-300 font-body">
           {intro}
         </p>
       </div>
@@ -61,14 +61,14 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
             key={row.label}
             className="flex items-center justify-between py-[7px] border-b border-white/[0.04] last:border-0"
           >
-            <span className="text-[13px] font-medium text-neutral-400 font-body">{row.label}</span>
+            <span className="text-sm font-medium text-neutral-400 font-body">{row.label}</span>
             <div className="flex items-center gap-1.5">
               <div className="flex gap-px">
                 {Array.from({ length: row.pts }).map((_, j) => (
                   <div key={j} className="w-[3px] h-[10px] rounded-full bg-primary/30" />
                 ))}
               </div>
-              <span className="text-[13px] font-black tabular-nums text-neutral-200 w-6 text-right">
+              <span className="text-sm font-black tabular-nums text-neutral-200 w-6 text-right">
                 +{row.pts}
               </span>
             </div>
@@ -77,7 +77,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
       </div>
 
       <div className={`${surface === 'card' ? 'px-4 pt-1 pb-4' : 'pt-3'} border-t border-white/[0.04]`}>
-        <p className="text-[12px] leading-relaxed text-neutral-400 font-body">
+        <p className="text-[13px] leading-relaxed text-neutral-400 font-body">
           Maximum 268 points across the whole tournament.
         </p>
       </div>

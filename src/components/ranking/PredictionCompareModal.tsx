@@ -417,47 +417,47 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
             </button>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-            <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-primary/70">First prediction</div>
-              <div className="mt-1 flex items-end justify-between gap-3">
+          <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-stretch gap-1.5 sm:gap-2">
+            <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/10 px-2 py-2.5 sm:px-3 sm:py-3">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-primary/70 sm:text-[10px]">First prediction</div>
+              <div className="mt-1 flex items-end justify-between gap-1.5 sm:gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-black text-white">{mine.name || mineName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-neutral-400">
+                  <div className="truncate text-xs font-black text-white sm:text-sm">{mine.name || mineName}</div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-neutral-400">
                     {mineChampion && <TeamToken code={mineChampion} tone="mine" flagsByCode={teamFlagsByCode} />}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-primary tabular-nums">{mineResults.summary.totalPoints}</div>
-                  <div className="text-[10px] font-bold uppercase text-primary/60">Points</div>
+                <div className="shrink-0 text-right">
+                  <div className="text-xl font-black text-primary tabular-nums sm:text-2xl">{mineResults.summary.totalPoints}</div>
+                  <div className="text-[9px] font-bold uppercase text-primary/60 sm:text-[10px]">Points</div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-center rounded-xl border border-white/10 bg-neutral-900/70 px-4 py-3 text-center">
+            <div className="flex w-[4.5rem] shrink-0 items-center justify-center rounded-xl border border-white/10 bg-neutral-900/70 px-1.5 py-2 text-center sm:w-auto sm:px-4 sm:py-3">
               <div>
-                <div className="text-3xl font-black text-white tabular-nums">{summary.overlap}%</div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Overlap</div>
-                <div className={`mt-1 text-xs font-black tabular-nums ${summary.pointDelta >= 0 ? 'text-wc-green' : 'text-wc-red'}`}>
+                <div className="text-xl font-black text-white tabular-nums sm:text-3xl">{summary.overlap}%</div>
+                <div className="text-[8px] font-bold uppercase tracking-wider text-neutral-500 sm:text-[10px]">Overlap</div>
+                <div className={`mt-0.5 text-[10px] font-black tabular-nums sm:mt-1 sm:text-xs ${summary.pointDelta >= 0 ? 'text-wc-green' : 'text-wc-red'}`}>
                   {summary.pointDelta >= 0 ? '+' : ''}{summary.pointDelta} pts
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-wc-blue/20 bg-wc-blue/10 px-3 py-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300/80">
+            <div className="min-w-0 rounded-xl border border-wc-blue/20 bg-wc-blue/10 px-2 py-2.5 sm:px-3 sm:py-3">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-blue-300/80 sm:text-[10px]">
                 {friendRank ? `Rank #${friendRank}` : 'Second prediction'}
               </div>
-              <div className="mt-1 flex items-end justify-between gap-3">
+              <div className="mt-1 flex items-end justify-between gap-1.5 sm:gap-3">
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-black text-white">{friend.name || friendName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-neutral-400">
+                  <div className="truncate text-xs font-black text-white sm:text-sm">{friend.name || friendName}</div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-neutral-400">
                     {friendChampion && <TeamToken code={friendChampion} tone="friend" flagsByCode={teamFlagsByCode} />}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-black text-blue-300 tabular-nums">{friendResults.summary.totalPoints}</div>
-                  <div className="text-[10px] font-bold uppercase text-blue-300/60">Points</div>
+                <div className="shrink-0 text-right">
+                  <div className="text-xl font-black text-blue-300 tabular-nums sm:text-2xl">{friendResults.summary.totalPoints}</div>
+                  <div className="text-[9px] font-bold uppercase text-blue-300/60 sm:text-[10px]">Points</div>
                 </div>
               </div>
             </div>

@@ -40,6 +40,22 @@ function buildTeamFlagsByCode(matches: LiveMatch[]): Record<string, string> {
   return map;
 }
 
+function buildGroupMatchesByGroup(matches: LiveMatch[]): Partial<Record<GroupLetter, LiveMatch[]>> | null {
+  const groups: Partial<Record<GroupLetter, LiveMatch[]>> = {};
+  for (const match of matches) {
+    if (match.stage !== 'GROUP' || !match.group) continue;
+    const group = match.group as GroupLetter;
+    if (!groups[group]) groups[group] = [];
+    groups[group]!.push(match);
+  }
+
+  for (const group of Object.keys(groups) as GroupLetter[]) {
+    groups[group]!.sort((a, b) => a.utcDate.localeCompare(b.utcDate));
+  }
+
+  return Object.keys(groups).length > 0 ? groups : null;
+}
+
 export function useLiveData(): LiveDataResult {
   const [matches, setMatches] = useState<LiveMatch[]>([]);
   const [groupMatchesByGroup, setGroupMatchesByGroup] = useState<Partial<Record<GroupLetter, LiveMatch[]>> | null>(null);
@@ -53,10 +69,7 @@ export function useLiveData(): LiveDataResult {
     setLoading(true);
     try {
       const matchesUrl = force ? '/api/football/matches?force=true' : '/api/football/matches';
-      const [matchesRes, groupRes] = await Promise.all([
-        fetch(matchesUrl),
-        fetch('/api/football/group-matches'),
-      ]);
+      const matchesRes = await fetch(matchesUrl, { cache: 'no-store' });
 
       if (matchesRes.status === 429) {
         setRateLimited(true);
@@ -71,14 +84,10 @@ export function useLiveData(): LiveDataResult {
       const mergedMatches = mergeLiveMatches(liveMatches, fakeMatches);
       setMatches(mergedMatches);
       setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
+      setGroupMatchesByGroup(buildGroupMatchesByGroup(mergedMatches));
       setLastUpdated(Date.now());
       setError(null);
       writeCachedLiveData(mergedMatches);
-
-      if (groupRes.ok) {
-        const groupData = await groupRes.json();
-        setGroupMatchesByGroup(groupData.groups ?? null);
-      }
     } catch {
       setError('Live scores unavailable');
     } finally {
@@ -94,6 +103,7 @@ export function useLiveData(): LiveDataResult {
       const mergedMatches = mergeLiveMatches(cached.matches, fakeMatches);
       setMatches(mergedMatches);
       setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
+      setGroupMatchesByGroup(buildGroupMatchesByGroup(mergedMatches));
       setLastUpdated(cached.fetchedAt);
       setLoading(false);
     }

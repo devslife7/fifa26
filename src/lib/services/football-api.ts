@@ -66,7 +66,8 @@ async function apiFetch<T>(path: string, force = false): Promise<T | null> {
       const data: T = await res.json();
       setCache(path, data);
       return data;
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.message === 'RATE_LIMITED') throw e;
       return null;
     } finally {
       inflight.delete(path);

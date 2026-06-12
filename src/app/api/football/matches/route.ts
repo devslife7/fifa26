@@ -8,8 +8,10 @@ export async function GET(request: NextRequest) {
   const force = request.nextUrl.searchParams.get('force') === 'true';
 
   let rateLimited = false;
+  let syncStatus: string | null = null;
   try {
     const result = await syncMatches({ force });
+    syncStatus = result.status;
     if (result.status === 'rate_limited') rateLimited = true;
   } catch (e) {
     console.error('syncMatches failed', e);
@@ -25,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(
-    { matches, source: 'db', rateLimited },
+    { matches, source: 'db', rateLimited, syncStatus },
     { headers: NO_STORE },
   );
 }

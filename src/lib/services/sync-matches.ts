@@ -21,14 +21,18 @@ export interface SyncResult {
   scoresUpdated?: number;
 }
 
-let syncInFlight: Promise<SyncResult> | null = null;
+const syncInFlight = new Map<string, Promise<SyncResult>>();
 
 export async function syncMatches(opts: { force?: boolean } = {}): Promise<SyncResult> {
-  if (syncInFlight) return syncInFlight;
-  syncInFlight = doSync(opts).finally(() => {
-    syncInFlight = null;
+  const key = opts.force ? 'force' : 'default';
+  const existing = syncInFlight.get(key);
+  if (existing) return existing;
+
+  const promise = doSync(opts).finally(() => {
+    syncInFlight.delete(key);
   });
-  return syncInFlight;
+  syncInFlight.set(key, promise);
+  return promise;
 }
 
 async function doSync(opts: { force?: boolean }): Promise<SyncResult> {

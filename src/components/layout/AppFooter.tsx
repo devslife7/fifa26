@@ -15,7 +15,7 @@ export default function AppFooter({ onNavigate, className = '' }: AppFooterProps
     { label: 'Home', target: 'home' },
     { label: 'Predictor', target: 'groups' },
     { label: 'Leaderboard', target: 'ranking' },
-    { label: 'News', target: 'news' },
+    { label: 'Matches', target: 'matches' },
   ];
 
   return (

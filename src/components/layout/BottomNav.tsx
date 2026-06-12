@@ -14,7 +14,7 @@ const navItems = [
   { label: 'Home', icon: 'home', navigateTo: 'home' as TabId, activeTabs: ['home', 'profile'] as TabId[] },
   { label: 'Predictor', icon: 'emoji_events', navigateTo: 'groups' as TabId, activeTabs: PREDICTION_TABS },
   { label: 'Leaderboard', icon: 'leaderboard', navigateTo: 'ranking' as TabId, activeTabs: ['ranking'] as TabId[] },
-  { label: 'News', icon: 'newspaper', navigateTo: 'news' as TabId, activeTabs: ['news'] as TabId[] },
+  { label: 'Matches', icon: 'sports_soccer', navigateTo: 'matches' as TabId, activeTabs: ['matches'] as TabId[] },
 ];
 
 export default function BottomNav({ activeTab, nextPredictionTab, onTabChange }: Props) {

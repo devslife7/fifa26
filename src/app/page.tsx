@@ -33,8 +33,9 @@ import RankingView from '@/components/ranking/RankingView';
 import PullToRefresh from '@/components/ui/PullToRefresh';
 import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
-import NewsView from '@/components/news/NewsView';
+import MatchesView from '@/components/matches/MatchesView';
 import ProfileView from '@/components/profile/ProfileView';
+import { getDateBucket } from '@/lib/utils/match-dates';
 
 function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?: string } | undefined>) {
   return groups.flatMap(group =>
@@ -50,7 +51,7 @@ function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?
 }
 
 const ACTIVE_TAB_STORAGE_KEY = 'fifa26_active_tab';
-const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'news', 'submit', 'profile'];
+const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'matches', 'submit', 'profile'];
 
 function isTabId(value: string | null): value is TabId {
   return VALID_TABS.includes(value as TabId);
@@ -58,9 +59,9 @@ function isTabId(value: string | null): value is TabId {
 
 export default function Home() {
   const { user } = useAuth();
-  const { matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
+  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [activeTab, setActiveTab] = useState<TabId>('ranking');
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
@@ -192,10 +193,12 @@ export default function Home() {
     setGroupPredictions(saved.groupMatches);
     setKnockoutPredictions(saved.knockoutMatches);
     setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
-    if (savedTab === 'tracker') {
-      setActiveTab('news');
+    if (savedTab === 'tracker' || savedTab === 'news') {
+      setActiveTab('matches');
     } else if (isTabId(savedTab)) {
       setActiveTab(savedTab);
+    } else {
+      setActiveTab('ranking');
     }
     setMounted(true);
   }, []);
@@ -535,22 +538,8 @@ export default function Home() {
   }, [flowState.nextPredictionTab, navigateTo]);
 
   const handlePullRefresh = useCallback(async () => {
-    if (activeTab === 'news') {
-      await new Promise<void>(resolve => {
-        const timeout = window.setTimeout(resolve, 8000);
-        window.dispatchEvent(new CustomEvent('news:refresh', {
-          detail: {
-            done: () => {
-              window.clearTimeout(timeout);
-              resolve();
-            },
-          },
-        }));
-      });
-      return;
-    }
     await refetch();
-  }, [activeTab, refetch]);
+  }, [refetch]);
 
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
@@ -559,7 +548,7 @@ export default function Home() {
     });
   }, [orderedGroupMatches]);
 
-  const { liveMatch, nextMatch } = useMemo(() => {
+  const { liveMatch, nextMatch, todayMatches } = useMemo(() => {
     const entries = Object.values(liveMatchesByLocalId ?? {});
     const live = entries
       .filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED')
@@ -567,7 +556,10 @@ export default function Home() {
     const upcoming = entries
       .filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED')
       .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
-    return { liveMatch: live, nextMatch: upcoming };
+    const today = entries
+      .filter(m => getDateBucket(m.utcDate) === 'today')
+      .sort((a, b) => a.utcDate.localeCompare(b.utcDate));
+    return { liveMatch: live, nextMatch: upcoming, todayMatches: today };
   }, [liveMatchesByLocalId]);
 
   if (!mounted) {
@@ -600,7 +592,8 @@ export default function Home() {
       <main className={`mx-auto ${
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
-        activeTab === 'ranking' ? 'max-w-md md:max-w-4xl px-3 sm:px-4' :
+        activeTab === 'ranking' ? 'max-w-md md:max-w-4xl pl-3 pr-5 sm:px-4' :
+        activeTab === 'matches' ? 'max-w-md md:max-w-3xl px-3 sm:px-4' :
         activeTab === 'profile' ? 'max-w-md px-3 sm:px-4' :
         activeTab === 'home' ? 'max-w-md md:max-w-5xl px-3 sm:px-4' :
         'max-w-md px-3 sm:px-4'
@@ -611,6 +604,7 @@ export default function Home() {
             teamFlagsByCode={teamFlagsByCode ?? {}}
             liveMatch={liveMatch}
             nextMatch={nextMatch}
+            todayMatches={todayMatches}
             hasSubmittedBefore={hasSubmittedBefore}
             onNavigate={navigateTo}
             onStartAgain={handleNewPrediction}
@@ -759,7 +753,13 @@ export default function Home() {
           </div>
         )}
 
-        {activeTab === 'news' && <NewsView />}
+        {activeTab === 'matches' && (
+          <MatchesView
+            matches={liveMatchesList}
+            loading={liveLoading}
+            teamFlagsByCode={teamFlagsByCode}
+          />
+        )}
 
         {activeTab === 'profile' && (
           <ProfileView

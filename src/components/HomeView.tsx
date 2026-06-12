@@ -15,6 +15,7 @@ interface HomeViewProps {
   teamFlagsByCode: Record<string, string>;
   liveMatch: LiveMatch | null;
   nextMatch: LiveMatch | null;
+  todayMatches: LiveMatch[];
   hasSubmittedBefore: boolean;
   onNavigate: (tab: TabId) => void;
   onStartAgain: () => void;
@@ -872,6 +873,7 @@ export default function HomeView({
   teamFlagsByCode,
   liveMatch,
   nextMatch,
+  todayMatches,
   hasSubmittedBefore,
   onNavigate,
   onStartAgain,
@@ -901,8 +903,7 @@ export default function HomeView({
 
       <div className="flex flex-col gap-3 md:col-start-2">
         <NextMatchCard
-          liveMatch={liveMatch}
-          nextMatch={nextMatch}
+          todayMatches={todayMatches}
           teamFlagsByCode={teamFlagsByCode}
           onNavigate={onNavigate}
         />

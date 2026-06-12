@@ -30,7 +30,6 @@ import StepperBar from '@/components/layout/StepperBar';
 import AppFooter from '@/components/layout/AppFooter';
 import SaveIndicator from '@/components/ui/SaveIndicator';
 import RankingView from '@/components/ranking/RankingView';
-import PullToRefresh from '@/components/ui/PullToRefresh';
 import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
 import MatchesView from '@/components/matches/MatchesView';
@@ -59,7 +58,7 @@ function isTabId(value: string | null): value is TabId {
 
 export default function Home() {
   const { user } = useAuth();
-  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch } = useLiveData();
+  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('ranking');
 
@@ -537,10 +536,6 @@ export default function Home() {
     navigateTo(view ?? flowState.nextPredictionTab);
   }, [flowState.nextPredictionTab, navigateTo]);
 
-  const handlePullRefresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
-
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
       const matches = orderedGroupMatches.filter(m => m.group === group);
@@ -571,7 +566,6 @@ export default function Home() {
   }
 
   return (
-    <PullToRefresh onRefresh={handlePullRefresh}>
     <div className="min-h-screen pb-page-safe">
       {liveError && (
         <LiveBanner message={liveError} />
@@ -845,7 +839,6 @@ export default function Home() {
         </div>
       )}
     </div>
-    </PullToRefresh>
   );
 }
 

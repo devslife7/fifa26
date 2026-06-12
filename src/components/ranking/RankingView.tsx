@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { isLateSubmission } from '@/data/tournament';
@@ -91,6 +91,15 @@ function leaderboardEntriesToPredictions(entries: LeaderboardEntry[]): Leaderboa
   }));
 }
 
+function formatUpdatedAt(date: Date): string {
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function PositionTrendIcon({ icon }: { icon: string }) {
   return (
     <span className="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden md:size-[18px]">
@@ -178,8 +187,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
   const [comparisonBasePrediction, setComparisonBasePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedComparePrediction, setSelectedComparePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedCompareRank, setSelectedCompareRank] = useState<number | undefined>(undefined);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [showResultDelayNotice, setShowResultDelayNotice] = useState(false);
+  const resultDelayNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const loadLeaderboard = useCallback(async () => {
     const fetchLeaderboard = fetch('/api/leaderboard')
       .then(res => res.json())
       .then(data => data.leaderboard ?? [])
@@ -197,34 +210,67 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
           .catch(() => [] as SavedPrediction[])
       : Promise.resolve([] as SavedPrediction[]);
 
-    Promise.all([fetchLeaderboard, fetchPredictions, fetchMyPredictions]).then(([entries, { predictions: preds, totalUsers: total }, myPreds]) => {
-      const nextUsePlaceholder = entries.length === 0;
-      if (nextUsePlaceholder) {
-        setLeaderboard(PLACEHOLDER_USERS);
-        setUsePlaceholder(true);
-      } else {
-        setLeaderboard(entries);
-      }
+    const [entries, { predictions: preds, totalUsers: total }, myPreds] = await Promise.all([fetchLeaderboard, fetchPredictions, fetchMyPredictions]);
 
-      // Build all of the user's completed predictions as LeaderboardPredictions
-      const displayName = user?.display_name ?? 'You';
-      const myLeaderboardPreds: LeaderboardPrediction[] = user
-        ? myPreds
-            .filter((p: SavedPrediction) => p.is_complete)
-            .map((p: SavedPrediction) => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
-        : [];
+    const nextUsePlaceholder = entries.length === 0;
+    if (nextUsePlaceholder) {
+      setLeaderboard(PLACEHOLDER_USERS);
+      setUsePlaceholder(true);
+    } else {
+      setLeaderboard(entries);
+      setUsePlaceholder(false);
+    }
 
-      if (preds.length === 0) {
-        const fallbackPredictions = getFallbackPredictions(entries);
-        setPredictions(mergeOwnPredictions(fallbackPredictions, myLeaderboardPreds));
-        setTotalUsers(total || fallbackPredictions.length || myLeaderboardPreds.length);
-      } else {
-        setPredictions(mergeOwnPredictions(preds, myLeaderboardPreds));
-        setTotalUsers(total || preds.length);
-      }
-      setLoading(false);
-    });
+    // Build all of the user's completed predictions as LeaderboardPredictions
+    const displayName = user?.display_name ?? 'You';
+    const myLeaderboardPreds: LeaderboardPrediction[] = user
+      ? myPreds
+          .filter((p: SavedPrediction) => p.is_complete)
+          .map((p: SavedPrediction) => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
+      : [];
+
+    if (preds.length === 0) {
+      const fallbackPredictions = getFallbackPredictions(entries);
+      setPredictions(mergeOwnPredictions(fallbackPredictions, myLeaderboardPreds));
+      setTotalUsers(total || fallbackPredictions.length || myLeaderboardPreds.length);
+    } else {
+      setPredictions(mergeOwnPredictions(preds, myLeaderboardPreds));
+      setTotalUsers(total || preds.length);
+    }
+    setLastUpdated(new Date());
+    setLoading(false);
   }, [user]);
+
+  useEffect(() => {
+    loadLeaderboard();
+  }, [loadLeaderboard]);
+
+  useEffect(() => {
+    return () => {
+      if (resultDelayNoticeTimeoutRef.current) {
+        clearTimeout(resultDelayNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await fetch('/api/football/matches?force=true', { cache: 'no-store' }).catch(() => null);
+      await loadLeaderboard();
+      setShowResultDelayNotice(true);
+      if (resultDelayNoticeTimeoutRef.current) {
+        clearTimeout(resultDelayNoticeTimeoutRef.current);
+      }
+      resultDelayNoticeTimeoutRef.current = setTimeout(() => {
+        setShowResultDelayNotice(false);
+        resultDelayNoticeTimeoutRef.current = null;
+      }, 6000);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, loadLeaderboard]);
 
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
@@ -387,11 +433,31 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
               {/* Predictions Section */}
               {visiblePredictions.length > 0 && (
                 <div className="mb-6">
-                  <div className="mb-3">
-                    <h2 className="font-bold text-3xl md:text-xl">Leaderboard</h2>
-                    <p className="mt-1 text-base text-neutral-400 font-body md:text-sm">
-                      {visiblePredictions.length} {visiblePredictions.length === 1 ? 'participant' : 'participants'}
-                    </p>
+                  <div className="mb-2.5 md:mb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="min-w-0 font-bold text-2xl leading-none md:text-xl md:leading-normal">Leaderboard</h2>
+                      <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/10 px-0 text-xs font-bold text-neutral-300 transition-all hover:border-white/20 hover:text-primary disabled:opacity-50 active:scale-95 min-[390px]:w-auto min-[390px]:px-2.5 md:h-9 md:px-3"
+                        aria-label="Reload leaderboard"
+                        title="Reload leaderboard"
+                      >
+                        <span className={`material-symbols-outlined text-[13px] md:text-[18px] ${refreshing ? 'animate-spin' : ''}`}>
+                          refresh
+                        </span>
+                        <span className="hidden min-[390px]:inline">Reload</span>
+                      </button>
+                    </div>
+                    <div className="mt-1 flex min-w-0 items-start justify-between gap-2 text-xs text-neutral-400 font-body md:text-sm">
+                      <span className="shrink-0">
+                        {visiblePredictions.length} {visiblePredictions.length === 1 ? 'participant' : 'participants'}
+                      </span>
+                      {lastUpdated && (
+                        <span className="min-w-0 truncate text-right text-neutral-500">Updated at {formatUpdatedAt(lastUpdated)}</span>
+                      )}
+                    </div>
                   </div>
                   {(() => {
                     const approved = [...visiblePredictions].sort((a, b) => {
@@ -609,7 +675,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
                       disabled={!canOpenPrediction}
                       className="ml-1 flex-grow flex items-center gap-2 min-w-0 text-left disabled:cursor-default"
                     >
-                      <span className={`truncate font-medium text-lg md:text-base ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entryName}</span>
+                      <span className={`truncate font-medium text-base md:text-sm ${canOpenPrediction ? 'group-hover:text-primary transition-colors' : ''}`}>{entryName}</span>
                       {renderPositionChange(entry.position_change)}
                       {userPrediction?.is_late_submission && (
                         <span className="shrink-0 rounded-full bg-wc-red/15 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-wc-red">Late</span>

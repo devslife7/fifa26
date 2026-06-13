@@ -2,6 +2,10 @@ export const TOURNAMENT_KICKOFF = new Date('2026-06-11T19:00:00Z');
 export const PREDICTIONS_LOCK = TOURNAMENT_KICKOFF;
 
 export const TOURNAMENT_KICKOFF_DISPLAY = 'June 11, 2026';
+export const PREDICTIONS_ACCEPTING_SUBMISSIONS = false;
+export const PREDICTIONS_CLOSED_TITLE = 'Predictions are closed';
+export const PREDICTIONS_CLOSED_MESSAGE =
+  'The tournament has already begun, so predictions are no longer accepted. Submitted picks stay locked in for the leaderboard.';
 
 export function daysUntilKickoff(now: Date = new Date()): number {
   return Math.ceil((TOURNAMENT_KICKOFF.getTime() - now.getTime()) / 86400000);

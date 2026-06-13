@@ -3,6 +3,10 @@ import { createServiceClient } from '@/lib/services/supabase/server';
 import { getAuthUser } from '@/lib/services/auth-server';
 import { sendPredictionConfirmation } from '@/lib/services/prediction-confirmation';
 import { claimPredictionsForUser } from '@/lib/services/prediction-claiming';
+import {
+  PREDICTIONS_ACCEPTING_SUBMISSIONS,
+  PREDICTIONS_CLOSED_MESSAGE,
+} from '@/data/tournament';
 
 const MAX_PREDICTIONS = 10;
 
@@ -99,6 +103,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
+  }
+
+  if (!PREDICTIONS_ACCEPTING_SUBMISSIONS) {
+    return NextResponse.json({ error: PREDICTIONS_CLOSED_MESSAGE }, { status: 403 });
   }
 
   const user = await getAuthUser();

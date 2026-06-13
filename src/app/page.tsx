@@ -35,6 +35,11 @@ import HomeView from '@/components/HomeView';
 import MatchesView from '@/components/matches/MatchesView';
 import ProfileView from '@/components/profile/ProfileView';
 import { getDateBucket } from '@/lib/utils/match-dates';
+import {
+  PREDICTIONS_ACCEPTING_SUBMISSIONS,
+  PREDICTIONS_CLOSED_MESSAGE,
+  PREDICTIONS_CLOSED_TITLE,
+} from '@/data/tournament';
 
 function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?: string } | undefined>) {
   return groups.flatMap(group =>
@@ -51,14 +56,82 @@ function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?
 
 const ACTIVE_TAB_STORAGE_KEY = 'fifa26_active_tab';
 const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'matches', 'submit', 'profile'];
+const PREDICTION_ENTRY_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 
 function isTabId(value: string | null): value is TabId {
   return VALID_TABS.includes(value as TabId);
 }
 
+function PredictionsClosedView({
+  onNavigate,
+}: {
+  onNavigate: (tab: TabId) => void;
+}) {
+  return (
+    <section className="mx-auto flex min-h-[calc(100svh-150px)] max-w-md flex-col justify-center py-8">
+      <div className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.035] shadow-[0_22px_70px_-34px_rgba(0,0,0,0.9)]">
+        <div className="relative min-h-[190px] bg-neutral-950">
+          <img
+            src="/images/promotional-image-hero.png"
+            alt="FIFA World Cup 2026"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_22%] opacity-72"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/58 to-black/10"
+          />
+          <div className="relative flex h-full min-h-[190px] flex-col justify-end px-5 pb-5">
+            <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/25 bg-black/45 px-3 py-1 backdrop-blur-md">
+              <span className="material-symbols-outlined text-[14px] text-primary">lock</span>
+              <span className="font-body text-[9px] font-black uppercase tracking-[0.22em] text-primary">
+                Tournament in progress
+              </span>
+            </span>
+            <h1 className="text-[28px] font-black leading-none text-white">{PREDICTIONS_CLOSED_TITLE}</h1>
+          </div>
+        </div>
+
+        <div className="space-y-4 px-5 py-5">
+          <p className="font-body text-sm font-semibold leading-relaxed text-neutral-300">
+            {PREDICTIONS_CLOSED_MESSAGE}
+          </p>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('ranking')}
+              className="flex items-center justify-center gap-2 rounded-[16px] bg-primary px-4 py-3 font-body text-xs font-black text-black transition-colors hover:bg-primary/90"
+            >
+              <span className="material-symbols-outlined text-[17px]">leaderboard</span>
+              View leaderboard
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('matches')}
+              className="flex items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.045] px-4 py-3 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/[0.075]"
+            >
+              <span className="material-symbols-outlined text-[17px]">sports_soccer</span>
+              Match center
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const { user } = useAuth();
-  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch: refetchLiveData } = useLiveData();
+  const {
+    matches: liveMatchesList,
+    matchesByLocalId: liveMatchesByLocalId,
+    teamFlagsByCode,
+    error: liveError,
+    loading: liveLoading,
+    rateLimited,
+    lastUpdated,
+    refetch: refetchLiveData,
+  } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('ranking');
 
@@ -404,7 +477,7 @@ export default function Home() {
   const activeTabRef = useRef<TabId>(activeTab);
   const homeTabPrimedForTopRef = useRef(false);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
-  const PREDICTION_TABS: TabId[] = useMemo(() => ['groups', 'bracket', 'thirdplace', 'submit'], []);
+  const PREDICTION_TABS: TabId[] = useMemo(() => PREDICTION_ENTRY_TABS, []);
   const [lastPredictionTab, setLastPredictionTab] = useState<TabId | null>(null);
 
   const flowState = useMemo(
@@ -518,6 +591,11 @@ export default function Home() {
   }, [navigateTo]);
 
   const handleNewPrediction = useCallback(() => {
+    if (!PREDICTIONS_ACCEPTING_SUBMISSIONS) {
+      navigateTo('groups');
+      return;
+    }
+
     resetAllPredictions();
     localStorage.removeItem('prediction_submitted');
     localStorage.removeItem('prediction_submitted_snapshot');
@@ -571,7 +649,7 @@ export default function Home() {
         <LiveBanner message={liveError} />
       )}
       <SaveIndicator />
-      {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace' || activeTab === 'submit') && (
+      {PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) && (
         <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
           <div className="max-w-2xl mx-auto px-3 sm:px-4">
             <StepperBar
@@ -584,6 +662,7 @@ export default function Home() {
         </div>
       )}
       <main className={`mx-auto ${
+        !PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl pl-3 pr-5 sm:px-4' :
@@ -594,18 +673,17 @@ export default function Home() {
       }`}>
         {activeTab === 'home' && (
           <HomeView
-            flowState={flowState}
             teamFlagsByCode={teamFlagsByCode ?? {}}
-            liveMatch={liveMatch}
-            nextMatch={nextMatch}
             todayMatches={todayMatches}
-            hasSubmittedBefore={hasSubmittedBefore}
             onNavigate={navigateTo}
-            onStartAgain={handleNewPrediction}
           />
         )}
 
-        {(activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
+        {!PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) && (
+          <PredictionsClosedView onNavigate={navigateTo} />
+        )}
+
+        {PREDICTIONS_ACCEPTING_SUBMISSIONS && (activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
           const editName = getEditingPredictionName();
           return editName ? (
             <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
@@ -615,7 +693,7 @@ export default function Home() {
           ) : null;
         })()}
 
-        {activeTab === 'groups' && (() => {
+        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'groups' && (() => {
           const totalGroups = matchesByGroup.length;
           return (
           <div>
@@ -716,7 +794,7 @@ export default function Home() {
           );
         })()}
 
-        {activeTab === 'thirdplace' && (
+        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'thirdplace' && (
           <ThirdPlaceTable
             predictions={groupPredictions}
             tiebreakerPicks={thirdPlaceTiebreaker}
@@ -725,7 +803,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'bracket' && (
+        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'bracket' && (
           <BracketView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
@@ -771,7 +849,7 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'submit' && (
+        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'submit' && (
           <ChampionOverlay
             isPage
             groupPredictions={groupPredictions}

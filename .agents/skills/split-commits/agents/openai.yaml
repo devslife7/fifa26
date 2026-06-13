@@ -1,0 +1,4 @@
+interface:
+  display_name: "Split Commits"
+  short_description: "Split dirty worktrees into focused commits"
+  default_prompt: "Use $split-commits to organize my working tree into focused commits."

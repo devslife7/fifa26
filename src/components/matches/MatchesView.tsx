@@ -330,14 +330,14 @@ function MatchRow({
     >
       <div className="w-12 shrink-0 flex flex-col items-center justify-center">
         {isLive ? (
-          <span className="flex items-center gap-1 text-[10px] font-black uppercase text-wc-red">
+          <span className="flex items-center gap-1 text-[10px] font-semibold uppercase text-wc-red">
             <span className="size-1.5 rounded-full bg-wc-red animate-pulse" />
             Live
           </span>
         ) : isFinished ? (
-          <span className="text-[10px] font-black uppercase text-neutral-500">FT</span>
+          <span className="text-[10px] font-semibold uppercase text-neutral-500">FT</span>
         ) : (
-          <span className="text-xs font-bold text-neutral-300 tabular-nums">
+          <span className="text-xs font-medium text-neutral-300 tabular-nums">
             {formatMatchTime(match.utcDate) || 'TBD'}
           </span>
         )}
@@ -365,7 +365,7 @@ function MatchRow({
       </div>
 
       <div className="shrink-0 flex items-center gap-2">
-        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-neutral-400">
+        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-neutral-400">
           {getStageLabel(match)}
         </span>
         {onSelect && (
@@ -404,11 +404,11 @@ function TeamLine({
           <span className="material-symbols-outlined text-[16px] text-neutral-600">help</span>
         )}
       </span>
-      <span className={`min-w-0 flex-grow truncate text-sm font-semibold ${emphasized ? 'text-white' : 'text-neutral-500'}`}>
+      <span className={`min-w-0 flex-grow truncate text-sm font-medium ${emphasized ? 'text-white' : 'text-neutral-500'}`}>
         {name}
       </span>
       {score != null && (
-        <span className={`shrink-0 text-sm font-black tabular-nums ${winner ? 'text-primary' : emphasized ? 'text-white' : 'text-neutral-500'}`}>
+        <span className={`shrink-0 text-sm font-semibold tabular-nums ${winner ? 'text-primary' : emphasized ? 'text-white' : 'text-neutral-500'}`}>
           {score}
         </span>
       )}

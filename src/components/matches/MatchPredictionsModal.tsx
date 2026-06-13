@@ -42,6 +42,10 @@ function teamName(code: string | null, fallback?: string | null): string {
   return fallback ?? 'TBD';
 }
 
+function compareNames(a: PickEntry, b: PickEntry): number {
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+}
+
 export default function MatchPredictionsModal({ match, predictions, teamFlagsByCode, onClose }: Props) {
   const localId = match.localMatchId!;
   const isGroupMatch = /^[A-L]-\d+$/.test(localId);
@@ -105,9 +109,16 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
       };
     });
 
-    return built.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
-    );
+    if (!isGroupMatch) return built.sort(compareNames);
+
+    const groupRank = (entry: PickEntry) => {
+      if (entry.teamCode === homeCode) return 0;
+      if (entry.teamCode === awayCode) return 1;
+      if (entry.isDraw) return 2;
+      return 3;
+    };
+
+    return built.sort((a, b) => groupRank(a) - groupRank(b) || compareNames(a, b));
   }, [visiblePredictions, isGroupMatch, localId, homeCode, awayCode, isFinished, match.actualResult, actualWinnerCode]);
 
   const pickedEntries = entries.filter(entry => entry.hasPick);
@@ -133,7 +144,6 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
   }, [isGroupMatch, entries, pickedEntries, homeCode, awayCode]);
 
   const venue = match.venue ?? KNOCKOUT_VENUES[localId] ?? null;
-  const showScore = match.score != null && (isFinished || match.status === 'IN_PLAY' || match.status === 'PAUSED');
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/60 px-0 py-3 backdrop-blur-sm animate-fade-in sm:px-4 sm:py-4">
@@ -153,15 +163,6 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                     <span>{formatMatchDateTimeET(match.utcDate)}</span>
                   </>
                 )}
-              </div>
-              <div className="mt-2 flex items-center gap-2 text-lg font-black">
-                <TeamFlag code={homeCode} liveFlag={match.homeFlag} teamFlagsByCode={teamFlagsByCode} size="large" />
-                <span className="truncate">{teamName(homeCode, match.homeShortName ?? match.homeName)}</span>
-                <span className="shrink-0 px-1 tabular-nums text-neutral-300">
-                  {showScore ? `${match.score!.home} – ${match.score!.away}` : 'vs'}
-                </span>
-                <span className="truncate">{teamName(awayCode, match.awayShortName ?? match.awayName)}</span>
-                <TeamFlag code={awayCode} liveFlag={match.awayFlag} teamFlagsByCode={teamFlagsByCode} size="large" />
               </div>
               {venue && (
                 <p className="mt-1 truncate text-xs text-neutral-500 font-body">{venue}</p>
@@ -196,27 +197,27 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
             <>
               {/* Aggregate */}
               {aggregate.kind === 'group' ? (
-                <div className="grid grid-cols-3 gap-2">
-                  <OptionTile
+                <div className="space-y-2 py-1">
+                  <PredictionShareRow
                     flag={<TeamFlag code={homeCode} liveFlag={match.homeFlag} teamFlagsByCode={teamFlagsByCode} />}
                     label={teamName(homeCode, match.homeShortName ?? match.homeName)}
                     count={aggregate.home}
                     total={pickedEntries.length}
                     highlight={isFinished && match.actualResult === 'home'}
                   />
-                  <OptionTile
-                    flag={null}
-                    label="Draw"
-                    count={aggregate.draw}
-                    total={pickedEntries.length}
-                    highlight={isFinished && match.actualResult === 'draw'}
-                  />
-                  <OptionTile
+                  <PredictionShareRow
                     flag={<TeamFlag code={awayCode} liveFlag={match.awayFlag} teamFlagsByCode={teamFlagsByCode} />}
                     label={teamName(awayCode, match.awayShortName ?? match.awayName)}
                     count={aggregate.away}
                     total={pickedEntries.length}
                     highlight={isFinished && match.actualResult === 'away'}
+                  />
+                  <PredictionShareRow
+                    flag={null}
+                    label="Draw"
+                    count={aggregate.draw}
+                    total={pickedEntries.length}
+                    highlight={isFinished && match.actualResult === 'draw'}
                   />
                 </div>
               ) : (
@@ -292,7 +293,7 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
   );
 }
 
-function OptionTile({
+function PredictionShareRow({
   flag,
   label,
   count,
@@ -307,13 +308,29 @@ function OptionTile({
 }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
   return (
-    <div className="py-1 text-center">
-      <div className="flex h-5 items-center justify-center">
+    <div className="flex min-w-0 items-center gap-2 py-1.5">
+      <div className="flex w-6 shrink-0 justify-center">
         {flag ?? <span className="text-sm font-black leading-none text-neutral-400">=</span>}
       </div>
-      <div className={`mt-1.5 truncate text-[11px] font-bold ${highlight ? 'text-wc-green' : 'text-neutral-300'}`}>{label}</div>
-      <div className={`mt-1 text-lg font-black tabular-nums ${highlight ? 'text-wc-green' : 'text-white'}`}>{count}</div>
-      <div className={`text-sm font-bold tabular-nums ${highlight ? 'text-wc-green/80' : 'text-neutral-400'}`}>{pct}%</div>
+      <div className="min-w-0 w-28 shrink-0">
+        <span className={`min-w-0 truncate text-xs font-bold ${highlight ? 'text-wc-green' : 'text-neutral-200'}`}>
+          {label}
+        </span>
+      </div>
+      <span className="w-5 shrink-0 text-right text-[11px] font-bold tabular-nums text-neutral-500">
+        {count}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={`h-full rounded-full ${highlight ? 'bg-wc-green' : 'bg-primary'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+      <div className={`w-11 shrink-0 text-right text-sm font-semibold tabular-nums ${highlight ? 'text-wc-green' : 'text-neutral-300'}`}>
+        {pct}%
+      </div>
     </div>
   );
 }
@@ -321,26 +338,26 @@ function OptionTile({
 function PickChip({ entry, teamFlagsByCode }: { entry: PickEntry; teamFlagsByCode?: Record<string, string> }) {
   if (!entry.hasPick) {
     return (
-      <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-bold text-neutral-500">
+      <span className="shrink-0 text-[11px] font-bold text-neutral-500">
         No pick
       </span>
     );
   }
   if (entry.isDraw) {
     return (
-      <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-bold text-neutral-300">
+      <span className="shrink-0 text-[11px] font-bold text-neutral-300">
         Draw
       </span>
     );
   }
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+      className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold ${
         entry.correct === true
-          ? 'border-wc-green/40 bg-wc-green/10 text-wc-green'
+          ? 'text-wc-green'
           : entry.correct === false
-            ? 'border-wc-red/30 bg-wc-red/10 text-wc-red'
-            : 'border-white/10 bg-white/5 text-neutral-200'
+            ? 'text-wc-red'
+            : 'text-neutral-200'
       }`}
     >
       <TeamFlag code={entry.teamCode} teamFlagsByCode={teamFlagsByCode} size="small" />

@@ -58,7 +58,7 @@ function isTabId(value: string | null): value is TabId {
 
 export default function Home() {
   const { user } = useAuth();
-  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated } = useLiveData();
+  const { matches: liveMatchesList, matchesByLocalId: liveMatchesByLocalId, teamFlagsByCode, error: liveError, loading: liveLoading, rateLimited, lastUpdated, refetch: refetchLiveData } = useLiveData();
   const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('ranking');
 
@@ -742,6 +742,7 @@ export default function Home() {
             <RankingView
               liveMatches={liveMatchesByLocalId}
               teamFlagsByCode={teamFlagsByCode}
+              onRefreshLiveData={refetchLiveData}
             />
             <AppFooter onNavigate={navigateTo} />
           </div>

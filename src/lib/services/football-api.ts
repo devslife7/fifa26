@@ -269,13 +269,19 @@ function mapApiMatch(
 
 const MATCHES_PATH = `/competitions/${COMPETITION}/matches`;
 
-export async function fetchLiveMatches(force = false): Promise<{
+export type MatchFetchMode = 'full' | 'today' | 'live' | 'ids';
+
+export interface MatchFetchOptions {
+  mode?: MatchFetchMode;
+  date?: string;
+  ids?: number[];
+  force?: boolean;
+}
+
+function mapMatchesResponse(data: FDMatchesResponse, force: boolean): {
   matches: LiveMatch[];
   source: 'api' | 'cache';
-} | null> {
-  const data = await apiFetch<FDMatchesResponse>(MATCHES_PATH, force);
-  if (!data) return null;
-
+} {
   // Track knockout match indices per stage
   const knockoutCounters: Record<string, number> = {};
 
@@ -291,6 +297,50 @@ export async function fetchLiveMatches(force = false): Promise<{
   }
 
   return { matches, source: force ? 'api' : 'cache' };
+}
+
+function buildMatchesPath(opts: MatchFetchOptions): string | null {
+  const mode = opts.mode ?? 'full';
+  const params = new URLSearchParams();
+
+  if (mode === 'today') {
+    params.set('date', opts.date ?? new Date().toISOString().slice(0, 10));
+    return `${MATCHES_PATH}?${params.toString()}`;
+  }
+
+  if (mode === 'live') {
+    params.set('status', 'LIVE');
+    return `${MATCHES_PATH}?${params.toString()}`;
+  }
+
+  if (mode === 'ids') {
+    const ids = Array.from(new Set(opts.ids ?? [])).filter(Number.isFinite);
+    if (ids.length === 0) return null;
+    params.set('ids', ids.join(','));
+    return `/matches?${params.toString()}`;
+  }
+
+  return MATCHES_PATH;
+}
+
+export async function fetchLiveMatches(force = false): Promise<{
+  matches: LiveMatch[];
+  source: 'api' | 'cache';
+} | null> {
+  return fetchMatches({ mode: 'full', force });
+}
+
+export async function fetchMatches(opts: MatchFetchOptions = {}): Promise<{
+  matches: LiveMatch[];
+  source: 'api' | 'cache';
+} | null> {
+  const force = !!opts.force;
+  const path = buildMatchesPath(opts);
+  if (!path) return null;
+  const data = await apiFetch<FDMatchesResponse>(path, force);
+  if (!data) return null;
+
+  return mapMatchesResponse(data, force);
 }
 
 export async function fetchLiveTeams(): Promise<FDTeamsResponse | null> {

@@ -10,6 +10,7 @@ import PublicPredictionProfileModal from './PublicPredictionProfileModal';
 import PredictionCompareModal from './PredictionCompareModal';
 import ScoringExplainer from '@/components/scoring/ScoringExplainer';
 import { computeTiedRanks } from '@/lib/services/leaderboard-position';
+import { buildHotMatchRefreshQuery } from '@/lib/utils/hot-matches';
 
 const PLACEHOLDER_USERS: LeaderboardEntry[] = [
   { user_id: 'p1', display_name: 'Mateo Hernandez', total_points: 87, champion_code: 'BR', calculated_at: '', position_change: 0 },
@@ -170,12 +171,17 @@ function entryMatchesPrediction(entry: LeaderboardEntry, prediction: Leaderboard
   return false;
 }
 
+function buildFastRefreshQuery(liveMatches?: Record<string, LiveMatch>): string {
+  return buildHotMatchRefreshQuery(liveMatches) ?? 'mode=today';
+}
+
 interface RankingViewProps {
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
+  onRefreshLiveData?: (query?: string) => Promise<void>;
 }
 
-export default function RankingView({ liveMatches, teamFlagsByCode }: RankingViewProps) {
+export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiveData }: RankingViewProps) {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
@@ -257,7 +263,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     if (refreshing) return;
     setRefreshing(true);
     try {
-      await fetch('/api/football/matches?force=true', { cache: 'no-store' }).catch(() => null);
+      const refreshQuery = buildFastRefreshQuery(liveMatches);
+      if (onRefreshLiveData) {
+        await onRefreshLiveData(refreshQuery);
+      } else {
+        await fetch(`/api/football/matches?${refreshQuery}&force=true`, { cache: 'no-store' }).catch(() => null);
+      }
       await loadLeaderboard();
       setShowResultDelayNotice(true);
       if (resultDelayNoticeTimeoutRef.current) {
@@ -270,7 +281,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode }: RankingVie
     } finally {
       setRefreshing(false);
     }
-  }, [refreshing, loadLeaderboard]);
+  }, [refreshing, liveMatches, loadLeaderboard, onRefreshLiveData]);
 
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;

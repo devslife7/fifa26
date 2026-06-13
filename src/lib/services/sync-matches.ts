@@ -1,10 +1,15 @@
 import { createServiceClient } from '@/lib/services/supabase/server';
-import { fetchLiveMatches } from '@/lib/services/football-api';
+import { fetchMatches, type MatchFetchMode } from '@/lib/services/football-api';
 import { getFixturesFromDb, upsertFixturesToDb } from '@/lib/services/fixtures-db';
 import { recalculateScores } from '@/lib/services/recalculate-scores';
 import type { LiveMatch } from '@/types';
 
-const STALE_AFTER_MS = 30_000;
+const STALE_AFTER_BY_MODE_MS: Record<MatchFetchMode, number> = {
+  ids: 20_000,
+  live: 20_000,
+  today: 60_000,
+  full: 6 * 60 * 60 * 1000,
+};
 
 export type SyncStatus =
   | 'synced'
@@ -21,10 +26,17 @@ export interface SyncResult {
   scoresUpdated?: number;
 }
 
+export interface SyncMatchesOptions {
+  mode?: MatchFetchMode;
+  ids?: number[];
+  date?: string;
+  force?: boolean;
+}
+
 const syncInFlight = new Map<string, Promise<SyncResult>>();
 
-export async function syncMatches(opts: { force?: boolean } = {}): Promise<SyncResult> {
-  const key = opts.force ? 'force' : 'default';
+export async function syncMatches(opts: SyncMatchesOptions = {}): Promise<SyncResult> {
+  const key = syncKey(opts);
   const existing = syncInFlight.get(key);
   if (existing) return existing;
 
@@ -35,28 +47,19 @@ export async function syncMatches(opts: { force?: boolean } = {}): Promise<SyncR
   return promise;
 }
 
-async function doSync(opts: { force?: boolean }): Promise<SyncResult> {
+async function doSync(opts: SyncMatchesOptions): Promise<SyncResult> {
+  const mode = opts.mode ?? 'full';
   const force = !!opts.force;
 
   if (!force) {
-    const supabase = createServiceClient();
-    const { data: latest } = await supabase
-      .from('fixtures')
-      .select('refreshed_at')
-      .order('refreshed_at', { ascending: false })
-      .limit(1)
-      .single();
-    if (latest?.refreshed_at) {
-      const ageMs = Date.now() - new Date(latest.refreshed_at).getTime();
-      if (ageMs < STALE_AFTER_MS) {
-        return { status: 'skipped_fresh' };
-      }
+    if (await shouldSkipFreshSync(opts)) {
+      return { status: 'skipped_fresh' };
     }
   }
 
   let fetched;
   try {
-    fetched = await fetchLiveMatches(true);
+    fetched = await fetchMatches({ mode, date: opts.date, ids: opts.ids, force: true });
   } catch (e) {
     if (e instanceof Error && e.message === 'RATE_LIMITED') {
       return { status: 'rate_limited' };
@@ -66,14 +69,25 @@ async function doSync(opts: { force?: boolean }): Promise<SyncResult> {
   if (!fetched) return { status: 'api_unavailable' };
 
   const existing = await getFixturesFromDb();
-  if (matchesEqual(existing, fetched.matches)) {
+  const fetchedMatches = preserveKnownFixtureIdentity(fetched.matches, existing);
+  const relevantExisting = filterExistingToFetched(existing, fetchedMatches);
+  if (matchesEqual(relevantExisting, fetchedMatches)) {
+    if (force) {
+      const resultsBridged = await bridgeFinishedToActualResults(fetchedMatches);
+      const recalc = await recalculateScores();
+      return {
+        status: 'skipped_unchanged',
+        resultsBridged,
+        scoresUpdated: recalc.ok ? recalc.updated : 0,
+      };
+    }
     return { status: 'skipped_unchanged' };
   }
 
-  const upserted = await upsertFixturesToDb(fetched.matches);
+  const upserted = await upsertFixturesToDb(fetchedMatches);
   if (upserted === null) return { status: 'upsert_failed' };
 
-  const resultsBridged = await bridgeFinishedToActualResults(fetched.matches);
+  const resultsBridged = await bridgeFinishedToActualResults(fetchedMatches);
 
   const recalc = await recalculateScores();
   const scoresUpdated = recalc.ok ? recalc.updated : 0;
@@ -84,6 +98,74 @@ async function doSync(opts: { force?: boolean }): Promise<SyncResult> {
     resultsBridged,
     scoresUpdated,
   };
+}
+
+function syncKey(opts: SyncMatchesOptions): string {
+  const mode = opts.mode ?? 'full';
+  const ids = Array.from(new Set(opts.ids ?? [])).sort((a, b) => a - b).join(',');
+  return [
+    mode,
+    opts.date ?? '',
+    ids,
+    opts.force ? 'force' : 'cached',
+  ].join('|');
+}
+
+async function shouldSkipFreshSync(opts: SyncMatchesOptions): Promise<boolean> {
+  const supabase = createServiceClient();
+  const mode = opts.mode ?? 'full';
+  const ttl = STALE_AFTER_BY_MODE_MS[mode];
+
+  if (mode === 'ids') {
+    const ids = Array.from(new Set(opts.ids ?? [])).sort((a, b) => a - b);
+    if (ids.length === 0) return false;
+
+    const { data } = await supabase
+      .from('fixtures')
+      .select('api_match_id, refreshed_at')
+      .in('api_match_id', ids);
+    if (!data || data.length < ids.length) return false;
+
+    const refreshedById = new Map(data.map(row => [row.api_match_id as number, row.refreshed_at as string | null]));
+    return ids.every((id) => {
+      const refreshedAt = refreshedById.get(id);
+      return refreshedAt ? Date.now() - new Date(refreshedAt).getTime() < ttl : false;
+    });
+  }
+
+  let query = supabase
+    .from('fixtures')
+    .select('refreshed_at')
+    .order('refreshed_at', { ascending: true })
+    .limit(1);
+
+  if (mode === 'today') {
+    const date = opts.date ?? new Date().toISOString().slice(0, 10);
+    query = query.gte('utc_date', `${date}T00:00:00`).lt('utc_date', `${date}T23:59:59.999`);
+  } else if (mode === 'live') {
+    query = query.in('status', ['IN_PLAY', 'PAUSED']);
+  }
+
+  const { data } = await query.maybeSingle();
+  if (!data?.refreshed_at) return false;
+  return Date.now() - new Date(data.refreshed_at).getTime() < ttl;
+}
+
+function preserveKnownFixtureIdentity(fetched: LiveMatch[], existing: LiveMatch[]): LiveMatch[] {
+  const existingByApiId = new Map(existing.map(match => [match.apiMatchId, match]));
+  return fetched.map((match) => {
+    const known = existingByApiId.get(match.apiMatchId);
+    if (!known) return match;
+    return {
+      ...match,
+      localMatchId: known.localMatchId ?? match.localMatchId,
+    };
+  });
+}
+
+function filterExistingToFetched(existing: LiveMatch[], fetched: LiveMatch[]): LiveMatch[] {
+  const fetchedIds = new Set(fetched.map(m => m.apiMatchId));
+  return existing.filter(m => fetchedIds.has(m.apiMatchId));
 }
 
 function fingerprint(m: LiveMatch): string {

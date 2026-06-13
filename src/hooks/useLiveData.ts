@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { GroupLetter, LiveMatch } from '@/types';
 import { readCachedLiveData, writeCachedLiveData } from '@/lib/client/live-data-cache';
+import { buildHotMatchRefreshQuery } from '@/lib/utils/hot-matches';
+
+const HOT_POLL_INTERVAL_MS = 30_000;
 
 interface LiveDataResult {
   matches: LiveMatch[];
@@ -13,7 +16,7 @@ interface LiveDataResult {
   error: string | null;
   rateLimited: boolean;
   lastUpdated: number | null;
-  refetch: () => void;
+  refetch: (query?: string) => Promise<void>;
 }
 
 function buildMatchesByLocalId(matches: LiveMatch[]): Record<string, LiveMatch> {
@@ -60,15 +63,17 @@ export function useLiveData(): LiveDataResult {
   const [rateLimited, setRateLimited] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
-  const fetchData = useCallback(async (force: boolean) => {
-    setLoading(true);
+  const fetchData = useCallback(async (force: boolean, query?: string, showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
-      const matchesUrl = force ? '/api/football/matches?force=true' : '/api/football/matches';
+      const params = new URLSearchParams(query);
+      if (force) params.set('force', 'true');
+      const queryString = params.toString();
+      const matchesUrl = queryString ? `/api/football/matches?${queryString}` : '/api/football/matches';
       const matchesRes = await fetch(matchesUrl, { cache: 'no-store' });
 
       if (matchesRes.status === 429) {
         setRateLimited(true);
-        setLoading(false);
         return;
       }
       setRateLimited(false);
@@ -84,7 +89,7 @@ export function useLiveData(): LiveDataResult {
     } catch {
       setError('Live scores unavailable');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
@@ -101,9 +106,24 @@ export function useLiveData(): LiveDataResult {
     fetchData(false);
   }, [fetchData]);
 
-  const refetch = useCallback(() => {
-    fetchData(true);
-  }, [fetchData]);
+  const refetch = useCallback((query?: string) => fetchData(true, query), [fetchData]);
+
+  useEffect(() => {
+    const pollQuery = buildHotMatchRefreshQuery(matches);
+    if (!pollQuery) return;
+
+    let cancelled = false;
+    const poll = () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      void fetchData(false, pollQuery, false);
+    };
+
+    const intervalId = window.setInterval(poll, HOT_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [fetchData, matches]);
 
   return {
     matches,

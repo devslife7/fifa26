@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveMatches } from '@/lib/services/football-api';
-import { upsertFixturesToDb } from '@/lib/services/fixtures-db';
 import { createServiceClient } from '@/lib/services/supabase/server';
+import { parseMatchSyncOptions } from '@/lib/services/match-sync-request';
+import { syncMatches } from '@/lib/services/sync-matches';
 import { forbiddenResponse, isAdminRequest } from '@/lib/services/admin-auth-server';
 
 export async function POST(request: Request) {
   if (!(await isAdminRequest(request))) return forbiddenResponse();
 
-  const force = new URL(request.url).searchParams.get('force') === 'true';
+  const url = new URL(request.url);
+  const parsed = parseMatchSyncOptions(url.searchParams);
+  if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
+
+  const force = !!parsed.opts.force;
   const cooldownHours = parseInt(process.env.REFRESH_COOLDOWN_HOURS ?? '1', 10);
 
   if (!force && cooldownHours > 0) {
@@ -32,19 +36,23 @@ export async function POST(request: Request) {
     }
   }
 
-  const result = await fetchLiveMatches(true);
-  if (!result) {
+  const result = await syncMatches(parsed.opts);
+  if (result.status === 'api_unavailable') {
     return NextResponse.json({ error: 'API unavailable' }, { status: 502 });
   }
-
-  const count = await upsertFixturesToDb(result.matches);
-  if (count === null) {
+  if (result.status === 'rate_limited') {
+    return NextResponse.json({ error: 'Rate limited' }, { status: 429 });
+  }
+  if (result.status === 'upsert_failed') {
     return NextResponse.json({ error: 'DB upsert failed' }, { status: 500 });
   }
 
   return NextResponse.json({
     message: 'Fixtures refreshed',
-    count,
+    syncStatus: result.status,
+    count: result.upserted ?? 0,
+    resultsBridged: result.resultsBridged ?? 0,
+    scoresUpdated: result.scoresUpdated ?? 0,
     fetchedAt: new Date().toISOString(),
   });
 }

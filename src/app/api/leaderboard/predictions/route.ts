@@ -7,6 +7,7 @@ import {
   getLastFinishedMatch,
   positionChangesByKey,
 } from '@/lib/services/leaderboard-position';
+import { calculateScore } from '@/lib/logic/scoring';
 
 export async function GET() {
   try {
@@ -116,11 +117,22 @@ export async function GET() {
       const predictionNumber = typeof row.prediction_number === 'number'
         ? row.prediction_number
         : Number(row.prediction_number);
-      const totalPoints = predictionId && pointsByPredictionId.has(predictionId)
+      const cachedTotalPoints = predictionId && pointsByPredictionId.has(predictionId)
         ? pointsByPredictionId.get(predictionId)!
         : Number.isFinite(predictionNumber) && pointsByPredictionNumber.has(predictionNumber)
           ? pointsByPredictionNumber.get(predictionNumber)!
           : null;
+      const computedTotalPoints = calculateScore(
+        {
+          user_id: userId ?? predictionId ?? `prediction-${row.prediction_number}`,
+          group_matches: (row.group_matches as Record<string, string>) ?? {},
+          knockout_matches: (row.knockout_matches as Record<string, string>) ?? {},
+          champion_code: (row.champion_code as string | null) ?? null,
+          third_place_tiebreaker: (row.third_place_tiebreaker as string[] | null) ?? null,
+        },
+        actualResults,
+      );
+      const totalPoints = cachedTotalPoints ?? computedTotalPoints;
       const changeKey = predictionId
         ?? (Number.isFinite(predictionNumber) ? `num-${predictionNumber}` : '');
 

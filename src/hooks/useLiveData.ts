@@ -2,12 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { GroupLetter, LiveMatch } from '@/types';
-import {
-  mergeLiveMatches,
-  readCachedLiveData,
-  readFakeLiveData,
-  writeCachedLiveData,
-} from '@/lib/client/fake-live-data';
+import { readCachedLiveData, writeCachedLiveData } from '@/lib/client/live-data-cache';
 
 interface LiveDataResult {
   matches: LiveMatch[];
@@ -80,14 +75,12 @@ export function useLiveData(): LiveDataResult {
       if (!matchesRes.ok) throw new Error('Failed to fetch');
       const matchesData = await matchesRes.json();
       const liveMatches: LiveMatch[] = matchesData.matches ?? [];
-      const fakeMatches = readFakeLiveData()?.matches ?? [];
-      const mergedMatches = mergeLiveMatches(liveMatches, fakeMatches);
-      setMatches(mergedMatches);
-      setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
-      setGroupMatchesByGroup(buildGroupMatchesByGroup(mergedMatches));
+      setMatches(liveMatches);
+      setTeamFlagsByCode(buildTeamFlagsByCode(liveMatches));
+      setGroupMatchesByGroup(buildGroupMatchesByGroup(liveMatches));
       setLastUpdated(Date.now());
       setError(null);
-      writeCachedLiveData(mergedMatches);
+      writeCachedLiveData(liveMatches);
     } catch {
       setError('Live scores unavailable');
     } finally {
@@ -99,11 +92,9 @@ export function useLiveData(): LiveDataResult {
   useEffect(() => {
     const cached = readCachedLiveData();
     if (cached) {
-      const fakeMatches = readFakeLiveData()?.matches ?? [];
-      const mergedMatches = mergeLiveMatches(cached.matches, fakeMatches);
-      setMatches(mergedMatches);
-      setTeamFlagsByCode(buildTeamFlagsByCode(mergedMatches));
-      setGroupMatchesByGroup(buildGroupMatchesByGroup(mergedMatches));
+      setMatches(cached.matches);
+      setTeamFlagsByCode(buildTeamFlagsByCode(cached.matches));
+      setGroupMatchesByGroup(buildGroupMatchesByGroup(cached.matches));
       setLastUpdated(cached.fetchedAt);
       setLoading(false);
     }

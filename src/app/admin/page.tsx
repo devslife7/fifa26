@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import FakeResultsSeeder from '@/components/admin/FakeResultsSeeder';
 
 interface AdminPrediction {
   id: string;
@@ -245,8 +244,6 @@ export default function AdminPage() {
 
       {/* Content */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        <FakeResultsSeeder />
-
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-12 h-12 animate-trophy-glow" />

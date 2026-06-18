@@ -6,6 +6,9 @@ export const HOT_MATCH_WINDOW_AFTER_KICKOFF_MS = 195 * 60 * 1000;
 export function getHotUnfinishedMatches(matches: LiveMatch[], now = Date.now()): LiveMatch[] {
   return matches.filter((match) => {
     if (match.status === 'FINISHED') return false;
+    // Keep polling any match the API still reports as actively in progress,
+    // regardless of elapsed time, so the status never gets stuck as "Live".
+    if (match.status === 'IN_PLAY' || match.status === 'PAUSED') return true;
     const kickoff = new Date(match.utcDate).getTime();
     if (Number.isNaN(kickoff)) return false;
     return now >= kickoff - HOT_MATCH_WINDOW_BEFORE_MS && now <= kickoff + HOT_MATCH_WINDOW_AFTER_KICKOFF_MS;

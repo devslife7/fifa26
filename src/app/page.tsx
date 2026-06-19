@@ -34,7 +34,6 @@ import ChampionOverlay from '@/components/champion/ChampionOverlay';
 import HomeView from '@/components/HomeView';
 import MatchesView from '@/components/matches/MatchesView';
 import ProfileView from '@/components/profile/ProfileView';
-import { getDateBucket } from '@/lib/utils/match-dates';
 import {
   PREDICTIONS_ACCEPTING_SUBMISSIONS,
   PREDICTIONS_CLOSED_MESSAGE,
@@ -621,20 +620,6 @@ export default function Home() {
     });
   }, [orderedGroupMatches]);
 
-  const { liveMatch, nextMatch, todayMatches } = useMemo(() => {
-    const entries = Object.values(liveMatchesByLocalId ?? {});
-    const live = entries
-      .filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED')
-      .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
-    const upcoming = entries
-      .filter(m => m.status === 'SCHEDULED' || m.status === 'TIMED')
-      .sort((a, b) => a.utcDate.localeCompare(b.utcDate))[0] ?? null;
-    const today = entries
-      .filter(m => getDateBucket(m.utcDate) === 'today')
-      .sort((a, b) => a.utcDate.localeCompare(b.utcDate));
-    return { liveMatch: live, nextMatch: upcoming, todayMatches: today };
-  }, [liveMatchesByLocalId]);
-
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -673,8 +658,7 @@ export default function Home() {
       }`}>
         {activeTab === 'home' && (
           <HomeView
-            teamFlagsByCode={teamFlagsByCode ?? {}}
-            todayMatches={todayMatches}
+            liveMatches={liveMatchesByLocalId ?? {}}
             onNavigate={navigateTo}
           />
         )}

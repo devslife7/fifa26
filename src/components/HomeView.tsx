@@ -107,12 +107,12 @@ export default function HomeView({
     <div className="flex flex-col gap-3 pb-8 pt-0">
       {user ? (
         <>
+          {showRecap && <DailyRecapCard recap={recap} onNavigate={onNavigate} />}
+          <HomeHeader compact={showRecap} />
           <HomeAccountBar
             displayName={user.display_name || 'Player'}
             onSignOut={() => setShowSignOutConfirm(true)}
           />
-          {showRecap && <DailyRecapCard recap={recap} onNavigate={onNavigate} />}
-          <HomeHeader compact={showRecap} />
         </>
       ) : (
         <>

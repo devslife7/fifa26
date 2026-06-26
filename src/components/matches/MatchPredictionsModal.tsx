@@ -2,10 +2,11 @@
 
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { KnockoutResult, LeaderboardPrediction, LiveMatch, MatchResult } from '@/types';
+import type { KnockoutMatch, KnockoutRound, LeaderboardPrediction, LiveMatch, MatchResult } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import { allGroupMatches, KNOCKOUT_VENUES } from '@/data/matches';
-import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
+import { generateBracket, getMatchWinner, getSlotGroupDeps, getSlotLabels, isPlaceholder } from '@/lib/logic/bracket';
+import { getMatchStakes } from '@/lib/logic/scoring';
 import { formatMatchDateTimeET } from '@/lib/utils/match-dates';
 import { getStageLabel, TeamFlag } from './MatchesView';
 
@@ -15,6 +16,16 @@ interface Props {
   teamFlagsByCode?: Record<string, string>;
   onClose: () => void;
 }
+
+// Where the winner of a knockout slot goes next (for the slot-path subtitle).
+const NEXT_ROUND_LABEL: Record<KnockoutRound, string | null> = {
+  R32: 'Round of 16',
+  R16: 'Quarter-finals',
+  QF: 'Semi-finals',
+  SF: 'Final',
+  '3RD': null,
+  FIN: null,
+};
 
 interface PickEntry {
   key: string;
@@ -42,6 +53,35 @@ function teamName(code: string | null, fallback?: string | null): string {
   return fallback ?? 'TBD';
 }
 
+function formatGroups(groups: string[]): string {
+  const noun = groups.length === 1 ? 'Group' : 'Groups';
+  if (groups.length === 1) return `${noun} ${groups[0]}`;
+  const head = groups.slice(0, -1).join(', ');
+  return `${noun} ${head} & ${groups[groups.length - 1]}`;
+}
+
+// Teams that a participant's bracket has advancing *past* the given round (i.e.
+// the winners of that round). Used to map a resolved knockout match back onto the
+// two real teams playing it, the same way scoring counts qualifier sets.
+function teamsAdvancingPast(bracket: KnockoutMatch[], round: KnockoutRound): Set<string> {
+  const matches =
+    round === '3RD' ? bracket.filter(m => m.id === '3RD-1')
+    : round === 'FIN' ? bracket.filter(m => m.id === 'FIN-1')
+    : bracket.filter(m => m.round === round);
+  const out = new Set<string>();
+  for (const m of matches) {
+    const winner = getMatchWinner(m);
+    if (winner && !isPlaceholder(winner)) out.add(winner);
+  }
+  return out;
+}
+
+function advanceHeading(round: KnockoutRound, nextRoundLabel: string | null): string {
+  if (nextRoundLabel) return `Predicted to reach the ${nextRoundLabel}`;
+  if (round === 'FIN') return 'Predicted to win the tournament';
+  return 'Predicted to win 3rd place';
+}
+
 function compareNames(a: PickEntry, b: PickEntry): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 }
@@ -53,6 +93,18 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
   const staticMatch = isGroupMatch ? allGroupMatches.find(m => m.id === localId) : undefined;
   const homeCode = match.homeCode ?? staticMatch?.home ?? null;
   const awayCode = match.awayCode ?? staticMatch?.away ?? null;
+
+  const knockoutRound = !isGroupMatch ? (localId.split('-')[0] as KnockoutRound) : null;
+  // Both sides unknown → show only the bracket path + stakes (no player picks yet).
+  // One real team known → treat it exactly like a resolved match for that team.
+  const bothTBD = !isGroupMatch && !homeCode && !awayCode;
+  // group → two-team vote · knockoutTBD → path + stakes only · knockoutResolved → vote on the real team(s)
+  const mode: 'group' | 'knockoutTBD' | 'knockoutResolved' =
+    isGroupMatch ? 'group' : bothTBD ? 'knockoutTBD' : 'knockoutResolved';
+  const slotLabels = bothTBD ? getSlotLabels(localId) : null;
+  const stakes = knockoutRound ? getMatchStakes(knockoutRound) : null;
+  const groupDeps = bothTBD ? getSlotGroupDeps(localId) : [];
+  const nextRoundLabel = NEXT_ROUND_LABEL[knockoutRound ?? 'FIN'];
 
   const isFinished = match.status === 'FINISHED' && match.actualResult != null;
   const actualWinnerCode = isFinished
@@ -66,13 +118,16 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
   );
 
   const entries = useMemo<PickEntry[]>(() => {
+    // Both teams unknown — no meaningful per-player picks to show yet.
+    if (mode === 'knockoutTBD') return [];
+
     const built = visiblePredictions.map((prediction, index) => {
       const base = {
         key: predictionKey(prediction, index),
         name: predictionName(prediction),
       };
 
-      if (isGroupMatch) {
+      if (mode === 'group') {
         const pick = prediction.group_matches?.[localId] as MatchResult | undefined;
         const teamCode = pick === 'home' ? homeCode : pick === 'away' ? awayCode : null;
         return {
@@ -84,21 +139,23 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
         };
       }
 
-      const pick = prediction.knockout_matches?.[localId] as KnockoutResult | undefined;
+      // knockoutResolved — at least one real team known. Ask each bracket whether
+      // it has a real team advancing past this round, so the vote is about the
+      // actual matchup (works the same with one team still TBD).
       let teamCode: string | null = null;
-      if (pick) {
-        try {
-          const bracket = generateBracket(
-            prediction.group_matches ?? {},
-            prediction.knockout_matches ?? {},
-            prediction.third_place_tiebreaker ?? undefined,
-          );
-          const slot = bracket.find(m => m.id === localId);
-          const picked = pick === 'home' ? slot?.home : slot?.away;
-          if (picked && !isPlaceholder(picked)) teamCode = picked;
-        } catch {
-          teamCode = null;
-        }
+      try {
+        const bracket = generateBracket(
+          prediction.group_matches ?? {},
+          prediction.knockout_matches ?? {},
+          prediction.third_place_tiebreaker ?? undefined,
+        );
+        const advancing = teamsAdvancingPast(bracket, knockoutRound!);
+        // Include any player whose bracket sends either real team through this
+        // round, regardless of the path that put it there.
+        if (!!homeCode && advancing.has(homeCode)) teamCode = homeCode;
+        else if (!!awayCode && advancing.has(awayCode)) teamCode = awayCode;
+      } catch {
+        teamCode = null;
       }
       return {
         ...base,
@@ -109,39 +166,29 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
       };
     });
 
-    if (!isGroupMatch) return built.sort(compareNames);
-
-    const groupRank = (entry: PickEntry) => {
+    // group & knockoutResolved: home picks first, then away, then no/other pick.
+    const rank = (entry: PickEntry) => {
       if (entry.teamCode === homeCode) return 0;
       if (entry.teamCode === awayCode) return 1;
       if (entry.isDraw) return 2;
       return 3;
     };
 
-    return built.sort((a, b) => groupRank(a) - groupRank(b) || compareNames(a, b));
-  }, [visiblePredictions, isGroupMatch, localId, homeCode, awayCode, isFinished, match.actualResult, actualWinnerCode]);
+    return built.sort((a, b) => rank(a) - rank(b) || compareNames(a, b));
+  }, [visiblePredictions, mode, knockoutRound, localId, homeCode, awayCode, isFinished, match.actualResult, actualWinnerCode]);
 
   const pickedEntries = entries.filter(entry => entry.hasPick);
+  // On a resolved knockout match, only list players who actually back one of the
+  // two real teams — drop everyone whose bracket sends a different team through.
+  const listEntries = mode === 'knockoutResolved' ? pickedEntries : entries;
 
-  // Aggregate: for knockout matches participants may back teams beyond the two
-  // actually playing, since each bracket evolves from their own group picks.
+  // Aggregate (group & resolved-knockout): vote tally on the real team(s).
   const aggregate = useMemo(() => {
-    if (isGroupMatch) {
-      const home = entries.filter(e => e.teamCode != null && e.teamCode === homeCode).length;
-      const away = entries.filter(e => e.teamCode != null && e.teamCode === awayCode).length;
-      const draw = entries.filter(e => e.isDraw).length;
-      return { kind: 'group' as const, home, draw, away };
-    }
-    const counts = new Map<string, number>();
-    for (const entry of pickedEntries) {
-      if (!entry.teamCode) continue;
-      counts.set(entry.teamCode, (counts.get(entry.teamCode) ?? 0) + 1);
-    }
-    const teams = Array.from(counts.entries())
-      .map(([code, count]) => ({ code, count }))
-      .sort((a, b) => b.count - a.count || teamName(a.code).localeCompare(teamName(b.code)));
-    return { kind: 'knockout' as const, teams };
-  }, [isGroupMatch, entries, pickedEntries, homeCode, awayCode]);
+    const home = entries.filter(e => e.teamCode != null && e.teamCode === homeCode).length;
+    const away = entries.filter(e => e.teamCode != null && e.teamCode === awayCode).length;
+    const draw = entries.filter(e => e.isDraw).length;
+    return { home, draw, away, showDraw: mode === 'group' };
+  }, [mode, entries, homeCode, awayCode]);
 
   const venue = match.venue ?? KNOCKOUT_VENUES[localId] ?? null;
 
@@ -180,7 +227,42 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {!detailsAvailable ? (
+          {/* Slot path + point stakes for knockout slots whose teams aren't set yet */}
+          {slotLabels && (
+            <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3">
+              <div className="flex items-center justify-center gap-2 text-sm font-bold text-neutral-100">
+                <span>{slotLabels.home}</span>
+                <span className="text-xs font-medium text-neutral-500">vs</span>
+                <span>{slotLabels.away}</span>
+              </div>
+              {nextRoundLabel && (
+                <p className="mt-1 text-center text-[11px] text-neutral-500 font-body">
+                  Winner advances to the {nextRoundLabel}
+                </p>
+              )}
+            </div>
+          )}
+          {bothTBD && stakes && (
+            <div className="mb-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                Points at stake
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {[stakes.winner].map(line => (
+                  <li key={line} className="flex items-center gap-2 text-xs text-neutral-300 font-body">
+                    <span className="material-symbols-outlined text-[16px] text-primary">add_circle</span>
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {bothTBD ? (
+            <p className="text-xs text-neutral-500 font-body">
+              Player picks appear once the teams are decided
+              {groupDeps.length > 0 ? ` — once ${formatGroups(groupDeps)} finish.` : '.'}
+            </p>
+          ) : !detailsAvailable ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <span className="material-symbols-outlined text-3xl text-neutral-500">lock</span>
               <p className="text-sm font-semibold text-neutral-300">Predictions are locked</p>
@@ -196,66 +278,48 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
           ) : (
             <>
               {/* Aggregate */}
-              {aggregate.kind === 'group' ? (
-                <div className="space-y-2 py-1">
-                  <PredictionShareRow
-                    flag={<TeamFlag code={homeCode} liveFlag={match.homeFlag} teamFlagsByCode={teamFlagsByCode} />}
-                    label={teamName(homeCode, match.homeShortName ?? match.homeName)}
-                    count={aggregate.home}
-                    total={pickedEntries.length}
-                    highlight={isFinished && match.actualResult === 'home'}
-                  />
-                  <PredictionShareRow
-                    flag={<TeamFlag code={awayCode} liveFlag={match.awayFlag} teamFlagsByCode={teamFlagsByCode} />}
-                    label={teamName(awayCode, match.awayShortName ?? match.awayName)}
-                    count={aggregate.away}
-                    total={pickedEntries.length}
-                    highlight={isFinished && match.actualResult === 'away'}
-                  />
-                  <PredictionShareRow
-                    flag={null}
-                    label="Draw"
-                    count={aggregate.draw}
-                    total={pickedEntries.length}
-                    highlight={isFinished && match.actualResult === 'draw'}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">
-                    Picked to advance
-                  </p>
-                  {aggregate.teams.length === 0 ? (
-                    <p className="py-2 text-xs text-neutral-500 font-body">
-                      No one has a pick for this match yet.
+              <div className="space-y-2 py-1">
+                  {mode === 'knockoutResolved' && knockoutRound && (
+                    <p className="pb-0.5 text-[11px] font-bold uppercase tracking-wider text-neutral-500">
+                      {advanceHeading(knockoutRound, nextRoundLabel)}
                     </p>
-                  ) : (
-                    aggregate.teams.map(team => {
-                      const pct = pickedEntries.length > 0 ? Math.round((team.count / pickedEntries.length) * 100) : 0;
-                      const highlight = isFinished && actualWinnerCode === team.code;
-                      return (
-                        <div key={team.code} className="flex items-center gap-2">
-                          <span className="flex w-6 shrink-0 justify-center">
-                            <TeamFlag code={team.code} teamFlagsByCode={teamFlagsByCode} size="small" />
-                          </span>
-                          <span className={`w-28 shrink-0 truncate text-xs font-bold ${highlight ? 'text-wc-green' : 'text-neutral-200'}`}>
-                            {teamName(team.code)}
-                          </span>
-                          <div className="h-1.5 flex-grow overflow-hidden rounded-full bg-white/5">
-                            <div
-                              className={`h-full rounded-full ${highlight ? 'bg-wc-green' : 'bg-primary'}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="w-12 shrink-0 text-right text-xs font-bold tabular-nums text-neutral-400">
-                            {team.count} · {pct}%
-                          </span>
-                        </div>
-                      );
-                    })
+                  )}
+                  {(mode === 'group' || homeCode) && (
+                    <PredictionShareRow
+                      flag={<TeamFlag code={homeCode} liveFlag={match.homeFlag} teamFlagsByCode={teamFlagsByCode} />}
+                      label={teamName(homeCode, match.homeShortName ?? match.homeName)}
+                      count={aggregate.home}
+                      total={pickedEntries.length}
+                      highlight={isFinished && match.actualResult === 'home'}
+                    />
+                  )}
+                  {(mode === 'group' || awayCode) && (
+                    <PredictionShareRow
+                      flag={<TeamFlag code={awayCode} liveFlag={match.awayFlag} teamFlagsByCode={teamFlagsByCode} />}
+                      label={teamName(awayCode, match.awayShortName ?? match.awayName)}
+                      count={aggregate.away}
+                      total={pickedEntries.length}
+                      highlight={isFinished && match.actualResult === 'away'}
+                    />
+                  )}
+                  {aggregate.showDraw && (
+                    <PredictionShareRow
+                      flag={null}
+                      label="Draw"
+                      count={aggregate.draw}
+                      total={pickedEntries.length}
+                      highlight={isFinished && match.actualResult === 'draw'}
+                    />
+                  )}
+                  {mode === 'knockoutResolved' && (
+                    <p className="pt-1 text-[11px] text-neutral-500 font-body">
+                      Showing players whose bracket has {[
+                        homeCode && teamName(homeCode, match.homeShortName ?? match.homeName),
+                        awayCode && teamName(awayCode, match.awayShortName ?? match.awayName),
+                      ].filter(Boolean).join(' or ')} reaching the {nextRoundLabel ?? 'next round'} — based on their own group and knockout picks.
+                    </p>
                   )}
                 </div>
-              )}
 
               {/* Participant list */}
               <div className="mt-5">
@@ -264,23 +328,29 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                   <span className="text-xs font-bold uppercase text-neutral-500">Pick</span>
                 </div>
                 <div className="divide-y divide-white/10">
-                  {entries.map(entry => (
-                    <div key={entry.key} className="flex items-center gap-3 py-2.5">
-                      {isFinished && (
-                        <span
-                          className={`material-symbols-outlined shrink-0 text-[18px] ${
-                            entry.correct === true ? 'text-wc-green' : entry.correct === false ? 'text-wc-red' : 'text-neutral-600'
-                          }`}
-                        >
-                          {entry.correct === true ? 'check_circle' : entry.correct === false ? 'cancel' : 'remove'}
+                  {listEntries.length === 0 ? (
+                    <p className="py-3 text-xs text-neutral-500 font-body">
+                      No players have either team advancing in their bracket.
+                    </p>
+                  ) : (
+                    listEntries.map(entry => (
+                      <div key={entry.key} className="flex items-center gap-3 py-2.5">
+                        {isFinished && (
+                          <span
+                            className={`material-symbols-outlined shrink-0 text-[18px] ${
+                              entry.correct === true ? 'text-wc-green' : entry.correct === false ? 'text-wc-red' : 'text-neutral-600'
+                            }`}
+                          >
+                            {entry.correct === true ? 'check_circle' : entry.correct === false ? 'cancel' : 'remove'}
+                          </span>
+                        )}
+                        <span className="min-w-0 flex-grow truncate text-sm font-medium text-neutral-200">
+                          {entry.name}
                         </span>
-                      )}
-                      <span className="min-w-0 flex-grow truncate text-sm font-medium text-neutral-200">
-                        {entry.name}
-                      </span>
-                      <PickChip entry={entry} teamFlagsByCode={teamFlagsByCode} />
-                    </div>
-                  ))}
+                        <PickChip entry={entry} teamFlagsByCode={teamFlagsByCode} />
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </>

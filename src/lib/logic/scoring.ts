@@ -32,6 +32,35 @@ export const WINNER_POINTS = {
   FIN: 10,
 } as const;
 
+const ROUND_NAME: Record<KnockoutRound, string> = {
+  R32: 'Round of 32',
+  R16: 'Round of 16',
+  QF: 'Quarter-finals',
+  SF: 'Semi-finals',
+  '3RD': '3rd-place match',
+  FIN: 'Final',
+};
+
+const NEXT_ROUND: Partial<Record<KnockoutRound, KnockoutRound>> = {
+  R32: 'R16',
+  R16: 'QF',
+  QF: 'SF',
+  SF: 'FIN',
+};
+
+/** Human-readable point stakes for a knockout match, derived from the scoring constants. */
+export function getMatchStakes(round: KnockoutRound): { perTeam: string; winner: string } {
+  const perTeam = `+${QUALIFIER_POINTS[round]} pts per team you correctly send to the ${ROUND_NAME[round]}`;
+  if (round === 'FIN') {
+    return { perTeam, winner: `+${WINNER_POINTS.FIN} pts for picking the champion` };
+  }
+  if (round === '3RD') {
+    return { perTeam, winner: `+${WINNER_POINTS['3RD']} pts for picking the 3rd-place winner` };
+  }
+  const next = NEXT_ROUND[round]!;
+  return { perTeam, winner: `+${QUALIFIER_POINTS[next]} pts for picking who advances to the ${ROUND_NAME[next]}` };
+}
+
 export interface Qualifiers {
   R32: Set<string>;
   R16: Set<string>;

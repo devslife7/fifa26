@@ -156,9 +156,13 @@ function preserveKnownFixtureIdentity(fetched: LiveMatch[], existing: LiveMatch[
   return fetched.map((match) => {
     const known = existingByApiId.get(match.apiMatchId);
     if (!known) return match;
+    // Prefer a freshly-determined binding (e.g. a knockout fixture that now
+    // resolves to its venue-based slot) and fall back to the stored id only when
+    // this response couldn't determine one — partial syncs (ids/live) may lack
+    // the context to re-derive it. This lets corrected bindings propagate.
     return {
       ...match,
-      localMatchId: known.localMatchId ?? match.localMatchId,
+      localMatchId: match.localMatchId ?? known.localMatchId,
     };
   });
 }

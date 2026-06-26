@@ -106,24 +106,28 @@ export function getGroupMatches(group: GroupLetter): GroupMatch[] {
 }
 
 // FIFA World Cup 2026 — knockout stage venues (official schedule)
+// R32 slots are keyed to FIFA match numbers (R32-1 = M73 … R32-16 = M88), matching
+// the bracket structure in lib/logic/bracket.ts. Used (with KNOCKOUT_R32_DATES) as
+// the static schedule for the bracket-driven R32 rows in the Matches view when no
+// live API fixture is joined yet.
 export const KNOCKOUT_VENUES: Record<string, string> = {
   // Round of 32
-  'R32-1':  'BC Place, Vancouver',
-  'R32-2':  'BMO Field, Toronto',
-  'R32-3':  'Lumen Field, Seattle',
-  'R32-4':  'Estadio BBVA, Monterrey',
-  'R32-5':  'Estadio Akron, Guadalajara',
-  'R32-6':  'Estadio Azteca, Mexico City',
-  'R32-7':  'Levi\'s Stadium, San Francisco',
-  'R32-8':  'SoFi Stadium, Los Angeles',
-  'R32-9':  'Mercedes-Benz Stadium, Atlanta',
-  'R32-10': 'Hard Rock Stadium, Miami',
-  'R32-11': 'NRG Stadium, Houston',
-  'R32-12': 'AT&T Stadium, Dallas',
-  'R32-13': 'Lincoln Financial Field, Philadelphia',
-  'R32-14': 'Gillette Stadium, Foxborough',
-  'R32-15': 'Geodis Park, Nashville',
-  'R32-16': 'MetLife Stadium, East Rutherford',
+  'R32-1':  'SoFi Stadium, Los Angeles',
+  'R32-2':  'Gillette Stadium, Foxborough',
+  'R32-3':  'Estadio BBVA, Monterrey',
+  'R32-4':  'NRG Stadium, Houston',
+  'R32-5':  'MetLife Stadium, East Rutherford',
+  'R32-6':  'AT&T Stadium, Dallas',
+  'R32-7':  'Estadio Azteca, Mexico City',
+  'R32-8':  'Mercedes-Benz Stadium, Atlanta',
+  'R32-9':  'Levi\'s Stadium, San Francisco',
+  'R32-10': 'Lumen Field, Seattle',
+  'R32-11': 'BMO Field, Toronto',
+  'R32-12': 'SoFi Stadium, Los Angeles',
+  'R32-13': 'BC Place, Vancouver',
+  'R32-14': 'Hard Rock Stadium, Miami',
+  'R32-15': 'Arrowhead Stadium, Kansas City',
+  'R32-16': 'AT&T Stadium, Dallas',
   // Round of 16
   'R16-1': 'BC Place, Vancouver',
   'R16-2': 'Lumen Field, Seattle',
@@ -145,4 +149,26 @@ export const KNOCKOUT_VENUES: Record<string, string> = {
   '3RD-1': 'Hard Rock Stadium, Miami',
   // Final
   'FIN-1': 'MetLife Stadium, East Rutherford',
+};
+
+// Local match dates for the Round of 32 (FIFA M73–M88), used to disambiguate the
+// two venues that host two R32 matches each. Calendar dates only; the day gap
+// between same-venue matches is several days, so this is robust to timezone offset.
+export const KNOCKOUT_R32_DATES: Record<string, string> = {
+  'R32-1':  '2026-06-28',
+  'R32-2':  '2026-06-29',
+  'R32-3':  '2026-06-29',
+  'R32-4':  '2026-06-29',
+  'R32-5':  '2026-06-30',
+  'R32-6':  '2026-06-30',
+  'R32-7':  '2026-06-30',
+  'R32-8':  '2026-07-01',
+  'R32-9':  '2026-07-01',
+  'R32-10': '2026-07-01',
+  'R32-11': '2026-07-02',
+  'R32-12': '2026-07-02',
+  'R32-13': '2026-07-02',
+  'R32-14': '2026-07-03',
+  'R32-15': '2026-07-03',
+  'R32-16': '2026-07-03',
 };

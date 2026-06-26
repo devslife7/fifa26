@@ -211,6 +211,40 @@ export function placeholderLabel(code: string): string {
   return 'TBD';
 }
 
+// --- Slot labels (for TBD knockout matches) ---
+//
+// Friendly labels for the two sides of a knockout slot whose teams are not yet
+// known. R32 slots map to group positions (Article 12.6); deeper rounds are fed
+// by upstream match winners, so we degrade to a generic label.
+
+function sourceLabel(source: TeamSource): string {
+  if (source.type === 'winner') return `Winner ${source.group}`;
+  if (source.type === 'runnerUp') return `Runner-up ${source.group}`;
+  return `3rd of ${source.candidates.join('/')}`;
+}
+
+export function getSlotLabels(matchId: string): { home: string; away: string } | null {
+  const def = R32_SOURCES.find(s => s.id === matchId);
+  if (def) return { home: sourceLabel(def.home), away: sourceLabel(def.away) };
+  if (/^(R16|QF|SF|3RD|FIN)-/.test(matchId)) {
+    return { home: 'Winner of previous round', away: 'Winner of previous round' };
+  }
+  return null;
+}
+
+// Distinct groups whose results determine an R32 slot's teams (for "Teams lock
+// once Groups A & B finish" copy). Empty for deeper rounds / unknown ids.
+export function getSlotGroupDeps(matchId: string): GroupLetter[] {
+  const def = R32_SOURCES.find(s => s.id === matchId);
+  if (!def) return [];
+  const groups = new Set<GroupLetter>();
+  for (const source of [def.home, def.away]) {
+    if (source.type === 'winner' || source.type === 'runnerUp') groups.add(source.group);
+    else source.candidates.forEach(g => groups.add(g));
+  }
+  return Array.from(groups).sort();
+}
+
 // --- Dependency helpers ---
 
 export function getAffectedR32Matches(groupLetter: GroupLetter): string[] {

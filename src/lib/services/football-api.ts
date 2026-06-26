@@ -201,14 +201,19 @@ function mapGroupMatchToLocalId(
   return match?.id ?? null;
 }
 
-// For knockout matches, map by stage + position (harder without knowing bracket layout)
-// We'll store knockout matches with a generated ID based on stage
-function mapKnockoutMatchToLocalId(
-  stage: string,
-  matchIndex: number,
-): string | null {
+// --- Knockout slot binding ---
+// football-data.org's knockout fixtures carry no venue, mostly-TBD teams, and
+// unreliable dates, so they can't be slotted by position. R32 fixtures are bound
+// by *team identity* against our bracket in mapMatchesResponse (see
+// buildR32TeamSlotIndex) — the only reliable key. Deeper rounds keep response
+// order for now (they need downstream knockout results to slot; documented
+// follow-up). We never use response order for R32, which would fabricate matchups.
+import { buildR32TeamSlotIndex } from '@/lib/logic/actual-bracket';
+
+function mapKnockoutMatchToLocalId(stage: string, matchIndex: number): string | null {
   const round = STAGE_TO_ROUND[stage];
   if (!round || round === 'GROUP') return null;
+  if (round === 'R32') return null; // bound by team identity in mapMatchesResponse
   return `${round}-${matchIndex + 1}`;
 }
 
@@ -294,6 +299,17 @@ function mapMatchesResponse(data: FDMatchesResponse, force: boolean): {
 
     const mapped = mapApiMatch(apiMatch, idx);
     if (mapped) matches.push(mapped);
+  }
+
+  // Bind R32 fixtures to their FIFA slot by team identity (each qualified team
+  // belongs to exactly one slot). Fixtures with no known team stay unbound rather
+  // than falling back to response order, which previously fabricated matchups.
+  const r32SlotByTeam = buildR32TeamSlotIndex(matches);
+  for (const m of matches) {
+    if (m.stage !== 'R32' || m.localMatchId) continue;
+    const byHome = m.homeCode ? r32SlotByTeam.get(m.homeCode) : undefined;
+    const byAway = m.awayCode ? r32SlotByTeam.get(m.awayCode) : undefined;
+    m.localMatchId = byHome ?? byAway ?? null;
   }
 
   return { matches, source: force ? 'api' : 'cache' };

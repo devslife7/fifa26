@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LeaderboardPrediction, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
+import { buildR32DisplayRows } from '@/lib/logic/actual-bracket';
+import { getSlotLabels } from '@/lib/logic/bracket';
 import { formatMatchTime, formatRelativeDate, getDateBucket } from '@/lib/utils/match-dates';
 import MatchPredictionsModal from './MatchPredictionsModal';
 
@@ -139,10 +141,17 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
     [predictions],
   );
 
+  // Replace the API's unreliable R32 fixtures with bracket-driven rows (correct
+  // matchups/labels from our model, live data overlaid by team identity).
+  const displayMatches = useMemo(() => {
+    const nonR32 = matches.filter(m => m.stage !== 'R32');
+    return [...nonR32, ...buildR32DisplayRows(matches)];
+  }, [matches]);
+
   const daySections = useMemo<DaySection[]>(() => {
     const dated: LiveMatch[] = [];
     const undated: LiveMatch[] = [];
-    for (const match of matches) {
+    for (const match of displayMatches) {
       const bucket = getDateBucket(match.utcDate);
       if (bucket === 'unknown') {
         undated.push(match);
@@ -189,7 +198,7 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
     }
 
     return sections;
-  }, [matches, timeFilter]);
+  }, [displayMatches, timeFilter]);
 
   const totalShown = daySections.reduce((sum, section) => sum + section.items.length, 0);
 
@@ -314,6 +323,12 @@ function MatchRow({
   const homeWon = isFinished && match.actualResult === 'home';
   const awayWon = isFinished && match.actualResult === 'away';
 
+  // For knockout slots without resolved teams, label the card with the bracket
+  // path (e.g. "Runner-up A") instead of a bare "TBD".
+  const isKnockoutTBD =
+    !!match.localMatchId && !/^[A-L]-/.test(match.localMatchId) && (!match.homeCode || !match.awayCode);
+  const slotLabels = isKnockoutTBD ? getSlotLabels(match.localMatchId!) : null;
+
   return (
     <button
       type="button"
@@ -333,7 +348,8 @@ function MatchRow({
           <span className="text-[10px] font-semibold uppercase text-neutral-500">FT</span>
         ) : (
           <span className="text-xs font-medium text-neutral-300 tabular-nums">
-            {formatMatchTime(match.utcDate) || 'TBD'}
+            {/* Synthetic bracket rows (negative id) have no confirmed kickoff time yet. */}
+            {match.apiMatchId < 0 ? 'TBD' : formatMatchTime(match.utcDate) || 'TBD'}
           </span>
         )}
       </div>
@@ -341,7 +357,7 @@ function MatchRow({
       <div className="min-w-0 flex-grow space-y-1.5">
         <TeamLine
           code={match.homeCode}
-          name={getTeamName(match.homeCode, match.homeShortName ?? match.homeName)}
+          name={getTeamName(match.homeCode, slotLabels?.home ?? match.homeShortName ?? match.homeName)}
           liveFlag={match.homeFlag}
           teamFlagsByCode={teamFlagsByCode}
           score={showScore ? match.score!.home : null}
@@ -350,7 +366,7 @@ function MatchRow({
         />
         <TeamLine
           code={match.awayCode}
-          name={getTeamName(match.awayCode, match.awayShortName ?? match.awayName)}
+          name={getTeamName(match.awayCode, slotLabels?.away ?? match.awayShortName ?? match.awayName)}
           liveFlag={match.awayFlag}
           teamFlagsByCode={teamFlagsByCode}
           score={showScore ? match.score!.away : null}

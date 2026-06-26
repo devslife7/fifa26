@@ -114,20 +114,20 @@ export default function PublicPredictionProfileModal({
           </div>
         </div>
 
-        {onCompare && (
-          <div className="shrink-0 px-4 pt-2 pb-2">
-            <button
-              type="button"
-              onClick={onCompare}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 px-4 py-2.5 text-[13px] font-bold text-primary transition-colors hover:bg-white/5"
-            >
-              <span className="material-symbols-outlined text-[18px]">compare_arrows</span>
-              Compare with another prediction
-            </button>
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto pb-4 pt-0">
+          {onCompare && (
+            <div className="px-4 pt-2 pb-2">
+              <button
+                type="button"
+                onClick={onCompare}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 px-4 py-2.5 text-[13px] font-bold text-primary transition-colors hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined text-[18px]">compare_arrows</span>
+                Compare with another prediction
+              </button>
+            </div>
+          )}
+
           <PredictionExpandedTracker
             prediction={savedPrediction}
             liveMatches={liveMatches ?? {}}

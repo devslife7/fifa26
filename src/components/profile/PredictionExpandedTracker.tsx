@@ -14,7 +14,7 @@ import {
   type TrackerStageId,
   type TrackerTabId,
 } from '@/hooks/useTrackerTabState';
-import { formatMatchDateTimeET } from '@/lib/utils/match-dates';
+import { formatMatchDateTimeET, getDateBucket, groupItemsByDate } from '@/lib/utils/match-dates';
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -71,10 +71,16 @@ function isSettledOutcome(outcome: PerMatchOutcome): boolean {
   return outcome.state === 'hit' || outcome.state === 'miss' || outcome.state === 'no-pick';
 }
 
-function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId): boolean {
+function isTodayOutcome(outcome: PerMatchOutcome, now: Date): boolean {
+  return getDateBucket(outcome.utcDate, now) === 'today';
+}
+
+function matchesTrackerTab(outcome: PerMatchOutcome, tab: TrackerTabId, now: Date): boolean {
   if (tab === 'all') return true;
-  if (tab === 'active') return isActiveOutcome(outcome);
-  return isSettledOutcome(outcome);
+  const settled = isSettledOutcome(outcome);
+  // A match that has finished but was played today stays in Active until the day rolls over.
+  if (tab === 'active') return isActiveOutcome(outcome) || (settled && isTodayOutcome(outcome, now));
+  return settled && !isTodayOutcome(outcome, now);
 }
 
 function matchesKnockoutRound(outcome: PerMatchOutcome, round: KnockoutRoundTabId): boolean {
@@ -358,6 +364,9 @@ export default function PredictionExpandedTracker({
   const { trackerStage, setTrackerStage, groupTab, setGroupTab, knockoutRound, setKnockoutRound } = useTrackerTabState();
   const { perMatch, summary } = usePredictionResults(prediction, liveMatches);
 
+  // Captured once per mount so "today" stays stable across live-poll re-renders.
+  const now = useMemo(() => new Date(), []);
+
   const outcomes = useMemo(() => Object.values(perMatch), [perMatch]);
   const stageOutcomes = useMemo(
     () => outcomes.filter(outcome => outcome.kind === trackerStage),
@@ -370,8 +379,14 @@ export default function PredictionExpandedTracker({
     }),
     [summary.groupCorrect, summary.groupTotal, summary.knockoutPoints],
   );
-  const stageActiveCount = useMemo(() => stageOutcomes.filter(isActiveOutcome).length, [stageOutcomes]);
-  const stageSettledCount = useMemo(() => stageOutcomes.filter(isSettledOutcome).length, [stageOutcomes]);
+  const stageActiveCount = useMemo(
+    () => stageOutcomes.filter(outcome => matchesTrackerTab(outcome, 'active', now)).length,
+    [stageOutcomes, now],
+  );
+  const stageSettledCount = useMemo(
+    () => stageOutcomes.filter(outcome => matchesTrackerTab(outcome, 'settled', now)).length,
+    [stageOutcomes, now],
+  );
   const knockoutRoundCounts = useMemo(() => {
     const counts: Record<KnockoutRoundTabId, number> = { R32: 0, R16: 0, QF: 0, SF: 0, FIN: 0 };
     for (const outcome of stageOutcomes) {
@@ -386,10 +401,10 @@ export default function PredictionExpandedTracker({
   const filteredOutcomes = useMemo(
     () => (
       trackerStage === 'group'
-        ? stageOutcomes.filter(outcome => matchesTrackerTab(outcome, groupTab))
+        ? stageOutcomes.filter(outcome => matchesTrackerTab(outcome, groupTab, now))
         : stageOutcomes.filter(outcome => matchesKnockoutRound(outcome, knockoutRound))
     ),
-    [stageOutcomes, trackerStage, groupTab, knockoutRound],
+    [stageOutcomes, trackerStage, groupTab, knockoutRound, now],
   );
   const sortedOutcomes = useMemo(
     () => [...filteredOutcomes].sort((a, b) => {
@@ -399,6 +414,14 @@ export default function PredictionExpandedTracker({
       return a.matchId.localeCompare(b.matchId);
     }),
     [filteredOutcomes],
+  );
+
+  // Active and Settled tabs group matches under date headers; "all" and the
+  // knockout rounds stay as a single flat timeline.
+  const groupByDate = trackerStage === 'group' && (groupTab === 'active' || groupTab === 'settled');
+  const dateGroups = useMemo(
+    () => (groupByDate ? groupItemsByDate(filteredOutcomes, now) : []),
+    [groupByDate, filteredOutcomes, now],
   );
 
   const showHeader = !hidePointsInStats || onCompare;
@@ -465,6 +488,27 @@ export default function PredictionExpandedTracker({
               ? 'No active group stage picks right now.'
               : 'Nothing to show here yet.'}
           </p>
+        </div>
+      ) : groupByDate ? (
+        <div className="flex flex-col gap-1">
+          {dateGroups.map(group => (
+            <div key={group.dayKey}>
+              <div className="px-1 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
+                {group.label}
+              </div>
+              <div className="relative">
+                {group.items.map((outcome, index) => (
+                  <MatchCard
+                    key={outcome.matchId}
+                    outcome={outcome}
+                    flagsByCode={teamFlagsByCode}
+                    showTopDivider={index > 0}
+                    showRailConnector={index < group.items.length - 1}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="relative">

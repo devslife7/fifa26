@@ -208,6 +208,50 @@ test('live results: a wrong first R32 pick is a miss worth 0', () => {
   assert.equal(perMatch['R32-1'].points, 0);
 });
 
+test('live results: a pick is settled by where the team actually advances, not by bracket slot', () => {
+  // Regression for the cross-slot bug: the user's bracket places CH (Group B winner)
+  // in slot R32-13 and CA (Group B runner-up) in slot R32-1. In reality CH wins the
+  // match that lands in slot R32-1 (knocking CA out), and slot R32-13's real match
+  // hasn't been played. The R32-1 row displays CA (the team picked there) and must be
+  // a MISS — even though the actual winner of slot R32-1 (CH) is a team the user did
+  // pick to advance elsewhere. The R32-13 row displays CH and must be a HIT, because
+  // CH advanced, even though slot R32-13's own fixture is still unplayed.
+  const prediction = {
+    ...groupPrediction(),
+    knockout_matches: {
+      'R32-1': 'away' as KnockoutResult,  // CA
+      'R32-13': 'home' as KnockoutResult, // CH
+    },
+  } as unknown as SavedPrediction;
+
+  const live = finishedGroupLive();
+  // CH wins the real R32-1; CA is the loser (eliminated). Slot R32-13 stays unplayed.
+  live['R32-1'] = lm({
+    apiMatchId: 9101,
+    localMatchId: 'R32-1',
+    stage: 'R32',
+    status: 'FINISHED',
+    actualResult: 'away', // away (CH) advances
+    homeCode: 'CA',
+    awayCode: 'CH',
+    score: { home: 0, away: 1 },
+  });
+
+  const { perMatch } = computePredictionResults(prediction, live);
+
+  // CA was picked to advance (R32-1) but lost → miss, despite the slot winner (CH)
+  // being elsewhere in the user's predicted R16.
+  assert.equal(perMatch['R32-1'].pickedTeamCode, 'CA');
+  assert.equal(perMatch['R32-1'].state, 'miss');
+  assert.equal(perMatch['R32-1'].points, 0);
+
+  // CH was picked to advance (R32-13) and did → hit, even though R32-13's own fixture
+  // never finished.
+  assert.equal(perMatch['R32-13'].pickedTeamCode, 'CH');
+  assert.equal(perMatch['R32-13'].state, 'hit');
+  assert.equal(perMatch['R32-13'].points, QUALIFIER_POINTS.R16);
+});
+
 // ── Runner-up (2nd place) bonus ─────────────────────────────────────────────
 
 // A fully resolved bracket: every group and knockout match is won by the home side.

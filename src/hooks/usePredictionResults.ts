@@ -104,7 +104,11 @@ const EMPTY_SIGNAL: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolea
 function deriveActualFromLive(
   bracket: KnockoutMatch[],
   liveMatches: Record<string, LiveMatch>,
-): { qualifiers: Qualifiers; hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> } {
+): {
+  qualifiers: Qualifiers;
+  hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean>;
+  eliminated: Set<string>;
+} {
   const R32 = new Set<string>();
   const R16 = new Set<string>();
   const QF = new Set<string>();
@@ -114,6 +118,10 @@ function deriveActualFromLive(
   let thirdWinner: string | null = null;
   let finalWinner: string | null = null;
   let finalRunnerUp: string | null = null;
+  // Every team that has lost a finished knockout match (any round). Used to settle
+  // a per-match pick as a MISS once the team it sent forward is knocked out of the
+  // championship path — independent of which bracket slot that team occupies.
+  const eliminated = new Set<string>();
 
   const hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> = {
     R32: false, R16: false, QF: false, SF: false, '3RD': false, FIN: false,
@@ -126,6 +134,7 @@ function deriveActualFromLive(
     const winner = live.actualResult === 'home' ? live.homeCode : live.actualResult === 'away' ? live.awayCode : null;
     const loser = live.actualResult === 'home' ? live.awayCode : live.actualResult === 'away' ? live.homeCode : null;
     if (!winner) continue;
+    if (loser) eliminated.add(loser);
 
     if (m.round === 'R32') {
       R32.add(live.homeCode);
@@ -157,6 +166,7 @@ function deriveActualFromLive(
   return {
     qualifiers: { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner, finalRunnerUp },
     hasSignal,
+    eliminated,
   };
 }
 
@@ -174,18 +184,23 @@ function isSameLocalDay(utcDate: string | undefined, now: Date): boolean {
 
 /**
  * Pure helper used by both this hook and standalone callers (e.g. the knockout card
- * badge). Returns the user's per-match outcome for a single knockout match, given
- * the predicted bracket entry + live data.
+ * badge). Returns the user's per-match outcome for a single knockout match.
  *
- * For knockout matches, we treat a pick as "correct" when the actual winner of the
- * match was in the user's predicted qualifier set for the *next* round (which is
- * exactly how the underlying scoring engine awards points). This avoids tying the
- * outcome to whether the user even predicted the right two teams to meet.
+ * The outcome is TEAM-centric, not slot-centric: each knockout pick represents a
+ * team the user sent forward, and we judge it by whether that team actually reached
+ * the next round (a hit) or has been knocked out of the championship path (a miss).
+ * This is deliberate — the user's bracket can diverge from reality, so the team they
+ * picked may play its real match in a different slot than where their bracket placed
+ * it (e.g. Canada predicted as the Group B winner in R32-13 actually plays the real
+ * R32-1). Joining live results by slot id would then mis-settle the pick. Comparing
+ * the picked team against the actual qualifier sets sidesteps the slot mismatch and
+ * mirrors how the leaderboard scores knockout picks (qualifier-set intersection).
  */
 function computeKnockoutOutcome(
   m: KnockoutMatch,
   live: LiveMatch | undefined,
-  predicted: Qualifiers,
+  actual: Qualifiers,
+  eliminated: Set<string>,
   predictionPick: KnockoutResult | undefined,
 ): Pick<PerMatchOutcome, 'state' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score'> {
   const homeCode = live?.homeCode ?? m.home ?? null;
@@ -204,72 +219,7 @@ function computeKnockoutOutcome(
   if (predictionPick === 'home') pickedTeamCode = m.home ?? null;
   else if (predictionPick === 'away') pickedTeamCode = m.away ?? null;
 
-  if (!predictionPick) {
-    return {
-      state: isFinished ? 'no-pick' : utcDate ? 'upcoming' : 'pending',
-      points: 0,
-      actualResult,
-      actualWinnerCode,
-      pickedTeamCode,
-      homeCode,
-      awayCode,
-      utcDate,
-      status,
-      score,
-    };
-  }
-
-  if (!isFinished || !actualWinnerCode) {
-    return {
-      state: utcDate ? 'upcoming' : 'pending',
-      points: 0,
-      actualResult,
-      actualWinnerCode,
-      pickedTeamCode,
-      homeCode,
-      awayCode,
-      utcDate,
-      status,
-      score,
-    };
-  }
-
-  // The team that advances from this match is `actualWinnerCode` (or the loser of
-  // SF for the 3rd-place participant). Award points if that team was in the user's
-  // predicted set for the round that team advanced *into*.
-  let earned = 0;
-  let isHit = false;
-
-  if (m.round === 'R32') {
-    if (predicted.R16.has(actualWinnerCode)) { earned += QUALIFIER_POINTS.R16; isHit = true; }
-  } else if (m.round === 'R16') {
-    if (predicted.QF.has(actualWinnerCode)) { earned += QUALIFIER_POINTS.QF; isHit = true; }
-  } else if (m.round === 'QF') {
-    if (predicted.SF.has(actualWinnerCode)) { earned += QUALIFIER_POINTS.SF; isHit = true; }
-  } else if (m.round === 'SF') {
-    if (predicted.finalParticipants.has(actualWinnerCode)) { earned += QUALIFIER_POINTS.FIN; isHit = true; }
-    const loserCode = actualResult === 'home' ? live.awayCode : actualResult === 'away' ? live.homeCode : null;
-    if (loserCode && predicted.thirdParticipants.has(loserCode)) { earned += QUALIFIER_POINTS['3RD']; isHit = true; }
-  } else if (m.round === '3RD') {
-    if (predicted.thirdWinner && predicted.thirdWinner === actualWinnerCode) {
-      earned += WINNER_POINTS['3RD'];
-      isHit = true;
-    }
-  } else if (m.round === 'FIN') {
-    if (predicted.finalWinner && predicted.finalWinner === actualWinnerCode) {
-      earned += WINNER_POINTS.FIN;
-      isHit = true;
-    }
-    const loserCode = actualResult === 'home' ? live.awayCode : actualResult === 'away' ? live.homeCode : null;
-    if (loserCode && predicted.finalRunnerUp && predicted.finalRunnerUp === loserCode) {
-      earned += RUNNER_UP_POINTS;
-      isHit = true;
-    }
-  }
-
-  return {
-    state: isHit ? 'hit' : 'miss',
-    points: earned,
+  const base = {
     actualResult,
     actualWinnerCode,
     pickedTeamCode,
@@ -279,6 +229,51 @@ function computeKnockoutOutcome(
     status,
     score,
   };
+
+  if (!predictionPick || !pickedTeamCode) {
+    return { ...base, state: isFinished ? 'no-pick' : utcDate ? 'upcoming' : 'pending', points: 0 };
+  }
+
+  // The picked team advances if it appears in the actual qualifier set for the round
+  // it should have reached; it has missed once it is knocked out of the path. The
+  // loser of the user's predicted SF/Final also carries a bonus (3rd-place / runner-up
+  // participant), keyed off the OTHER team in their predicted matchup.
+  const reached = (set: Set<string>) => set.has(pickedTeamCode!);
+  const predictedLoser = predictionPick === 'home' ? (m.away ?? null) : (m.home ?? null);
+  const knockedOut = eliminated.has(pickedTeamCode);
+
+  let earned = 0;
+  let isHit = false;
+  let decided = false;
+
+  if (m.round === 'R32') {
+    if (reached(actual.R16)) { earned += QUALIFIER_POINTS.R16; isHit = true; decided = true; }
+    else if (knockedOut) decided = true;
+  } else if (m.round === 'R16') {
+    if (reached(actual.QF)) { earned += QUALIFIER_POINTS.QF; isHit = true; decided = true; }
+    else if (knockedOut) decided = true;
+  } else if (m.round === 'QF') {
+    if (reached(actual.SF)) { earned += QUALIFIER_POINTS.SF; isHit = true; decided = true; }
+    else if (knockedOut) decided = true;
+  } else if (m.round === 'SF') {
+    if (reached(actual.finalParticipants)) { earned += QUALIFIER_POINTS.FIN; isHit = true; decided = true; }
+    if (predictedLoser && actual.thirdParticipants.has(predictedLoser)) { earned += QUALIFIER_POINTS['3RD']; isHit = true; decided = true; }
+    if (!isHit && knockedOut) decided = true;
+  } else if (m.round === '3RD') {
+    if (actual.thirdWinner === pickedTeamCode) { earned += WINNER_POINTS['3RD']; isHit = true; decided = true; }
+    else if (actual.thirdWinner) decided = true;
+  } else if (m.round === 'FIN') {
+    if (actual.finalWinner === pickedTeamCode) { earned += WINNER_POINTS.FIN; isHit = true; decided = true; }
+    if (predictedLoser && actual.finalRunnerUp && actual.finalRunnerUp === predictedLoser) { earned += RUNNER_UP_POINTS; isHit = true; decided = true; }
+    if (!isHit && actual.finalWinner) decided = true;
+  }
+
+  let state: MatchOutcomeState;
+  if (isHit) state = 'hit';
+  else if (decided) state = 'miss';
+  else state = utcDate ? 'upcoming' : 'pending';
+
+  return { ...base, state, points: earned };
 }
 
 export function computePredictionResults(
@@ -315,9 +310,9 @@ export function computePredictionResults(
     }
   }
 
-  const { qualifiers: actual, hasSignal } = prediction
+  const { qualifiers: actual, hasSignal, eliminated } = prediction
     ? deriveActualFromLive(bracket, safeLive)
-    : { qualifiers: EMPTY_QUALIFIERS, hasSignal: EMPTY_SIGNAL };
+    : { qualifiers: EMPTY_QUALIFIERS, hasSignal: EMPTY_SIGNAL, eliminated: new Set<string>() };
 
   const perMatch: Record<string, PerMatchOutcome> = {};
   const now = new Date();
@@ -385,7 +380,7 @@ export function computePredictionResults(
     for (const m of bracket) {
       const live = safeLive[m.id];
       const pick = knockoutMatches[m.id] as KnockoutResult | undefined;
-      const partial = computeKnockoutOutcome(m, live, predicted, pick);
+      const partial = computeKnockoutOutcome(m, live, actual, eliminated, pick);
       if (partial.status === 'FINISHED') hasAnyResults = true;
       if (partial.state === 'pending' || partial.state === 'upcoming') pendingCount++;
       if (partial.points > 0 && isSameLocalDay(partial.utcDate, now)) pointsToday += partial.points;
@@ -452,14 +447,17 @@ export function usePredictionResults(
 export { GROUP_POINTS, QUALIFIER_POINTS, RUNNER_UP_POINTS, WINNER_POINTS };
 
 // Helper exposed so the bracket card can compute a single-match outcome without
-// calling the full hook (it doesn't need group results, just the one match).
+// calling the full hook (it doesn't need group results, just the one match). Takes
+// the actual qualifier sets + eliminated teams (see deriveActualFromLive) so it can
+// settle the pick team-centrically, the same way the full hook does.
 export function getKnockoutMatchOutcome(
   m: KnockoutMatch,
   live: LiveMatch | undefined,
-  predicted: Qualifiers,
+  actual: Qualifiers,
+  eliminated: Set<string>,
   pick: KnockoutResult | undefined,
 ): MatchOutcomeState {
-  return computeKnockoutOutcome(m, live, predicted, pick).state;
+  return computeKnockoutOutcome(m, live, actual, eliminated, pick).state;
 }
 
 // Group helper for the same reason — single match, no full hook needed.

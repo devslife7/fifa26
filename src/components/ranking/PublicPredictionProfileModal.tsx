@@ -104,30 +104,29 @@ export default function PublicPredictionProfileModal({
                 )}
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/15 hover:text-white md:h-9 md:w-9"
-              aria-label="Close prediction profile"
-            >
-              <span className="material-symbols-outlined text-xl md:text-[18px]">close</span>
-            </button>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {onCompare && (
+                <button
+                  type="button"
+                  onClick={onCompare}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/15 hover:text-primary md:h-9 md:w-9"
+                  aria-label="Compare with another prediction"
+                >
+                  <span className="material-symbols-outlined text-xl md:text-[18px]">compare_arrows</span>
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/15 hover:text-white md:h-9 md:w-9"
+                aria-label="Close prediction profile"
+              >
+                <span className="material-symbols-outlined text-xl md:text-[18px]">close</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto pb-4 pt-0">
-          {onCompare && (
-            <div className="px-4 pt-2 pb-2">
-              <button
-                type="button"
-                onClick={onCompare}
-                className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 px-4 py-2.5 text-[13px] font-bold text-primary transition-colors hover:bg-white/5"
-              >
-                <span className="material-symbols-outlined text-[18px]">compare_arrows</span>
-                Compare with another prediction
-              </button>
-            </div>
-          )}
-
           <PredictionExpandedTracker
             prediction={savedPrediction}
             liveMatches={liveMatches ?? {}}

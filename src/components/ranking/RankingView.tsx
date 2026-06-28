@@ -712,7 +712,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
         </section>
       </div>
 
-      {false && selectedPrediction && (
+      {(false as boolean) && selectedPrediction && (
         <PublicPredictionProfileModal
           prediction={selectedPrediction}
           rank={selectedRank}

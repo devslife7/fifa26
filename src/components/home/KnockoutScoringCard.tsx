@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GROUP_POINTS, QUALIFIER_POINTS, RUNNER_UP_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
 
 type Lang = 'en' | 'es';
+
+const LANG_STORAGE_KEY = 'scoringCardLang';
 
 const LOCALES = {
   en: {
@@ -102,8 +104,21 @@ function Row({
 }
 
 export default function KnockoutScoringCard() {
+  // Default to Spanish on first visit; restore the saved choice afterwards.
+  // Start with 'es' on both server and client to avoid a hydration mismatch,
+  // then sync to any stored preference once mounted.
   const [lang, setLang] = useState<Lang>('es');
   const t = LOCALES[lang];
+
+  useEffect(() => {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    if (stored === 'en' || stored === 'es') setLang(stored);
+  }, []);
+
+  const chooseLang = (next: Lang) => {
+    setLang(next);
+    localStorage.setItem(LANG_STORAGE_KEY, next);
+  };
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-neutral-900/80 to-background-dark">
@@ -116,13 +131,13 @@ export default function KnockoutScoringCard() {
           </h2>
           <div className="flex flex-shrink-0 items-center rounded-full border border-white/15 bg-white/8 p-1 gap-0.5">
             <button
-              onClick={() => setLang('en')}
+              onClick={() => chooseLang('en')}
               className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider transition-all ${lang === 'en' ? 'bg-primary text-black shadow-sm' : 'text-neutral-400 hover:text-white'}`}
             >
               EN
             </button>
             <button
-              onClick={() => setLang('es')}
+              onClick={() => chooseLang('es')}
               className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider transition-all ${lang === 'es' ? 'bg-primary text-black shadow-sm' : 'text-neutral-400 hover:text-white'}`}
             >
               ES

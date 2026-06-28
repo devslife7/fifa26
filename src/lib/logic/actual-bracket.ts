@@ -240,7 +240,8 @@ export function buildKnockoutDisplayRows(matches: LiveMatch[]): LiveMatch[] {
       const homeResolved = slot.home && !isPlaceholder(slot.home) ? slot.home : null;
       const awayResolved = slot.away && !isPlaceholder(slot.away) ? slot.away : null;
       const slotNum = Number(slot.id.split('-')[1]) || 1;
-      const api = findApiFixtureForSlot(apiFixtures, homeResolved, awayResolved);
+      const api = findApiFixtureForSlot(apiFixtures, homeResolved, awayResolved)
+        ?? apiFixtures.find(m => m.localMatchId === slot.id);
 
       if (!api) {
         allRows.push({

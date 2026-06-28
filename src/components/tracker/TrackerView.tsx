@@ -724,7 +724,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
           onOpenBreakdown={() => setShowBreakdown(true)}
           onNavigate={onNavigate}
         />
-        {(false as boolean) && showBreakdown && selfLeaderboardPred && (
+        {showBreakdown && selfLeaderboardPred && (
           <PublicPredictionProfileModal
             prediction={selfLeaderboardPred}
             onClose={() => setShowBreakdown(false)}
@@ -829,7 +829,7 @@ export default function TrackerView({ liveMatches, teamFlagsByCode, onNavigate }
         </div>
       )}
 
-      {(false as boolean) && showBreakdown && selfLeaderboardPred && (
+      {showBreakdown && selfLeaderboardPred && (
         <PublicPredictionProfileModal
           prediction={selfLeaderboardPred}
           onClose={() => setShowBreakdown(false)}

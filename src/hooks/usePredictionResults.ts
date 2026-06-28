@@ -12,7 +12,7 @@ import type {
   SavedPrediction,
 } from '@/types';
 import { allGroupMatches } from '@/data/matches';
-import { generateBracket } from '@/lib/logic/bracket';
+import { generateBracket, isPlaceholder } from '@/lib/logic/bracket';
 import {
   GROUP_POINTS,
   QUALIFIER_POINTS,
@@ -201,6 +201,8 @@ function computeKnockoutOutcome(
   live: LiveMatch | undefined,
   actual: Qualifiers,
   eliminated: Set<string>,
+  r32Field: Set<string>,
+  r32FieldKnown: boolean,
   predictionPick: KnockoutResult | undefined,
 ): Pick<PerMatchOutcome, 'state' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score'> {
   const homeCode = live?.homeCode ?? m.home ?? null;
@@ -241,6 +243,11 @@ function computeKnockoutOutcome(
   const reached = (set: Set<string>) => set.has(pickedTeamCode!);
   const predictedLoser = predictionPick === 'home' ? (m.away ?? null) : (m.home ?? null);
   const knockedOut = eliminated.has(pickedTeamCode);
+  // Once the full 32-team Round-of-32 field is known, a picked team missing from it
+  // was eliminated in the group stage and can never advance — an immediate miss for
+  // any knockout pick, regardless of round (e.g. Uruguay picked deep into the bracket
+  // after failing to escape its group).
+  const groupEliminated = r32FieldKnown && !isPlaceholder(pickedTeamCode) && !r32Field.has(pickedTeamCode);
 
   let earned = 0;
   let isHit = false;
@@ -248,24 +255,24 @@ function computeKnockoutOutcome(
 
   if (m.round === 'R32') {
     if (reached(actual.R16)) { earned += QUALIFIER_POINTS.R16; isHit = true; decided = true; }
-    else if (knockedOut) decided = true;
+    else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'R16') {
     if (reached(actual.QF)) { earned += QUALIFIER_POINTS.QF; isHit = true; decided = true; }
-    else if (knockedOut) decided = true;
+    else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'QF') {
     if (reached(actual.SF)) { earned += QUALIFIER_POINTS.SF; isHit = true; decided = true; }
-    else if (knockedOut) decided = true;
+    else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'SF') {
     if (reached(actual.finalParticipants)) { earned += QUALIFIER_POINTS.FIN; isHit = true; decided = true; }
     if (predictedLoser && actual.thirdParticipants.has(predictedLoser)) { earned += QUALIFIER_POINTS['3RD']; isHit = true; decided = true; }
-    if (!isHit && knockedOut) decided = true;
+    if (!isHit && (knockedOut || groupEliminated)) decided = true;
   } else if (m.round === '3RD') {
     if (actual.thirdWinner === pickedTeamCode) { earned += WINNER_POINTS['3RD']; isHit = true; decided = true; }
-    else if (actual.thirdWinner) decided = true;
+    else if (actual.thirdWinner || groupEliminated) decided = true;
   } else if (m.round === 'FIN') {
     if (actual.finalWinner === pickedTeamCode) { earned += WINNER_POINTS.FIN; isHit = true; decided = true; }
     if (predictedLoser && actual.finalRunnerUp && actual.finalRunnerUp === predictedLoser) { earned += RUNNER_UP_POINTS; isHit = true; decided = true; }
-    if (!isHit && actual.finalWinner) decided = true;
+    if (!isHit && (actual.finalWinner || groupEliminated)) decided = true;
   }
 
   let state: MatchOutcomeState;
@@ -313,6 +320,22 @@ export function computePredictionResults(
   const { qualifiers: actual, hasSignal, eliminated } = prediction
     ? deriveActualFromLive(bracket, safeLive)
     : { qualifiers: EMPTY_QUALIFIERS, hasSignal: EMPTY_SIGNAL, eliminated: new Set<string>() };
+
+  // The set of teams that actually reached the Round of 32 (both sides of every
+  // resolved R32 fixture). Once all 16 fixtures carry real teams, the field is "known"
+  // and any picked knockout team absent from it was eliminated in the group stage.
+  const r32Field = new Set<string>();
+  let resolvedR32Slots = 0;
+  for (const lm of Object.values(safeLive)) {
+    if (lm.stage !== 'R32') continue;
+    const { homeCode, awayCode } = lm;
+    if (homeCode && awayCode && !isPlaceholder(homeCode) && !isPlaceholder(awayCode)) {
+      r32Field.add(homeCode);
+      r32Field.add(awayCode);
+      resolvedR32Slots++;
+    }
+  }
+  const r32FieldKnown = resolvedR32Slots >= 16;
 
   const perMatch: Record<string, PerMatchOutcome> = {};
   const now = new Date();
@@ -380,7 +403,7 @@ export function computePredictionResults(
     for (const m of bracket) {
       const live = safeLive[m.id];
       const pick = knockoutMatches[m.id] as KnockoutResult | undefined;
-      const partial = computeKnockoutOutcome(m, live, actual, eliminated, pick);
+      const partial = computeKnockoutOutcome(m, live, actual, eliminated, r32Field, r32FieldKnown, pick);
       if (partial.status === 'FINISHED') hasAnyResults = true;
       if (partial.state === 'pending' || partial.state === 'upcoming') pendingCount++;
       if (partial.points > 0 && isSameLocalDay(partial.utcDate, now)) pointsToday += partial.points;
@@ -455,9 +478,11 @@ export function getKnockoutMatchOutcome(
   live: LiveMatch | undefined,
   actual: Qualifiers,
   eliminated: Set<string>,
+  r32Field: Set<string>,
+  r32FieldKnown: boolean,
   pick: KnockoutResult | undefined,
 ): MatchOutcomeState {
-  return computeKnockoutOutcome(m, live, actual, eliminated, pick).state;
+  return computeKnockoutOutcome(m, live, actual, eliminated, r32Field, r32FieldKnown, pick).state;
 }
 
 // Group helper for the same reason — single match, no full hook needed.

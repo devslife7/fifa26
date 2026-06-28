@@ -252,6 +252,40 @@ test('live results: a pick is settled by where the team actually advances, not b
   assert.equal(perMatch['R32-13'].points, QUALIFIER_POINTS.R16);
 });
 
+test('live results: a team eliminated in the group stage is an immediate miss', () => {
+  // The user picks CZ to advance from R32-1 (its slot in their predicted bracket).
+  // Reality: the full 32-team Round-of-32 field is set and CZ is not in it — it failed
+  // to escape its group. The pick can never come true, so it is a miss right away, even
+  // though no knockout fixture it maps to has been played.
+  const prediction = {
+    ...groupPrediction(),
+    knockout_matches: { 'R32-1': 'home' as KnockoutResult }, // CZ
+  } as unknown as SavedPrediction;
+
+  const live = finishedGroupLive();
+  // A fully-resolved 32-team R32 field that excludes CZ.
+  const fieldCodes = Array.from(new Set(allGroupMatches.flatMap(m => [m.home, m.away])))
+    .filter(c => c !== 'CZ' && !c.startsWith('TBD'))
+    .slice(0, 32);
+  assert.equal(fieldCodes.length, 32, 'need a full 32-team field for the test to be meaningful');
+  for (let i = 0; i < 16; i++) {
+    live[`R32-${i + 1}`] = lm({
+      apiMatchId: 9200 + i,
+      localMatchId: `R32-${i + 1}`,
+      stage: 'R32',
+      status: 'TIMED', // teams known, match not yet played
+      homeCode: fieldCodes[i * 2],
+      awayCode: fieldCodes[i * 2 + 1],
+    });
+  }
+
+  const { perMatch } = computePredictionResults(prediction, live);
+
+  assert.equal(perMatch['R32-1'].pickedTeamCode, 'CZ');
+  assert.equal(perMatch['R32-1'].state, 'miss');
+  assert.equal(perMatch['R32-1'].points, 0);
+});
+
 // ── Runner-up (2nd place) bonus ─────────────────────────────────────────────
 
 // A fully resolved bracket: every group and knockout match is won by the home side.

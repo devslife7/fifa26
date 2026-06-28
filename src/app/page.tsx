@@ -806,7 +806,7 @@ export default function Home() {
               teamFlagsByCode={teamFlagsByCode}
               onRefreshLiveData={refetchLiveData}
             />
-            <AppFooter onNavigate={navigateTo} />
+            <AppFooter />
           </div>
         )}
 

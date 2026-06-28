@@ -124,7 +124,7 @@ export default function HomeView({
 
       <KnockoutScoringCard />
 
-      <AppFooter onNavigate={onNavigate} />
+      <AppFooter />
 
       {showAuth && (
         <AuthModal

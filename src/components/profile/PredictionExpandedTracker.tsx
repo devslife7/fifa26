@@ -5,9 +5,13 @@ import type { KnockoutRound, LiveMatch, SavedPrediction } from '@/types';
 import { teamsByCode } from '@/data/teams';
 import {
   usePredictionResults,
+  QUALIFIER_POINTS,
+  WINNER_POINTS,
+  RUNNER_UP_POINTS,
   type MatchOutcomeState,
   type PerMatchOutcome,
 } from '@/hooks/usePredictionResults';
+import type { Qualifiers } from '@/lib/logic/scoring';
 import {
   useTrackerTabState,
   type KnockoutRoundTabId,
@@ -16,13 +20,15 @@ import {
 } from '@/hooks/useTrackerTabState';
 import { formatMatchDateTimeET, getDateBucket, groupItemsByDate } from '@/lib/utils/match-dates';
 
-const ROUND_LABELS: Record<KnockoutRound, string> = {
-  R32: 'Round of 32',
-  R16: 'Round of 16',
-  QF: 'Quarter-final',
-  SF: 'Semi-final',
-  '3RD': 'Third-place',
-  FIN: 'Final',
+// Points a correct pick in each knockout round is worth — the team you send on
+// scores its *next* round's qualifier points (or the winner bonus for 3rd/Final).
+const KNOCKOUT_POSSIBLE_POINTS: Record<KnockoutRound, number> = {
+  R32: QUALIFIER_POINTS.R16,
+  R16: QUALIFIER_POINTS.QF,
+  QF: QUALIFIER_POINTS.SF,
+  SF: QUALIFIER_POINTS.FIN,
+  '3RD': WINNER_POINTS['3RD'],
+  FIN: WINNER_POINTS.FIN,
 };
 
 const STAGE_TABS: { id: TrackerStageId; label: string }[] = [
@@ -37,11 +43,11 @@ const GROUP_TRACKER_TABS: { id: TrackerTabId; label: string }[] = [
 ];
 
 const KNOCKOUT_ROUND_TABS: { id: KnockoutRoundTabId; label: string }[] = [
-  { id: 'R32', label: 'R32' },
-  { id: 'R16', label: 'R16' },
-  { id: 'QF', label: 'QF' },
-  { id: 'SF', label: 'Semis' },
-  { id: 'FIN', label: 'Final' },
+  { id: 'R32', label: 'Round of' },
+  { id: 'R16', label: 'Quarters' },
+  { id: 'QF', label: 'Semis' },
+  { id: 'SF', label: 'Final' },
+  { id: 'FIN', label: 'Bonus' },
 ];
 
 type SlidingTab<T extends string> = {
@@ -299,7 +305,7 @@ function MatchCard({
   const pickedFlagUrl = outcome.pickedTeamCode ? flagsByCode[outcome.pickedTeamCode] : undefined;
   const meta = outcome.kind === 'group'
     ? `Group ${outcome.group ?? ''} · ${outcome.matchId}`
-    : ROUND_LABELS[outcome.round ?? 'R32'];
+    : `+${KNOCKOUT_POSSIBLE_POINTS[outcome.round ?? 'R32']} pts`;
   const statusLabel = cardStatusLabel(outcome);
 
   return (
@@ -357,6 +363,140 @@ function MatchCard({
   );
 }
 
+type BonusRow = {
+  key: string;
+  label: string;
+  emoji: string;
+  pickedCode: string | null;
+  actualCode: string | null;
+  settled: boolean;
+  possible: number;
+};
+
+function BonusPickRow({
+  row,
+  flagsByCode,
+  showTopDivider = false,
+}: {
+  row: BonusRow;
+  flagsByCode: Record<string, string>;
+  showTopDivider?: boolean;
+}) {
+  const hasPick = !isPlaceholderCode(row.pickedCode);
+  const hit = row.settled && hasPick && row.pickedCode === row.actualCode;
+  const miss = row.settled && hasPick && !hit;
+
+  return (
+    <div className="relative flex items-center gap-3 px-1 py-3 md:px-3">
+      {showTopDivider && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-0 h-px bg-white/5"
+          style={{ left: `calc(0.75rem + ${RAIL_ICON_SIZE_PX}px + 0.75rem)` }}
+        />
+      )}
+      <div className="flex w-6 shrink-0 justify-center">
+        <span className="text-xl leading-none">{row.emoji}</span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] font-black uppercase tracking-wider text-neutral-400">{row.label}</div>
+        {hasPick ? (
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <TeamFlag code={row.pickedCode} flagUrl={flagsByCode[row.pickedCode!]} size="md" />
+            <span className="min-w-0 truncate text-base font-bold leading-snug text-white font-body md:text-[15px]">
+              {teamDisplayName(row.pickedCode)}
+            </span>
+          </div>
+        ) : (
+          <span className="mt-0.5 block text-sm font-semibold text-neutral-500 font-body">No pick</span>
+        )}
+        {miss && !isPlaceholderCode(row.actualCode) && (
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-neutral-500 font-body">
+            <span className="uppercase tracking-wide">Actual</span>
+            <TeamFlag code={row.actualCode} flagUrl={flagsByCode[row.actualCode!]} size="sm" />
+            <span className="truncate text-neutral-300">{teamDisplayName(row.actualCode)}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex shrink-0 items-center">
+        {row.settled ? (
+          hasPick ? (
+            <span className={`inline-flex items-center gap-1 text-base font-black tabular-nums font-body ${hit ? 'text-wc-green' : 'text-wc-red'}`}>
+              <span className="material-symbols-outlined text-[18px] font-variation-fill leading-none">
+                {hit ? 'check_circle' : 'cancel'}
+              </span>
+              {hit ? `+${row.possible}` : '+0'}
+            </span>
+          ) : (
+            <span className="text-base font-bold text-neutral-600">—</span>
+          )
+        ) : (
+          <span className="text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
+            {row.possible} pts
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BonusPodium({
+  predicted,
+  actual,
+  hasSignal,
+  flagsByCode,
+}: {
+  predicted: Qualifiers;
+  actual: Qualifiers;
+  hasSignal: Record<string, boolean>;
+  flagsByCode: Record<string, string>;
+}) {
+  const rows: BonusRow[] = [
+    {
+      key: 'champion',
+      label: 'Champion',
+      emoji: '🏆',
+      pickedCode: predicted.finalWinner,
+      actualCode: actual.finalWinner,
+      settled: hasSignal.finalWinner,
+      possible: WINNER_POINTS.FIN,
+    },
+    {
+      key: 'runnerUp',
+      label: 'Runner-up',
+      emoji: '🥈',
+      pickedCode: predicted.finalRunnerUp,
+      actualCode: actual.finalRunnerUp,
+      settled: hasSignal.finalWinner,
+      possible: RUNNER_UP_POINTS,
+    },
+    {
+      key: 'third',
+      label: '3rd Place',
+      emoji: '🥉',
+      pickedCode: predicted.thirdWinner,
+      actualCode: actual.thirdWinner,
+      settled: hasSignal.thirdWinner,
+      possible: WINNER_POINTS['3RD'],
+    },
+  ];
+
+  return (
+    <div className="relative">
+      {rows.map((row, index) => (
+        <BonusPickRow
+          key={row.key}
+          row={row}
+          flagsByCode={flagsByCode}
+          showTopDivider={index > 0}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function PredictionExpandedTracker({
   prediction,
   liveMatches,
@@ -365,7 +505,9 @@ export default function PredictionExpandedTracker({
   hidePointsInStats = false,
 }: Props) {
   const { trackerStage, setTrackerStage, groupTab, setGroupTab, knockoutRound, setKnockoutRound } = useTrackerTabState();
-  const { perMatch, summary } = usePredictionResults(prediction, liveMatches);
+  const { perMatch, summary, predicted, actual, hasSignal } = usePredictionResults(prediction, liveMatches);
+
+  const showBonusPodium = trackerStage === 'knockout' && knockoutRound === 'FIN';
 
   // Captured once per mount so "today" stays stable across live-poll re-renders.
   const now = useMemo(() => new Date(), []);
@@ -411,12 +553,17 @@ export default function PredictionExpandedTracker({
   );
   const sortedOutcomes = useMemo(
     () => [...filteredOutcomes].sort((a, b) => {
+      if (trackerStage === 'knockout') {
+        const nameA = teamDisplayName(a.pickedTeamCode ?? null);
+        const nameB = teamDisplayName(b.pickedTeamCode ?? null);
+        return nameA.localeCompare(nameB);
+      }
       const ta = a.utcDate ? new Date(a.utcDate).getTime() : Number.POSITIVE_INFINITY;
       const tb = b.utcDate ? new Date(b.utcDate).getTime() : Number.POSITIVE_INFINITY;
       if (ta !== tb) return ta - tb;
       return a.matchId.localeCompare(b.matchId);
     }),
-    [filteredOutcomes],
+    [filteredOutcomes, trackerStage],
   );
 
   // Active and Settled tabs group matches under date headers; "all" and the
@@ -483,7 +630,14 @@ export default function PredictionExpandedTracker({
         />
       )}
 
-      {sortedOutcomes.length === 0 ? (
+      {showBonusPodium ? (
+        <BonusPodium
+          predicted={predicted}
+          actual={actual}
+          hasSignal={hasSignal}
+          flagsByCode={teamFlagsByCode}
+        />
+      ) : sortedOutcomes.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-neutral-900/40 px-4 py-6 text-center">
           <span className="material-symbols-outlined text-3xl text-neutral-500">filter_alt_off</span>
           <p className="mt-2 text-xs text-neutral-500 font-body">

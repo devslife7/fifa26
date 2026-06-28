@@ -14,8 +14,8 @@ type TimeFilter = 'today' | 'past' | 'upcoming';
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
   { key: 'today', label: 'Today' },
-  { key: 'past', label: 'Past' },
   { key: 'upcoming', label: 'Upcoming' },
+  { key: 'past', label: 'Finished' },
 ];
 
 export function getStageKey(match: LiveMatch): StageKey {

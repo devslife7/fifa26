@@ -18,19 +18,21 @@ interface PredictionRow {
 
 export const GROUP_POINTS = 1;
 
-export const QUALIFIER_POINTS: Record<KnockoutRound, number> = {
-  R32: 2,
+export const QUALIFIER_POINTS = {
   R16: 3,
   QF: 4,
   SF: 5,
   '3RD': 3,
   FIN: 6,
-};
+} as const satisfies Partial<Record<KnockoutRound, number>>;
 
 export const WINNER_POINTS = {
   '3RD': 4,
   FIN: 10,
 } as const;
+
+/** Bonus for correctly predicting the tournament runner-up (the team that loses the Final). */
+export const RUNNER_UP_POINTS = 6;
 
 const ROUND_NAME: Record<KnockoutRound, string> = {
   R32: 'Round of 32',
@@ -49,16 +51,24 @@ const NEXT_ROUND: Partial<Record<KnockoutRound, KnockoutRound>> = {
 };
 
 /** Human-readable point stakes for a knockout match, derived from the scoring constants. */
-export function getMatchStakes(round: KnockoutRound): { perTeam: string; winner: string } {
-  const perTeam = `+${QUALIFIER_POINTS[round]} pts per team you correctly send to the ${ROUND_NAME[round]}`;
+export function getMatchStakes(round: KnockoutRound): { perTeam: string | null; winner: string } {
+  // Reaching the Round of 32 is not worth points on its own, so it has no per-team stake.
+  const roundPts = (QUALIFIER_POINTS as Partial<Record<KnockoutRound, number>>)[round];
+  const perTeam = roundPts != null
+    ? `+${roundPts} pts per team you correctly send to the ${ROUND_NAME[round]}`
+    : null;
   if (round === 'FIN') {
-    return { perTeam, winner: `+${WINNER_POINTS.FIN} pts for picking the champion` };
+    return {
+      perTeam,
+      winner: `+${WINNER_POINTS.FIN} pts for the champion · +${RUNNER_UP_POINTS} for the runner-up`,
+    };
   }
   if (round === '3RD') {
     return { perTeam, winner: `+${WINNER_POINTS['3RD']} pts for picking the 3rd-place winner` };
   }
   const next = NEXT_ROUND[round]!;
-  return { perTeam, winner: `+${QUALIFIER_POINTS[next]} pts for picking who advances to the ${ROUND_NAME[next]}` };
+  const nextPts = (QUALIFIER_POINTS as Partial<Record<KnockoutRound, number>>)[next];
+  return { perTeam, winner: `+${nextPts} pts for picking who advances to the ${ROUND_NAME[next]}` };
 }
 
 export interface Qualifiers {
@@ -70,6 +80,7 @@ export interface Qualifiers {
   thirdWinner: string | null;
   finalParticipants: Set<string>;
   finalWinner: string | null;
+  finalRunnerUp: string | null;
 }
 
 function isRealCode(code: string | undefined | null): code is string {
@@ -111,7 +122,14 @@ function qualifiersFromBracket(bracket: KnockoutMatch[], explicitChampion?: stri
   const finalWinnerFromBracket = finalMatch ? getMatchWinner(finalMatch) ?? null : null;
   const finalWinner = isRealCode(explicitChampion) ? explicitChampion : finalWinnerFromBracket;
 
-  return { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner };
+  // The runner-up is the finalist who is not the champion.
+  let finalRunnerUp: string | null = null;
+  if (finalWinner) {
+    if (isRealCode(finalMatch?.home) && finalMatch?.home !== finalWinner) finalRunnerUp = finalMatch!.home;
+    else if (isRealCode(finalMatch?.away) && finalMatch?.away !== finalWinner) finalRunnerUp = finalMatch!.away;
+  }
+
+  return { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner, finalRunnerUp };
 }
 
 export function getPredictedQualifiers(prediction: PredictionRow): Qualifiers {
@@ -171,7 +189,6 @@ export function calculateScore(
   const predicted = getPredictedQualifiers(prediction);
   const actual = getActualQualifiers(actualResults, prediction.third_place_tiebreaker);
 
-  points += intersectionSize(predicted.R32, actual.R32) * QUALIFIER_POINTS.R32;
   points += intersectionSize(predicted.R16, actual.R16) * QUALIFIER_POINTS.R16;
   points += intersectionSize(predicted.QF, actual.QF) * QUALIFIER_POINTS.QF;
   points += intersectionSize(predicted.SF, actual.SF) * QUALIFIER_POINTS.SF;
@@ -184,6 +201,9 @@ export function calculateScore(
   points += intersectionSize(predicted.finalParticipants, actual.finalParticipants) * QUALIFIER_POINTS.FIN;
   if (predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner) {
     points += WINNER_POINTS.FIN;
+  }
+  if (predicted.finalRunnerUp && actual.finalRunnerUp && predicted.finalRunnerUp === actual.finalRunnerUp) {
+    points += RUNNER_UP_POINTS;
   }
 
   return points;

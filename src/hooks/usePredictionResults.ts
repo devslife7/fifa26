@@ -16,6 +16,7 @@ import { generateBracket } from '@/lib/logic/bracket';
 import {
   GROUP_POINTS,
   QUALIFIER_POINTS,
+  RUNNER_UP_POINTS,
   WINNER_POINTS,
   getPredictedQualifiers,
   type Qualifiers,
@@ -45,7 +46,6 @@ export interface PointsSummary {
   groupCorrect: number;
   groupTotal: number;
   groupPoints: number;
-  r32Pts: number;
   r16Pts: number;
   qfPts: number;
   sfPts: number;
@@ -53,6 +53,7 @@ export interface PointsSummary {
   thirdWinPts: number;
   finPartPts: number;
   finWinPts: number;
+  runnerUpPts: number;
   knockoutPoints: number;
   championCorrect: boolean;
   totalPoints: number;
@@ -81,6 +82,7 @@ const EMPTY_QUALIFIERS: Qualifiers = {
   thirdWinner: null,
   finalParticipants: new Set(),
   finalWinner: null,
+  finalRunnerUp: null,
 };
 
 const EMPTY_SIGNAL: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> = {
@@ -111,6 +113,7 @@ function deriveActualFromLive(
   const finalParticipants = new Set<string>();
   let thirdWinner: string | null = null;
   let finalWinner: string | null = null;
+  let finalRunnerUp: string | null = null;
 
   const hasSignal: Record<KnockoutRound | 'thirdWinner' | 'finalWinner', boolean> = {
     R32: false, R16: false, QF: false, SF: false, '3RD': false, FIN: false,
@@ -146,12 +149,13 @@ function deriveActualFromLive(
       hasSignal.thirdWinner = true;
     } else if (m.round === 'FIN') {
       finalWinner = winner;
+      if (loser) finalRunnerUp = loser;
       hasSignal.finalWinner = true;
     }
   }
 
   return {
-    qualifiers: { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner },
+    qualifiers: { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner, finalRunnerUp },
     hasSignal,
   };
 }
@@ -254,6 +258,11 @@ function computeKnockoutOutcome(
   } else if (m.round === 'FIN') {
     if (predicted.finalWinner && predicted.finalWinner === actualWinnerCode) {
       earned += WINNER_POINTS.FIN;
+      isHit = true;
+    }
+    const loserCode = actualResult === 'home' ? live.awayCode : actualResult === 'away' ? live.homeCode : null;
+    if (loserCode && predicted.finalRunnerUp && predicted.finalRunnerUp === loserCode) {
+      earned += RUNNER_UP_POINTS;
       isHit = true;
     }
   }
@@ -391,7 +400,7 @@ export function computePredictionResults(
     }
 
     // ── Knockout aggregate points (qualifier intersections — authoritative) ──
-    const r32Pts = intersectionSize(predicted.R32, actual.R32) * QUALIFIER_POINTS.R32;
+    // Reaching the Round of 32 is not worth points on its own, so it is not scored here.
     const r16Pts = intersectionSize(predicted.R16, actual.R16) * QUALIFIER_POINTS.R16;
     const qfPts = intersectionSize(predicted.QF, actual.QF) * QUALIFIER_POINTS.QF;
     const sfPts = intersectionSize(predicted.SF, actual.SF) * QUALIFIER_POINTS.SF;
@@ -403,7 +412,10 @@ export function computePredictionResults(
     const finWinPts = predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner
       ? WINNER_POINTS.FIN
       : 0;
-    const knockoutPoints = r32Pts + r16Pts + qfPts + sfPts + thirdPartPts + thirdWinPts + finPartPts + finWinPts;
+    const runnerUpPts = predicted.finalRunnerUp && actual.finalRunnerUp && predicted.finalRunnerUp === actual.finalRunnerUp
+      ? RUNNER_UP_POINTS
+      : 0;
+    const knockoutPoints = r16Pts + qfPts + sfPts + thirdPartPts + thirdWinPts + finPartPts + finWinPts + runnerUpPts;
     const championCorrect = Boolean(predicted.finalWinner && actual.finalWinner && predicted.finalWinner === actual.finalWinner);
 
   return {
@@ -414,8 +426,8 @@ export function computePredictionResults(
     perMatch,
     summary: {
       groupCorrect, groupTotal, groupPoints,
-      r32Pts, r16Pts, qfPts, sfPts,
-      thirdPartPts, thirdWinPts, finPartPts, finWinPts,
+      r16Pts, qfPts, sfPts,
+      thirdPartPts, thirdWinPts, finPartPts, finWinPts, runnerUpPts,
       knockoutPoints,
       championCorrect,
       totalPoints: groupPoints + knockoutPoints,
@@ -437,7 +449,7 @@ export function usePredictionResults(
 }
 
 // Re-export for callers that just need the round mapping
-export { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS };
+export { GROUP_POINTS, QUALIFIER_POINTS, RUNNER_UP_POINTS, WINNER_POINTS };
 
 // Helper exposed so the bracket card can compute a single-match outcome without
 // calling the full hook (it doesn't need group results, just the one match).

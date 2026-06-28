@@ -1,4 +1,4 @@
-import type { LiveMatch, MatchResult } from '@/types';
+import type { LiveMatch, MatchResult, KnockoutResult } from '@/types';
 import { KNOCKOUT_VENUES, KNOCKOUT_R32_DATES } from '@/data/matches';
 import { generateBracket, isPlaceholder } from './bracket';
 import { detectThirdPlaceTie } from './standings';
@@ -134,7 +134,9 @@ function orientApiToSlot(api: LiveMatch, homeResolved: string | null, awayResolv
  *  overlaid with live API data by team identity. Sides without a resolved team are
  *  left null so `MatchRow`/`getSlotLabels` render the positional label (e.g.
  *  "Winner E", "3rd of A/B/C/D/F"). API-assigned teams are preferred over our
- *  computed teams (our third-place/runner-up tiebreakers differ from FIFA's). */
+ *  computed teams (our third-place/runner-up tiebreakers differ from FIFA's).
+ *
+ * Also used internally by `buildKnockoutDisplayRows` to extract finished R32 results. */
 export function buildR32DisplayRows(matches: LiveMatch[]): LiveMatch[] {
   const apiR32 = matches.filter(m => m.stage === 'R32');
 
@@ -187,4 +189,106 @@ export function buildR32DisplayRows(matches: LiveMatch[]): LiveMatch[] {
       group: null,
     };
   });
+}
+
+// Negative apiMatchId offsets per round for synthetic (no-API-fixture) rows.
+const SYNTHETIC_ID_OFFSETS: Record<string, number> = {
+  R16: 2000, QF: 3000, SF: 4000, '3RD': 5000, FIN: 6000,
+};
+
+/** The 16 Round-of-16-through-Final rows for the Matches view, built from our
+ *  bracket model and overlaid with live API data by team identity.
+ *
+ *  Teams are propagated round by round: R32 results → R16 teams → R16 results →
+ *  QF teams → … → FIN teams. Sides without a resolved team are left null so
+ *  `MatchRow`/`getSlotLabels` render "Winner of previous round". API-assigned
+ *  team codes are preferred; bracket codes are fallback only. */
+export function buildKnockoutDisplayRows(matches: LiveMatch[]): LiveMatch[] {
+  const groupResults = buildActualGroupResults(matches);
+  const tiebreaker = computeActualThirdPlaceTiebreaker(matches, groupResults);
+
+  // R32 display rows already re-orient home/away to bracket orientation.
+  const r32Rows = buildR32DisplayRows(matches);
+  const knockoutResults: Record<string, KnockoutResult> = {};
+  for (const row of r32Rows) {
+    if (
+      row.localMatchId &&
+      row.status === 'FINISHED' &&
+      (row.actualResult === 'home' || row.actualResult === 'away')
+    ) {
+      knockoutResults[row.localMatchId] = row.actualResult;
+    }
+  }
+
+  // Index API fixtures by stage. LiveMatch.stage is already mapped ('R16', 'QF', …).
+  const apiByStage: Record<string, LiveMatch[]> = {};
+  for (const m of matches) {
+    if (['R16', 'QF', 'SF', '3RD', 'FIN'].includes(m.stage)) {
+      (apiByStage[m.stage] ??= []).push(m);
+    }
+  }
+
+  const rounds = ['R16', 'QF', 'SF', '3RD', 'FIN'] as const;
+  const allRows: LiveMatch[] = [];
+
+  for (const round of rounds) {
+    // Regenerate bracket with all results accumulated so far to get teams for this round.
+    const bracket = generateBracket(groupResults, knockoutResults, tiebreaker);
+    const apiFixtures = apiByStage[round] ?? [];
+
+    for (const slot of bracket.filter(m => m.round === round)) {
+      const homeResolved = slot.home && !isPlaceholder(slot.home) ? slot.home : null;
+      const awayResolved = slot.away && !isPlaceholder(slot.away) ? slot.away : null;
+      const slotNum = Number(slot.id.split('-')[1]) || 1;
+      const api = findApiFixtureForSlot(apiFixtures, homeResolved, awayResolved);
+
+      if (!api) {
+        allRows.push({
+          apiMatchId: -(SYNTHETIC_ID_OFFSETS[round] + slotNum),
+          localMatchId: slot.id,
+          homeCode: homeResolved,
+          awayCode: awayResolved,
+          homeName: null,
+          awayName: null,
+          homeShortName: null,
+          awayShortName: null,
+          homeFlag: null,
+          awayFlag: null,
+          utcDate: '',
+          status: 'SCHEDULED',
+          venue: KNOCKOUT_VENUES[slot.id] ?? null,
+          score: null,
+          actualResult: null,
+          stage: round,
+          group: null,
+        });
+      } else {
+        const o = orientApiToSlot(api, homeResolved, awayResolved);
+        if (api.status === 'FINISHED' && (o.actualResult === 'home' || o.actualResult === 'away')) {
+          knockoutResults[slot.id] = o.actualResult;
+        }
+        allRows.push({
+          apiMatchId: api.apiMatchId,
+          localMatchId: slot.id,
+          homeCode: o.homeCode ?? homeResolved,
+          awayCode: o.awayCode ?? awayResolved,
+          homeName: o.homeName,
+          awayName: o.awayName,
+          homeShortName: o.homeShortName,
+          awayShortName: o.awayShortName,
+          homeFlag: o.homeFlag,
+          awayFlag: o.awayFlag,
+          utcDate: api.utcDate || '',
+          status: api.status,
+          venue: api.venue ?? KNOCKOUT_VENUES[slot.id] ?? null,
+          score: o.score,
+          actualResult: o.actualResult,
+          stage: round,
+          group: null,
+        });
+      }
+    }
+  }
+
+  return allRows;
 }

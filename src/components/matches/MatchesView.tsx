@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LeaderboardPrediction, LiveMatch } from '@/types';
 import { teamsByCode } from '@/data/teams';
-import { buildR32DisplayRows } from '@/lib/logic/actual-bracket';
+import { buildR32DisplayRows, buildKnockoutDisplayRows } from '@/lib/logic/actual-bracket';
 import { getSlotLabels } from '@/lib/logic/bracket';
 import { formatMatchTime, formatRelativeDate, getDateBucket } from '@/lib/utils/match-dates';
 import MatchPredictionsModal from './MatchPredictionsModal';
@@ -141,11 +141,11 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
     [predictions],
   );
 
-  // Replace the API's unreliable R32 fixtures with bracket-driven rows (correct
-  // matchups/labels from our model, live data overlaid by team identity).
+  // Replace all knockout fixtures with bracket-driven rows (correct matchups from
+  // our model, live data overlaid by team identity, teams propagated round by round).
   const displayMatches = useMemo(() => {
-    const nonR32 = matches.filter(m => m.stage !== 'R32');
-    return [...nonR32, ...buildR32DisplayRows(matches)];
+    const groupOnly = matches.filter(m => m.stage === 'GROUP');
+    return [...groupOnly, ...buildR32DisplayRows(matches), ...buildKnockoutDisplayRows(matches)];
   }, [matches]);
 
   const daySections = useMemo<DaySection[]>(() => {

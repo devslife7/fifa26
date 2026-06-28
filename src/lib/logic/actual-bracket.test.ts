@@ -7,6 +7,7 @@ import {
   buildActualGroupResults,
   buildR32TeamSlotIndex,
   buildR32DisplayRows,
+  buildKnockoutDisplayRows,
 } from './actual-bracket';
 
 function lm(partial: Partial<LiveMatch> & { apiMatchId: number }): LiveMatch {
@@ -131,4 +132,73 @@ test('overlays live API data, orienting teams/score onto the slot', () => {
   assert.deepEqual(row.score, { home: 1, away: 2 }); // score swapped to match
   assert.equal(row.actualResult, 'away'); // RU-B (now away) won
   assert.equal(row.apiMatchId, 99001);
+});
+
+// --- buildKnockoutDisplayRows ---
+
+// Build synthetic finished R32 API fixtures from bracket-computed slot teams.
+function finishedR32Fixtures(groupMatches: LiveMatch[]): LiveMatch[] {
+  return buildR32DisplayRows(groupMatches)
+    .filter(s => s.homeCode && s.awayCode)
+    .map((s, i) =>
+      lm({
+        apiMatchId: 5000 + i,
+        stage: 'R32',
+        homeCode: s.homeCode,
+        awayCode: s.awayCode,
+        status: 'FINISHED',
+        actualResult: 'home',
+      }),
+    );
+}
+
+test('buildKnockoutDisplayRows returns 16 rows (R16 through FIN)', () => {
+  assert.equal(buildKnockoutDisplayRows([]).length, 16);
+});
+
+test('R16 teams populated after all R32 finish', () => {
+  const groups = finishedGroups('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
+  const matches = [...groups, ...finishedR32Fixtures(groups)];
+  const rows = buildKnockoutDisplayRows(matches);
+  const r16 = rows.filter(r => r.localMatchId?.startsWith('R16'));
+  assert.equal(r16.length, 8);
+  for (const row of r16) {
+    assert.ok(row.homeCode, `${row.localMatchId} missing homeCode`);
+    assert.ok(row.awayCode, `${row.localMatchId} missing awayCode`);
+  }
+});
+
+test('R16 teams stay null when no R32 results', () => {
+  const groups = finishedGroups('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
+  const rows = buildKnockoutDisplayRows(groups);
+  const r16 = rows.filter(r => r.localMatchId?.startsWith('R16'));
+  assert.equal(r16.length, 8);
+  for (const row of r16) {
+    assert.equal(row.homeCode, null);
+    assert.equal(row.awayCode, null);
+  }
+});
+
+test('API-supplied R16 team codes are not overwritten by bracket', () => {
+  const groups = finishedGroups('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
+  const r32 = finishedR32Fixtures(groups);
+  // Find which teams the bracket puts in R16-1 so we can create a matching API fixture.
+  const r16Slot = buildKnockoutDisplayRows([...groups, ...r32]).find(
+    r => r.localMatchId === 'R16-1',
+  )!;
+  assert.ok(r16Slot.homeCode, 'prerequisite: R16-1 must have bracket teams');
+
+  const r16Api = lm({
+    apiMatchId: 9001,
+    stage: 'R16',
+    homeCode: r16Slot.homeCode,
+    awayCode: r16Slot.awayCode,
+    status: 'TIMED',
+    actualResult: null,
+  });
+  const rows = buildKnockoutDisplayRows([...groups, ...r32, r16Api]);
+  const row = rows.find(r => r.localMatchId === 'R16-1')!;
+  assert.equal(row.apiMatchId, 9001);           // joined to API fixture
+  assert.equal(row.homeCode, r16Slot.homeCode); // API code preserved, not overwritten
+  assert.equal(row.awayCode, r16Slot.awayCode);
 });

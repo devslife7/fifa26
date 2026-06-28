@@ -30,8 +30,12 @@ const NEXT_ROUND_LABEL: Record<KnockoutRound, string | null> = {
 interface PickEntry {
   key: string;
   name: string;
-  /** Team code the participant picked to win/advance; null for draw or no pick. */
-  teamCode: string | null;
+  /**
+   * Real teams from this match that the participant's bracket sends through.
+   * Group mode: 0 or 1 entry. Resolved knockout: 0, 1, or both — a bracket can
+   * route South Africa and Canada through different slots and advance both.
+   */
+  teamCodes: string[];
   isDraw: boolean;
   hasPick: boolean;
   correct: boolean | null;
@@ -132,7 +136,7 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
         const teamCode = pick === 'home' ? homeCode : pick === 'away' ? awayCode : null;
         return {
           ...base,
-          teamCode,
+          teamCodes: teamCode ? [teamCode] : [],
           isDraw: pick === 'draw',
           hasPick: pick != null,
           correct: isFinished && pick != null ? pick === match.actualResult : null,
@@ -141,8 +145,9 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
 
       // knockoutResolved — at least one real team known. Ask each bracket whether
       // it has a real team advancing past this round, so the vote is about the
-      // actual matchup (works the same with one team still TBD).
-      let teamCode: string | null = null;
+      // actual matchup (works the same with one team still TBD). A bracket can
+      // route both real teams through different slots, so credit each separately.
+      const codes: string[] = [];
       try {
         const bracket = generateBracket(
           prediction.group_matches ?? {},
@@ -150,28 +155,31 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
           prediction.third_place_tiebreaker ?? undefined,
         );
         const advancing = teamsAdvancingPast(bracket, knockoutRound!);
-        // Include any player whose bracket sends either real team through this
-        // round, regardless of the path that put it there.
-        if (!!homeCode && advancing.has(homeCode)) teamCode = homeCode;
-        else if (!!awayCode && advancing.has(awayCode)) teamCode = awayCode;
+        // Include either real team this bracket sends through, regardless of path.
+        if (!!homeCode && advancing.has(homeCode)) codes.push(homeCode);
+        if (!!awayCode && advancing.has(awayCode)) codes.push(awayCode);
       } catch {
-        teamCode = null;
+        codes.length = 0;
       }
       return {
         ...base,
-        teamCode,
+        teamCodes: codes,
         isDraw: false,
-        hasPick: teamCode != null,
-        correct: isFinished && actualWinnerCode && teamCode != null ? teamCode === actualWinnerCode : null,
+        hasPick: codes.length > 0,
+        correct: isFinished && actualWinnerCode && codes.length > 0 ? codes.includes(actualWinnerCode) : null,
       };
     });
 
-    // group & knockoutResolved: home picks first, then away, then no/other pick.
+    // group & knockoutResolved: both teams first, then home-only, away-only,
+    // draw, then no/other pick.
     const rank = (entry: PickEntry) => {
-      if (entry.teamCode === homeCode) return 0;
-      if (entry.teamCode === awayCode) return 1;
-      if (entry.isDraw) return 2;
-      return 3;
+      const hasHome = !!homeCode && entry.teamCodes.includes(homeCode);
+      const hasAway = !!awayCode && entry.teamCodes.includes(awayCode);
+      if (hasHome && hasAway) return 0;
+      if (hasHome) return 1;
+      if (hasAway) return 2;
+      if (entry.isDraw) return 3;
+      return 4;
     };
 
     return built.sort((a, b) => rank(a) - rank(b) || compareNames(a, b));
@@ -184,11 +192,15 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
 
   // Aggregate (group & resolved-knockout): vote tally on the real team(s).
   const aggregate = useMemo(() => {
-    const home = entries.filter(e => e.teamCode != null && e.teamCode === homeCode).length;
-    const away = entries.filter(e => e.teamCode != null && e.teamCode === awayCode).length;
+    const home = entries.filter(e => !!homeCode && e.teamCodes.includes(homeCode)).length;
+    const away = entries.filter(e => !!awayCode && e.teamCodes.includes(awayCode)).length;
     const draw = entries.filter(e => e.isDraw).length;
     return { home, draw, away, showDraw: mode === 'group' };
   }, [mode, entries, homeCode, awayCode]);
+
+  // Denominator for the share bars: total advancements (not players), so the
+  // bars sum to ~100% even when a user backs both real teams.
+  const totalShare = aggregate.home + aggregate.away + aggregate.draw;
 
   const venue = match.venue ?? KNOCKOUT_VENUES[localId] ?? null;
 
@@ -289,7 +301,7 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                       flag={<TeamFlag code={homeCode} liveFlag={match.homeFlag} teamFlagsByCode={teamFlagsByCode} />}
                       label={teamName(homeCode, match.homeShortName ?? match.homeName)}
                       count={aggregate.home}
-                      total={pickedEntries.length}
+                      total={totalShare}
                       highlight={isFinished && match.actualResult === 'home'}
                     />
                   )}
@@ -298,7 +310,7 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                       flag={<TeamFlag code={awayCode} liveFlag={match.awayFlag} teamFlagsByCode={teamFlagsByCode} />}
                       label={teamName(awayCode, match.awayShortName ?? match.awayName)}
                       count={aggregate.away}
-                      total={pickedEntries.length}
+                      total={totalShare}
                       highlight={isFinished && match.actualResult === 'away'}
                     />
                   )}
@@ -307,7 +319,7 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                       flag={null}
                       label="Draw"
                       count={aggregate.draw}
-                      total={pickedEntries.length}
+                      total={totalShare}
                       highlight={isFinished && match.actualResult === 'draw'}
                     />
                   )}
@@ -347,7 +359,12 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
                         <span className="min-w-0 flex-grow truncate text-sm font-medium text-neutral-200">
                           {entry.name}
                         </span>
-                        <PickChip entry={entry} teamFlagsByCode={teamFlagsByCode} />
+                        <PickChip
+                          entry={entry}
+                          teamFlagsByCode={teamFlagsByCode}
+                          isFinished={isFinished}
+                          actualWinnerCode={actualWinnerCode}
+                        />
                       </div>
                     ))
                   )}
@@ -405,7 +422,17 @@ function PredictionShareRow({
   );
 }
 
-function PickChip({ entry, teamFlagsByCode }: { entry: PickEntry; teamFlagsByCode?: Record<string, string> }) {
+function PickChip({
+  entry,
+  teamFlagsByCode,
+  isFinished,
+  actualWinnerCode,
+}: {
+  entry: PickEntry;
+  teamFlagsByCode?: Record<string, string>;
+  isFinished: boolean;
+  actualWinnerCode: string | null;
+}) {
   if (!entry.hasPick) {
     return (
       <span className="shrink-0 text-[11px] font-bold text-neutral-500">
@@ -420,18 +447,23 @@ function PickChip({ entry, teamFlagsByCode }: { entry: PickEntry; teamFlagsByCod
       </span>
     );
   }
+  // On a finished match color each team individually: the team that actually
+  // advanced is green, the other red; otherwise neutral.
+  const colorFor = (code: string) => {
+    if (!isFinished || !actualWinnerCode) return 'text-neutral-200';
+    return code === actualWinnerCode ? 'text-wc-green' : 'text-wc-red';
+  };
   return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] font-bold ${
-        entry.correct === true
-          ? 'text-wc-green'
-          : entry.correct === false
-            ? 'text-wc-red'
-            : 'text-neutral-200'
-      }`}
-    >
-      <TeamFlag code={entry.teamCode} teamFlagsByCode={teamFlagsByCode} size="small" />
-      {teamName(entry.teamCode)}
+    <span className="flex shrink-0 flex-col items-end gap-1">
+      {entry.teamCodes.map(code => (
+        <span
+          key={code}
+          className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${colorFor(code)}`}
+        >
+          <TeamFlag code={code} teamFlagsByCode={teamFlagsByCode} size="small" />
+          {teamName(code)}
+        </span>
+      ))}
     </span>
   );
 }

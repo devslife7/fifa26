@@ -1,6 +1,7 @@
 import type { LiveMatch, MatchResult } from '@/types';
 import { KNOCKOUT_VENUES, KNOCKOUT_R32_DATES } from '@/data/matches';
 import { generateBracket, isPlaceholder } from './bracket';
+import { detectThirdPlaceTie } from './standings';
 
 // Drives the Round-of-32 display from our own bracket model instead of trusting
 // football-data.org's slotting. The upstream feed gives knockout fixtures no
@@ -24,9 +25,43 @@ export function buildActualGroupResults(matches: LiveMatch[]): Record<string, Ma
   return out;
 }
 
+/** When 3rd-place teams are tied on points at the 8th/9th boundary, resolve
+ *  using actual match scores (GD desc, then GF desc) so AnnexC can run. */
+function computeActualThirdPlaceTiebreaker(
+  matches: LiveMatch[],
+  groupResults: Record<string, MatchResult>,
+): string[] | undefined {
+  const { tied, slotsToFill } = detectThirdPlaceTie(groupResults);
+  if (slotsToFill === 0 || tied.length === 0) return undefined;
+
+  const teamStats: Record<string, { gd: number; gf: number }> = {};
+  for (const m of matches) {
+    if (!m.localMatchId || !GROUP_MATCH_ID.test(m.localMatchId)) continue;
+    if (m.status !== 'FINISHED' || !m.score || !m.homeCode || !m.awayCode) continue;
+    const { home: sh, away: sa } = m.score;
+    teamStats[m.homeCode] ??= { gd: 0, gf: 0 };
+    teamStats[m.awayCode] ??= { gd: 0, gf: 0 };
+    teamStats[m.homeCode].gd += sh - sa;
+    teamStats[m.homeCode].gf += sh;
+    teamStats[m.awayCode].gd += sa - sh;
+    teamStats[m.awayCode].gf += sa;
+  }
+
+  const sortedTied = [...tied].sort((a, b) => {
+    const sa = teamStats[a.team] ?? { gd: 0, gf: 0 };
+    const sb = teamStats[b.team] ?? { gd: 0, gf: 0 };
+    if (sb.gd !== sa.gd) return sb.gd - sa.gd;
+    return sb.gf - sa.gf;
+  });
+
+  return sortedTied.slice(0, slotsToFill).map(e => e.team);
+}
+
 /** The 16 R32 slots resolved from current group results (codes or PH placeholders). */
 function computeR32Slots(matches: LiveMatch[]) {
-  return generateBracket(buildActualGroupResults(matches), {}).filter(m => m.round === 'R32');
+  const groupResults = buildActualGroupResults(matches);
+  const tiebreaker = computeActualThirdPlaceTiebreaker(matches, groupResults);
+  return generateBracket(groupResults, {}, tiebreaker).filter(m => m.round === 'R32');
 }
 
 /** `teamCode → R32-N`. Each qualified team appears in exactly one R32 slot, so this

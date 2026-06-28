@@ -293,6 +293,7 @@ function MatchCard({
   showTopDivider?: boolean;
   showRailConnector?: boolean;
 }) {
+  const isKnockout = outcome.kind === 'knockout';
   const showScore = outcome.status === 'FINISHED' || outcome.status === 'IN_PLAY' || outcome.status === 'PAUSED';
   const label = pickLabel(outcome);
   const pickedFlagUrl = outcome.pickedTeamCode ? flagsByCode[outcome.pickedTeamCode] : undefined;
@@ -341,14 +342,16 @@ function MatchCard({
           <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">{meta}</span>
         </div>
 
-        <div className="mt-1.5 flex items-start justify-between gap-3">
-          <span className="min-w-0 text-base leading-snug text-neutral-400 font-body md:text-[13px]">
-            <MatchupLine outcome={outcome} showScore={showScore} />
-          </span>
-          <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
-            {statusLabel}
-          </span>
-        </div>
+        {!isKnockout && (
+          <div className="mt-1.5 flex items-start justify-between gap-3">
+            <span className="min-w-0 text-base leading-snug text-neutral-400 font-body md:text-[13px]">
+              <MatchupLine outcome={outcome} showScore={showScore} />
+            </span>
+            <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
+              {statusLabel}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

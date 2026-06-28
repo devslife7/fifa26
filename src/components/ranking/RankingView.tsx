@@ -112,7 +112,7 @@ function PositionTrendIcon({ icon }: { icon: string }) {
 function renderPositionChange(change?: number) {
   if (change == null || change === 0) {
     return (
-      <span className="inline-flex shrink-0 items-center text-neutral-500" title="No change">
+      <span className="inline-flex shrink-0 items-center text-neutral-500" title={change == null ? 'No data' : 'No change'}>
         <PositionTrendIcon icon="remove" />
       </span>
     );

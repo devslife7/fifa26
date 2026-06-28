@@ -8,7 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { computePredictionResults } from '@/hooks/usePredictionResults';
 import PublicPredictionProfileModal from './PublicPredictionProfileModal';
 import PredictionCompareModal from './PredictionCompareModal';
-import ScoringExplainer from '@/components/scoring/ScoringExplainer';
+import KnockoutScoringCard from '@/components/home/KnockoutScoringCard';
 import { computeTiedRanks } from '@/lib/services/leaderboard-position';
 import { buildHotMatchRefreshQuery } from '@/lib/utils/hot-matches';
 
@@ -708,7 +708,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
 
         {/* How to Score Points */}
         <section className="mt-10 md:mt-0 mb-4 md:sticky md:top-20 md:self-start">
-          <ScoringExplainer variant="full" />
+          <KnockoutScoringCard />
         </section>
       </div>
 

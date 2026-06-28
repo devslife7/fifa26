@@ -5,6 +5,7 @@ import { TabId, LiveMatch } from '@/types';
 import DailyRecapCard from '@/components/home/DailyRecapCard';
 import SignedOutHero from '@/components/home/SignedOutHero';
 import LeaderboardPeek from '@/components/home/LeaderboardPeek';
+import KnockoutScoringCard from '@/components/home/KnockoutScoringCard';
 import AppFooter from '@/components/layout/AppFooter';
 import AuthModal from '@/components/auth/AuthModal';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -120,6 +121,8 @@ export default function HomeView({
           <LeaderboardPeek onNavigate={onNavigate} onSignIn={() => setShowAuth(true)} />
         </>
       )}
+
+      <KnockoutScoringCard />
 
       <AppFooter onNavigate={onNavigate} />
 

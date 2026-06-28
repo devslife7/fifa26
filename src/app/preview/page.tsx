@@ -35,8 +35,8 @@ const UPCOMING_MATCHES = [
 ];
 
 const KO_MATCHES = [
-  { id: 'R32-1', round: 'Round of 32', home: 'BR', away: 'KR', score: { home: 2, away: 0 }, prediction: 'home' as const, actual: 'home' as const },
   { id: 'R16-1', round: 'Round of 16', home: 'FR', away: 'US', score: { home: 1, away: 0 }, prediction: 'away' as const, actual: 'home' as const },
+  { id: 'QF-1', round: 'Quarterfinals', home: 'BR', away: 'KR', score: { home: 2, away: 0 }, prediction: 'home' as const, actual: 'home' as const },
 ];
 
 // --- Components ---
@@ -261,7 +261,7 @@ export default function PreviewPage() {
               <div className="px-4 py-3 border-b border-white/5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Knockout Qualifiers</span>
-                  <span className="text-xs font-bold text-primary font-body">+2 to +6 pts per qualifying team</span>
+                  <span className="text-xs font-bold text-primary font-body">+3 to +6 pts per qualifying team</span>
                 </div>
               </div>
               <div className="px-4 py-3 space-y-3">
@@ -270,7 +270,7 @@ export default function PreviewPage() {
                 </p>
                 {KO_MATCHES.map(m => {
                   const round = m.id.split('-')[0];
-                  const pts = round === 'R32' ? 2 : round === 'R16' ? 3 : round === 'QF' ? 4 : round === 'SF' ? 5 : 6;
+                  const pts = round === 'R16' ? 3 : round === 'QF' ? 4 : round === 'SF' ? 5 : 6;
                   const pickedCode = m.prediction === 'home' ? m.home : m.away;
                   const pickedAdvances = m.actual === m.prediction;
                   return (
@@ -298,7 +298,7 @@ export default function PreviewPage() {
               <div className="px-4 py-3 border-b border-primary/10">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-primary uppercase tracking-wider">Winner Bonuses</span>
-                  <span className="text-xs font-bold text-primary font-body">+4 third place · +10 champion</span>
+                  <span className="text-xs font-bold text-primary font-body">+4 third · +6 runner-up · +10 champion</span>
                 </div>
               </div>
               <div className="px-4 py-3 space-y-2">
@@ -307,6 +307,13 @@ export default function PreviewPage() {
                   <div>
                     <div className="text-sm font-bold">Champion pick wins the Final</div>
                     <div className="text-[11px] text-neutral-400 font-body">+10 on top of the +6 you already get for picking a finalist.</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none">{teamsByCode['AR']?.flag}</span>
+                  <div>
+                    <div className="text-sm font-bold">Runner-up pick loses the Final</div>
+                    <div className="text-[11px] text-neutral-400 font-body">+6 on top of the +6 you already get for picking a finalist.</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -327,13 +334,13 @@ export default function PreviewPage() {
               <div className="divide-y divide-white/5">
                 {[
                   { round: 'Group Stage', desc: 'Correct result (W/D/L)', pts: '+1', max: 72 },
-                  { round: 'Round of 32', desc: 'Per team that reaches R32', pts: '+2', max: 64 },
                   { round: 'Round of 16', desc: 'Per team that advances to R16', pts: '+3', max: 48 },
                   { round: 'Quarterfinals', desc: 'Per team that advances to QF', pts: '+4', max: 32 },
                   { round: 'Semifinals', desc: 'Per team that advances to SF', pts: '+5', max: 20 },
                   { round: '3rd-place finalists', desc: 'Per team that makes the 3rd-place match', pts: '+3', max: 6 },
                   { round: '3rd-place winner', desc: 'Bonus for picking the actual winner', pts: '+4', max: 4 },
                   { round: 'Finalists', desc: 'Per team that reaches the Final', pts: '+6', max: 12 },
+                  { round: 'Runner-up', desc: 'Bonus for picking the actual runner-up', pts: '+6', max: 6 },
                   { round: 'Champion', desc: 'Bonus for picking the actual champion', pts: '+10', max: 10 },
                 ].map((row) => {
                   const isHighlight = row.round === 'Champion';
@@ -352,7 +359,7 @@ export default function PreviewPage() {
                 })}
                 <div className="flex items-center px-4 py-2.5 bg-neutral-800">
                   <div className="flex-grow text-sm font-black uppercase tracking-wider">Grand Total</div>
-                  <span className="font-black text-lg tabular-nums text-primary">268</span>
+                  <span className="font-black text-lg tabular-nums text-primary">210</span>
                 </div>
               </div>
             </div>

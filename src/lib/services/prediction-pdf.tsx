@@ -9,8 +9,8 @@ import {
 import { allGroupMatches } from '@/data/matches';
 import { teamsByCode } from '@/data/teams';
 import { generateBracket, getMatchWinner } from '@/lib/logic/bracket';
-import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
-import type { KnockoutResult, MatchResult } from '@/types';
+import { GROUP_POINTS, QUALIFIER_POINTS, RUNNER_UP_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
+import type { KnockoutResult, KnockoutRound, MatchResult } from '@/types';
 
 interface GeneratePredictionPdfParams {
   predictionId: string;
@@ -253,15 +253,25 @@ function PredictionPdfDocument({
   const thirdMatch = orderedKnockout.find((m) => m.id === '3RD-1');
   const championCode = finalMatch ? getMatchWinner(finalMatch) : undefined;
   const thirdWinnerCode = thirdMatch ? getMatchWinner(thirdMatch) : undefined;
+  // Runner-up = the finalist who is not the champion.
+  const runnerUpCode = finalMatch && championCode
+    ? (finalMatch.home === championCode ? finalMatch.away : finalMatch.home)
+    : undefined;
+
+  // Reaching the Round of 32 earns no points, so those matches are left off the
+  // scored pick sheet (their picks still surface as the R16 rows' home/away teams).
+  const roundPts = (round: KnockoutRound) =>
+    (QUALIFIER_POINTS as Partial<Record<KnockoutRound, number>>)[round] ?? 0;
+  const scoringKnockout = orderedKnockout.filter((m) => m.round !== 'R32');
 
   // Each knockout match row contributes both its home and away teams to that
   // round's qualifier set, so a fully-correct row earns 2 × round points.
-  const knockoutMaxPoints = orderedKnockout.reduce(
-    (sum, m) => sum + 2 * (QUALIFIER_POINTS[m.round] ?? 0),
+  const knockoutMaxPoints = scoringKnockout.reduce(
+    (sum, m) => sum + 2 * roundPts(m.round),
     0,
   );
   const groupMaxPoints = allGroupMatches.length * GROUP_POINTS;
-  const knockoutSectionMax = knockoutMaxPoints + WINNER_POINTS['3RD'] + WINNER_POINTS.FIN;
+  const knockoutSectionMax = knockoutMaxPoints + WINNER_POINTS['3RD'] + WINNER_POINTS.FIN + RUNNER_UP_POINTS;
   const grandTotalMax = groupMaxPoints + knockoutSectionMax;
 
   const metaPrefix = predictionNumber ? `Snapshot #${predictionNumber} · ` : '';
@@ -335,7 +345,7 @@ function PredictionPdfDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Knockout Picks</Text>
           <Text style={styles.sectionSubtitle}>
-            Scoring is per team, not per match. Tick each team in a row that actually qualifies for that round — each tick is worth that round&apos;s points (R32 +{QUALIFIER_POINTS.R32}, R16 +{QUALIFIER_POINTS.R16}, QF +{QUALIFIER_POINTS.QF}, SF +{QUALIFIER_POINTS.SF}, 3RD +{QUALIFIER_POINTS['3RD']}, FIN +{QUALIFIER_POINTS.FIN}). The 3rd-place match adds +{WINNER_POINTS['3RD']} and the Final adds +{WINNER_POINTS.FIN} when you pick the actual winner.
+            Scoring is per team, not per match. Tick each team in a row that actually qualifies for that round — each tick is worth that round&apos;s points (R16 +{QUALIFIER_POINTS.R16}, QF +{QUALIFIER_POINTS.QF}, SF +{QUALIFIER_POINTS.SF}, 3RD +{QUALIFIER_POINTS['3RD']}, FIN +{QUALIFIER_POINTS.FIN}). The 3rd-place match adds +{WINNER_POINTS['3RD']} for the winner, and the Final adds +{WINNER_POINTS.FIN} for the champion plus +{RUNNER_UP_POINTS} for the runner-up.
           </Text>
 
           <View style={styles.table}>
@@ -347,25 +357,25 @@ function PredictionPdfDocument({
               <Text style={[styles.cell, styles.headerCell, { width: '8%' }]}>Pick</Text>
               <Text style={[styles.cell, styles.headerCell, styles.lastCell, { width: '6%' }]}>Row max</Text>
             </View>
-            {orderedKnockout.map((match) => (
+            {scoringKnockout.map((match) => (
               <View key={match.id} style={styles.row} wrap={false}>
                 <Text style={[styles.cell, { width: '8%' }]}>{match.id}</Text>
                 <Text style={[styles.cell, { width: '12%' }]}>{roundLabels[match.round]}</Text>
                 <View style={[styles.cell, styles.teamCell, { width: '33%' }]}>
                   <Text style={styles.teamCellText}>{teamName(match.home)}</Text>
-                  <Text style={styles.teamCellPts}>+{QUALIFIER_POINTS[match.round] ?? 0}</Text>
+                  <Text style={styles.teamCellPts}>+{roundPts(match.round)}</Text>
                   <View style={styles.checkbox} />
                 </View>
                 <View style={[styles.cell, styles.teamCell, { width: '33%' }]}>
                   <Text style={styles.teamCellText}>{teamName(match.away)}</Text>
-                  <Text style={styles.teamCellPts}>+{QUALIFIER_POINTS[match.round] ?? 0}</Text>
+                  <Text style={styles.teamCellPts}>+{roundPts(match.round)}</Text>
                   <View style={styles.checkbox} />
                 </View>
                 <Text style={[styles.cell, { width: '8%' }]}>
                   {knockoutPickCode(match.home, match.away, match.result)}
                 </Text>
                 <Text style={[styles.cell, styles.lastCell, { width: '6%' }]}>
-                  +{2 * (QUALIFIER_POINTS[match.round] ?? 0)}
+                  +{2 * roundPts(match.round)}
                 </Text>
               </View>
             ))}
@@ -383,6 +393,15 @@ function PredictionPdfDocument({
               <Text style={[styles.cell, { width: '58%' }]}>{teamName(championCode)}</Text>
               <Text style={[styles.cell, { width: '8%' }]}>{championCode ?? '—'}</Text>
               <Text style={[styles.cell, { width: '6%' }]}>+{WINNER_POINTS.FIN}</Text>
+              <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>
+                <View style={styles.checkbox} />
+              </View>
+            </View>
+            <View style={styles.row} wrap={false}>
+              <Text style={[styles.cell, { width: '20%', fontFamily: 'Helvetica-Bold' }]}>Runner-up</Text>
+              <Text style={[styles.cell, { width: '58%' }]}>{teamName(runnerUpCode)}</Text>
+              <Text style={[styles.cell, { width: '8%' }]}>{runnerUpCode ?? '—'}</Text>
+              <Text style={[styles.cell, { width: '6%' }]}>+{RUNNER_UP_POINTS}</Text>
               <View style={[styles.cell, styles.lastCell, styles.checkboxCell, { width: '8%' }]}>
                 <View style={styles.checkbox} />
               </View>

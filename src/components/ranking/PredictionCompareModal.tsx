@@ -7,6 +7,7 @@ import { groups, teamsByCode } from '@/data/teams';
 import {
   GROUP_POINTS,
   QUALIFIER_POINTS,
+  RUNNER_UP_POINTS,
   WINNER_POINTS,
   usePredictionResults,
 } from '@/hooks/usePredictionResults';
@@ -21,7 +22,7 @@ interface Props {
 }
 
 type CompareTab = 'differences' | 'groups' | 'knockout' | 'summary';
-type RoundCompareKey = KnockoutRound | 'thirdWinner' | 'finalWinner';
+type RoundCompareKey = Exclude<KnockoutRound, 'R32'> | 'thirdWinner' | 'finalRunnerUp' | 'finalWinner';
 
 interface RoundQualifierComparison {
   key: RoundCompareKey;
@@ -80,27 +81,27 @@ function CompareTabRail({
   );
 }
 
-const ROUND_ORDER: RoundCompareKey[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'thirdWinner', 'FIN', 'finalWinner'];
+const ROUND_ORDER: RoundCompareKey[] = ['R16', 'QF', 'SF', '3RD', 'thirdWinner', 'FIN', 'finalRunnerUp', 'finalWinner'];
 
 const ROUND_LABELS: Record<RoundCompareKey, string> = {
-  R32: 'Round of 32',
   R16: 'Round of 16',
   QF: 'Quarter-finals',
   SF: 'Semi-finals',
   '3RD': 'Third Place Match',
   thirdWinner: 'Third Place Winner',
   FIN: 'Finalists',
+  finalRunnerUp: 'Runner-up',
   finalWinner: 'Champion',
 };
 
 const ROUND_POINTS: Record<RoundCompareKey, string> = {
-  R32: `+${QUALIFIER_POINTS.R32} per team`,
   R16: `+${QUALIFIER_POINTS.R16} per team`,
   QF: `+${QUALIFIER_POINTS.QF} per team`,
   SF: `+${QUALIFIER_POINTS.SF} per team`,
   '3RD': `+${QUALIFIER_POINTS['3RD']} per team`,
   thirdWinner: `+${WINNER_POINTS['3RD']}`,
   FIN: `+${QUALIFIER_POINTS.FIN} per team`,
+  finalRunnerUp: `+${RUNNER_UP_POINTS}`,
   finalWinner: `+${WINNER_POINTS.FIN}`,
 };
 
@@ -297,13 +298,13 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
 
   const roundComparisons = useMemo<RoundQualifierComparison[]>(() => {
     const comparisons: Record<RoundCompareKey, ReturnType<typeof compareSets>> = {
-      R32: compareSets(mineResults.predicted.R32, friendResults.predicted.R32),
       R16: compareSets(mineResults.predicted.R16, friendResults.predicted.R16),
       QF: compareSets(mineResults.predicted.QF, friendResults.predicted.QF),
       SF: compareSets(mineResults.predicted.SF, friendResults.predicted.SF),
       '3RD': compareSets(mineResults.predicted.thirdParticipants, friendResults.predicted.thirdParticipants),
       thirdWinner: compareSingles(mineResults.predicted.thirdWinner, friendResults.predicted.thirdWinner),
       FIN: compareSets(mineResults.predicted.finalParticipants, friendResults.predicted.finalParticipants),
+      finalRunnerUp: compareSingles(mineResults.predicted.finalRunnerUp, friendResults.predicted.finalRunnerUp),
       finalWinner: compareSingles(mineChampion, friendChampion),
     };
 

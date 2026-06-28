@@ -1,4 +1,4 @@
-import { GROUP_POINTS, QUALIFIER_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
+import { GROUP_POINTS, QUALIFIER_POINTS, RUNNER_UP_POINTS, WINNER_POINTS } from '@/lib/logic/scoring';
 
 type Variant = 'full' | 'knockout-only';
 
@@ -13,13 +13,13 @@ interface Row {
 }
 
 const KNOCKOUT_ROWS: Row[] = [
-  { label: 'Round of 32 (per team)', pts: QUALIFIER_POINTS.R32 },
   { label: 'Round of 16 (per team)', pts: QUALIFIER_POINTS.R16 },
   { label: 'Quarterfinals (per team)', pts: QUALIFIER_POINTS.QF },
   { label: 'Semifinals (per team)', pts: QUALIFIER_POINTS.SF },
   { label: 'Third Place (per finalist)', pts: QUALIFIER_POINTS['3RD'] },
   { label: 'Third Place winner bonus', pts: WINNER_POINTS['3RD'] },
   { label: 'Final (per finalist)', pts: QUALIFIER_POINTS.FIN },
+  { label: 'Runner-up bonus', pts: RUNNER_UP_POINTS },
   { label: 'Champion bonus', pts: WINNER_POINTS.FIN },
 ];
 
@@ -78,7 +78,7 @@ export default function ScoringExplainer({ variant, surface = 'card' }: Props) {
 
       <div className={`${surface === 'card' ? 'px-4 pt-1 pb-4' : 'pt-3'} border-t border-white/[0.04]`}>
         <p className="text-[13px] leading-relaxed text-neutral-400 font-body">
-          Maximum 268 points across the whole tournament.
+          Maximum 210 points across the whole tournament.
         </p>
       </div>
     </>

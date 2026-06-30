@@ -25,4 +25,12 @@ ALTER TABLE scores ADD COLUMN IF NOT EXISTS rank INTEGER;
 ALTER TABLE scores ADD COLUMN IF NOT EXISTS previous_rank INTEGER;
 
 -- prediction_id is the upsert conflict target, so it must be unique.
-ALTER TABLE scores ADD CONSTRAINT scores_prediction_id_key UNIQUE (prediction_id);
+-- Guarded because Postgres has no ADD CONSTRAINT IF NOT EXISTS.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'scores_prediction_id_key'
+  ) THEN
+    ALTER TABLE scores ADD CONSTRAINT scores_prediction_id_key UNIQUE (prediction_id);
+  END IF;
+END $$;

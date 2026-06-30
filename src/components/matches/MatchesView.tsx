@@ -13,7 +13,7 @@ type StageKey = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
 type TimeFilter = 'today' | 'past' | 'upcoming';
 
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
-  { key: 'today', label: 'Today' },
+  { key: 'today', label: 'Today & Tomorrow' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'past', label: 'Finished' },
 ];
@@ -157,10 +157,10 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
         undated.push(match);
         continue;
       }
-      // today tab → today only; past tab → yesterday + earlier; upcoming → tomorrow + later
-      if (timeFilter === 'today' && bucket === 'today') dated.push(match);
+      // today tab → today + tomorrow; past tab → yesterday + earlier; upcoming → day after tomorrow + later
+      if (timeFilter === 'today' && (bucket === 'today' || bucket === 'tomorrow')) dated.push(match);
       else if (timeFilter === 'past' && (bucket === 'yesterday' || bucket === 'past')) dated.push(match);
-      else if (timeFilter === 'upcoming' && (bucket === 'tomorrow' || bucket === 'future')) dated.push(match);
+      else if (timeFilter === 'upcoming' && bucket === 'future') dated.push(match);
     }
 
     const byKey = new Map<string, LiveMatch[]>();
@@ -250,7 +250,7 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
         <div className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-10 text-center">
           <p className="text-sm font-semibold text-neutral-300">
             {timeFilter === 'today'
-              ? 'No matches today'
+              ? 'No matches today or tomorrow'
               : timeFilter === 'past'
                 ? 'No matches played yet'
                 : 'No upcoming matches'}

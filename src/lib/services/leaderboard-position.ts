@@ -1,30 +1,3 @@
-import { calculateScore } from '@/lib/logic/scoring';
-import type { ActualResult } from '@/lib/services/actual-results';
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-export interface LeaderboardPredictionRow {
-  id: string;
-  prediction_number?: number | null;
-  user_id?: string | null;
-  name?: string | null;
-  display_name: string;
-  group_matches: Record<string, string>;
-  knockout_matches: Record<string, string>;
-  champion_code: string | null;
-  third_place_tiebreaker: string[] | null;
-  completed_at?: string | null;
-}
-
-export interface LeaderboardPositionEntry {
-  prediction_id: string;
-  prediction_number?: number | null;
-  position_change?: number;
-}
-
-function getEntryKey(predictionId: string, predictionNumber?: number | null): string {
-  return predictionId || (predictionNumber != null ? `num-${predictionNumber}` : '');
-}
-
 function compareLeaderboardEntries(
   a: { total_points: number; display_name: string; name?: string | null },
   b: { total_points: number; display_name: string; name?: string | null },
@@ -63,124 +36,72 @@ function rankByPoints<T extends { total_points: number; display_name: string; na
   return ranksById;
 }
 
-export async function getLastFinishedMatch(
-  supabase: SupabaseClient,
-  actualResults: ActualResult[],
-): Promise<{ matchId: string; utcDate: string } | null> {
-  if (actualResults.length === 0) return null;
-
-  const matchIds = actualResults.map(row => row.match_id);
-  const { data: fixtures } = await supabase
-    .from('fixtures')
-    .select('local_match_id, utc_date, status')
-    .in('local_match_id', matchIds)
-    .eq('status', 'FINISHED')
-    .order('utc_date', { ascending: false })
-    .limit(1);
-
-  const latest = fixtures?.[0];
-  if (latest?.local_match_id && latest.utc_date) {
-    return { matchId: latest.local_match_id, utcDate: latest.utc_date };
-  }
-
-  // Fallback when fixture metadata is unavailable.
-  return { matchId: actualResults[actualResults.length - 1].match_id, utcDate: '' };
+export interface ScoreRowForRanking {
+  prediction_id: string;
+  total_points: number;
+  display_name: string;
+  name?: string | null;
 }
 
-export function computeLeaderboardPositionChanges(
-  predictions: LeaderboardPredictionRow[],
-  actualResults: ActualResult[],
-  lastMatch: { matchId: string; utcDate: string } | null,
-): LeaderboardPositionEntry[] {
-  if (!lastMatch || predictions.length === 0) {
-    return predictions.map(prediction => ({
-      prediction_id: prediction.id,
-      prediction_number: prediction.prediction_number,
-      position_change: undefined,
-    }));
-  }
+export interface ExistingRankRow {
+  prediction_id: string;
+  total_points: number | null;
+  rank: number | null;
+  previous_rank: number | null;
+  previous_rank_date: string | null;
+}
 
-  const resultsBeforeLastMatch = actualResults.filter(row => row.match_id !== lastMatch.matchId);
-  const hasPreviousSnapshot = resultsBeforeLastMatch.length < actualResults.length;
+/**
+ * Compute the dense rank for each freshly-scored prediction and decide what its
+ * `previous_rank` should be, by comparing against the previously cached scores.
+ *
+ * `previous_rank` is a once-per-day snapshot: the rank a prediction held at the
+ * start of `today`. The trend arrow therefore reads "positions moved today",
+ * and stays stable across the many recalcs a single day produces — unrelated
+ * scoring no longer wipes a user's arrow, and a multi-step climb shows the full
+ * move rather than just the last step. `today` is supplied by the caller (a
+ * `YYYY-MM-DD` string) to keep this function pure and deterministic.
+ */
+export function applyRankSnapshot<T extends ScoreRowForRanking>(
+  existingRows: readonly ExistingRankRow[],
+  newScoreRows: readonly T[],
+  today: string,
+): (T & { rank: number; previous_rank: number | null; previous_rank_date: string })[] {
+  const existingById = new Map<string, ExistingRankRow>();
+  for (const row of existingRows) existingById.set(row.prediction_id, row);
 
-  const currentEntries = predictions.map(prediction => ({
-    prediction_id: prediction.id,
-    prediction_number: prediction.prediction_number,
-    display_name: prediction.display_name,
-    name: prediction.name,
-    total_points: calculateScore(
-      {
-        user_id: prediction.user_id ?? prediction.id,
-        group_matches: prediction.group_matches,
-        knockout_matches: prediction.knockout_matches,
-        champion_code: prediction.champion_code,
-        third_place_tiebreaker: prediction.third_place_tiebreaker,
-      },
-      actualResults,
-    ),
-    completed_at: prediction.completed_at,
-  }));
+  const newRanks = rankByPoints(
+    newScoreRows.map(row => ({
+      prediction_id: row.prediction_id,
+      total_points: row.total_points,
+      display_name: row.display_name,
+      name: row.name,
+    })),
+  );
 
-  const previousEntries = predictions.map(prediction => ({
-    prediction_id: prediction.id,
-    prediction_number: prediction.prediction_number,
-    display_name: prediction.display_name,
-    name: prediction.name,
-    total_points: calculateScore(
-      {
-        user_id: prediction.user_id ?? prediction.id,
-        group_matches: prediction.group_matches,
-        knockout_matches: prediction.knockout_matches,
-        champion_code: prediction.champion_code,
-        third_place_tiebreaker: prediction.third_place_tiebreaker,
-      },
-      resultsBeforeLastMatch,
-    ),
-    completed_at: prediction.completed_at,
-  }));
+  return newScoreRows.map(row => {
+    const rank = newRanks.get(row.prediction_id) ?? 0;
+    const existing = existingById.get(row.prediction_id);
 
-  const currentRanks = rankByPoints(currentEntries);
-  const previousRanks = rankByPoints(previousEntries);
-
-  return predictions.map(prediction => {
-    const joinedAfterLastMatch = !!(
-      lastMatch.utcDate
-      && prediction.completed_at
-      && new Date(prediction.completed_at).getTime() > new Date(lastMatch.utcDate).getTime()
-    );
-
-    if (!hasPreviousSnapshot || joinedAfterLastMatch) {
-      return {
-        prediction_id: prediction.id,
-        prediction_number: prediction.prediction_number,
-        position_change: undefined,
-      };
+    // Baseline already captured for today → preserve it so the arrow holds
+    // steady across the day's later recalcs.
+    if (existing && existing.previous_rank_date === today) {
+      return { ...row, rank, previous_rank: existing.previous_rank, previous_rank_date: today };
     }
 
-    const previousRank = previousRanks.get(prediction.id);
-    const currentRank = currentRanks.get(prediction.id);
-    if (previousRank == null || currentRank == null) {
-      return {
-        prediction_id: prediction.id,
-        prediction_number: prediction.prediction_number,
-        position_change: undefined,
-      };
-    }
-
-    return {
-      prediction_id: prediction.id,
-      prediction_number: prediction.prediction_number,
-      position_change: previousRank - currentRank,
-    };
+    // First recalc of a new day (or a prediction that existed before today):
+    // re-baseline to yesterday's final rank. A brand-new prediction with no
+    // prior rank baselines to its own current rank, so it renders "—".
+    const previous_rank = existing?.rank ?? rank;
+    return { ...row, rank, previous_rank, previous_rank_date: today };
   });
 }
 
-export function positionChangesByKey(
-  changes: LeaderboardPositionEntry[],
-): Map<string, number | undefined> {
-  const map = new Map<string, number | undefined>();
-  for (const change of changes) {
-    map.set(getEntryKey(change.prediction_id, change.prediction_number), change.position_change);
-  }
-  return map;
+/** Positive = moved up, negative = moved down, undefined = no baseline (renders "—"). */
+export function positionChangeFromRanks(
+  rank: number | null | undefined,
+  previousRank: number | null | undefined,
+): number | undefined {
+  if (rank == null || previousRank == null) return undefined;
+  return previousRank - rank;
 }

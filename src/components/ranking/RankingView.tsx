@@ -175,6 +175,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
   const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
   const [comparisonBasePrediction, setComparisonBasePrediction] = useState<LeaderboardPrediction | null>(null);
+  const [comparisonBaseRank, setComparisonBaseRank] = useState<number | undefined>(undefined);
   const [selectedComparePrediction, setSelectedComparePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedCompareRank, setSelectedCompareRank] = useState<number | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
@@ -312,10 +313,12 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
     if (!prediction.details_available) return;
     if (!comparisonBasePrediction) {
       setComparisonBasePrediction(prediction);
+      setComparisonBaseRank(rank);
       return;
     }
     if (isSamePrediction(comparisonBasePrediction, prediction)) {
       setComparisonBasePrediction(null);
+      setComparisonBaseRank(undefined);
       return;
     }
     setSelectedComparePrediction(prediction);
@@ -325,6 +328,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
   const startCompareFromProfile = () => {
     if (!selectedPrediction) return;
     setComparisonBasePrediction(selectedPrediction);
+    setComparisonBaseRank(selectedRank);
     setSelectedPrediction(null);
     setSelectedRank(undefined);
   };
@@ -345,7 +349,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
           </p>
           <button
             type="button"
-            onClick={() => setComparisonBasePrediction(null)}
+            onClick={() => { setComparisonBasePrediction(null); setComparisonBaseRank(undefined); }}
             className="shrink-0 rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-neutral-400 transition-colors hover:border-white/20 hover:text-white"
           >
             Cancel
@@ -581,6 +585,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
         <PredictionCompareModal
           mine={comparisonBasePrediction}
           friend={selectedComparePrediction}
+          mineRank={comparisonBaseRank}
           friendRank={selectedCompareRank}
           onClose={() => { setSelectedComparePrediction(null); setSelectedCompareRank(undefined); }}
           liveMatches={liveMatches}

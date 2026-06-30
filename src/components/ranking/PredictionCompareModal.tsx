@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { LeaderboardPrediction, LiveMatch, MatchResult, KnockoutRound } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { groups, teamsByCode } from '@/data/teams';
+import { getGroupQualifiers } from '@/lib/logic/standings';
 import {
   GROUP_POINTS,
   QUALIFIER_POINTS,
@@ -15,13 +16,14 @@ import {
 interface Props {
   mine: LeaderboardPrediction;
   friend: LeaderboardPrediction;
+  mineRank?: number;
   friendRank?: number;
   onClose: () => void;
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
 }
 
-type CompareTab = 'differences' | 'groups' | 'knockout' | 'summary';
+type CompareTab = 'overview' | 'groups' | 'knockout' | 'inplay';
 type RoundCompareKey = Exclude<KnockoutRound, 'R32'> | 'thirdWinner' | 'finalRunnerUp' | 'finalWinner';
 
 interface RoundQualifierComparison {
@@ -34,10 +36,10 @@ interface RoundQualifierComparison {
 }
 
 const TABS: { id: CompareTab; label: string }[] = [
-  { id: 'differences', label: 'Differences' },
+  { id: 'overview', label: 'Overview' },
   { id: 'groups', label: 'Groups' },
   { id: 'knockout', label: 'Knockout' },
-  { id: 'summary', label: 'Summary' },
+  { id: 'inplay', label: 'In Play' },
 ];
 
 function CompareTabRail({
@@ -105,6 +107,18 @@ const ROUND_POINTS: Record<RoundCompareKey, string> = {
   finalWinner: `+${WINNER_POINTS.FIN}`,
 };
 
+// Which live-signal flag settles a given round comparison.
+const ROUND_SIGNAL_KEY: Record<RoundCompareKey, KnockoutRound | 'thirdWinner' | 'finalWinner'> = {
+  R16: 'R16',
+  QF: 'QF',
+  SF: 'SF',
+  '3RD': '3RD',
+  thirdWinner: 'thirdWinner',
+  FIN: 'FIN',
+  finalRunnerUp: 'FIN',
+  finalWinner: 'finalWinner',
+};
+
 function predictionName(prediction: LeaderboardPrediction, fallback: string): string {
   return prediction.display_name && prediction.display_name !== 'Unknown'
     ? prediction.display_name
@@ -158,10 +172,12 @@ function TeamToken({
   code,
   tone = 'neutral',
   flagsByCode,
+  points = 0,
 }: {
   code: string;
   tone?: 'neutral' | 'mine' | 'friend' | 'both';
   flagsByCode?: Record<string, string>;
+  points?: number;
 }) {
   const team = teamsByCode[code];
   const flagUrl = flagsByCode?.[code];
@@ -175,13 +191,16 @@ function TeamToken({
           : 'border-white/10 bg-neutral-900 text-neutral-300';
 
   return (
-    <span className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${toneClass}`}>
+    <span className={`inline-flex min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold ${toneClass}`}>
       {flagUrl ? (
-        <img src={flagUrl} alt="" className="h-3 w-4 rounded-[2px] object-cover" />
+        <img src={flagUrl} alt="" className="h-4 w-6 rounded-[2px] object-cover" />
       ) : team ? (
-        <span className="text-xs leading-none">{team.flag}</span>
+        <span className="text-base leading-none">{team.flag}</span>
       ) : null}
       <span className="truncate font-body">{team?.name ?? code}</span>
+      {points > 0 && (
+        <span className="shrink-0 text-[11px] font-black leading-tight text-wc-green">+{points}</span>
+      )}
     </span>
   );
 }
@@ -213,14 +232,19 @@ function RoundDiffBlock({
   mineName,
   friendName,
   flagsByCode,
+  roundPoints = 0,
+  advanced,
 }: {
   comparison: RoundQualifierComparison;
   mineName: string;
   friendName: string;
   flagsByCode?: Record<string, string>;
+  roundPoints?: number;
+  advanced?: Set<string>;
 }) {
   const hasDiff = comparison.mineOnly.length > 0 || comparison.friendOnly.length > 0;
   if (!hasDiff && comparison.both.length === 0) return null;
+  const ptsFor = (code: string) => (advanced?.has(code) ? roundPoints : 0);
 
   return (
     <div className="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
@@ -237,9 +261,9 @@ function RoundDiffBlock({
       </div>
       {comparison.both.length > 0 && (
         <div className="mb-2">
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Both</div>
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Both have</div>
           <div className="flex flex-wrap gap-1.5">
-            {comparison.both.map(code => <TeamToken key={code} code={code} tone="both" flagsByCode={flagsByCode} />)}
+            {comparison.both.map(code => <TeamToken key={code} code={code} tone="both" flagsByCode={flagsByCode} points={ptsFor(code)} />)}
           </div>
         </div>
       )}
@@ -248,7 +272,7 @@ function RoundDiffBlock({
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-primary">{mineName} only</div>
           <div className="flex flex-wrap gap-1.5">
             {comparison.mineOnly.length > 0
-              ? comparison.mineOnly.map(code => <TeamToken key={code} code={code} tone="mine" flagsByCode={flagsByCode} />)
+              ? comparison.mineOnly.map(code => <TeamToken key={code} code={code} tone="mine" flagsByCode={flagsByCode} points={ptsFor(code)} />)
               : <span className="text-xs italic text-neutral-600">None</span>}
           </div>
         </div>
@@ -256,7 +280,7 @@ function RoundDiffBlock({
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-blue-300">{friendName} only</div>
           <div className="flex flex-wrap gap-1.5">
             {comparison.friendOnly.length > 0
-              ? comparison.friendOnly.map(code => <TeamToken key={code} code={code} tone="friend" flagsByCode={flagsByCode} />)
+              ? comparison.friendOnly.map(code => <TeamToken key={code} code={code} tone="friend" flagsByCode={flagsByCode} points={ptsFor(code)} />)
               : <span className="text-xs italic text-neutral-600">None</span>}
           </div>
         </div>
@@ -265,8 +289,13 @@ function RoundDiffBlock({
   );
 }
 
-export default function PredictionCompareModal({ mine, friend, friendRank, onClose, liveMatches, teamFlagsByCode }: Props) {
-  const [activeTab, setActiveTab] = useState<CompareTab>('differences');
+function teamName(code: string | null): string {
+  if (!code) return '—';
+  return teamsByCode[code]?.name ?? code;
+}
+
+export default function PredictionCompareModal({ mine, friend, mineRank, friendRank, onClose, liveMatches, teamFlagsByCode }: Props) {
+  const [activeTab, setActiveTab] = useState<CompareTab>('knockout');
   const mineResults = usePredictionResults(mine, liveMatches);
   const friendResults = usePredictionResults(friend, liveMatches);
   const mineName = predictionName(mine, 'You');
@@ -290,6 +319,7 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
         friendPick,
         same: Boolean(minePick && friendPick && minePick === friendPick),
         missing: !minePick || !friendPick,
+        finished: live?.status === 'FINISHED',
         minePoints: mineOutcome?.points ?? 0,
         friendPoints: friendOutcome?.points ?? 0,
       };
@@ -316,39 +346,98 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
     }));
   }, [friendChampion, friendResults.predicted, mineChampion, mineResults.predicted]);
 
+  // Per round: which teams have actually advanced, and the points each such pick earns.
+  const actualByRound = useMemo(() => {
+    const a = mineResults.actual;
+    const single = (code: string | null) => new Set<string>(code ? [code] : []);
+    return {
+      R16: { points: QUALIFIER_POINTS.R16, advanced: a.R16 },
+      QF: { points: QUALIFIER_POINTS.QF, advanced: a.QF },
+      SF: { points: QUALIFIER_POINTS.SF, advanced: a.SF },
+      '3RD': { points: QUALIFIER_POINTS['3RD'], advanced: a.thirdParticipants },
+      thirdWinner: { points: WINNER_POINTS['3RD'], advanced: single(a.thirdWinner) },
+      FIN: { points: QUALIFIER_POINTS.FIN, advanced: a.finalParticipants },
+      finalRunnerUp: { points: RUNNER_UP_POINTS, advanced: single(a.finalRunnerUp) },
+      finalWinner: { points: WINNER_POINTS.FIN, advanced: single(a.finalWinner) },
+    } as Record<RoundCompareKey, { points: number; advanced: Set<string> }>;
+  }, [mineResults.actual]);
+
+  // Who each player sends out of every group (Winner / Runner-up), prediction vs prediction.
+  const groupAdvancement = useMemo(() => {
+    const mineQ = getGroupQualifiers(mine.group_matches ?? {});
+    const friendQ = getGroupQualifiers(friend.group_matches ?? {});
+    return groups.map(g => {
+      const mineWinner = mineQ.winners[g] ?? null;
+      const mineRunner = mineQ.runnersUp[g] ?? null;
+      const friendWinner = friendQ.winners[g] ?? null;
+      const friendRunner = friendQ.runnersUp[g] ?? null;
+      const incomplete = !mineWinner || !mineRunner || !friendWinner || !friendRunner;
+      const winnerSame = !!mineWinner && mineWinner === friendWinner;
+      const runnerSame = !!mineRunner && mineRunner === friendRunner;
+      const mineSet = new Set([mineWinner, mineRunner].filter(Boolean) as string[]);
+      const friendSet = new Set([friendWinner, friendRunner].filter(Boolean) as string[]);
+      const sameTeams =
+        !incomplete && mineSet.size === 2 && friendSet.size === 2 && [...mineSet].every(t => friendSet.has(t));
+      return { g, mineWinner, mineRunner, friendWinner, friendRunner, incomplete, winnerSame, runnerSame, sameTeams };
+    });
+  }, [mine.group_matches, friend.group_matches]);
+
   const summary = useMemo(() => {
     const groupSame = groupComparisons.filter(row => row.same).length;
     const groupMissing = groupComparisons.filter(row => row.missing).length;
     const groupDifferent = groupComparisons.length - groupSame - groupMissing;
 
     let knockoutSame = 0;
-    let knockoutDifferent = 0;
+    let knockoutMineOnly = 0;
+    let knockoutFriendOnly = 0;
     for (const round of roundComparisons) {
       knockoutSame += round.both.length;
-      knockoutDifferent += round.mineOnly.length + round.friendOnly.length;
+      knockoutMineOnly += round.mineOnly.length;
+      knockoutFriendOnly += round.friendOnly.length;
     }
+    const knockoutDifferent = knockoutMineOnly + knockoutFriendOnly;
 
     const same = groupSame + knockoutSame;
     const different = groupDifferent + knockoutDifferent;
     const compared = same + different;
     const overlap = compared > 0 ? Math.round((same / compared) * 100) : 0;
 
+    const groupAgree = groupAdvancement.filter(row => !row.incomplete && row.winnerSame && row.runnerSame).length;
+
     return {
       groupSame,
       groupDifferent,
       groupMissing,
       knockoutSame,
+      knockoutMineOnly,
+      knockoutFriendOnly,
       knockoutDifferent,
       same,
       different,
       compared,
       overlap,
+      groupAgree,
       pointDelta: mineResults.summary.totalPoints - friendResults.summary.totalPoints,
     };
-  }, [friendResults.summary.totalPoints, groupComparisons, mineResults.summary.totalPoints, roundComparisons]);
+  }, [friendResults.summary.totalPoints, groupAdvancement, groupComparisons, mineResults.summary.totalPoints, roundComparisons]);
+
+  const minePoints = mineResults.summary.totalPoints;
+  const friendPoints = friendResults.summary.totalPoints;
+  const totalPoints = minePoints + friendPoints;
+  const mineShare = totalPoints > 0 ? (minePoints / totalPoints) * 100 : 50;
+
+  const aheadOrBehind = summary.pointDelta === 0 ? 'level' : summary.pointDelta > 0 ? 'ahead' : 'behind';
+
+  const roundSettled = (key: RoundCompareKey) => Boolean(mineResults.hasSignal[ROUND_SIGNAL_KEY[key]]);
 
   const groupDifferences = groupComparisons.filter(row => !row.same);
+  const groupDiffUndecided = groupDifferences.filter(row => !row.finished);
+  const groupDiffSettled = groupDifferences.filter(row => row.finished);
   const knockoutDifferences = roundComparisons.filter(row => row.mineOnly.length > 0 || row.friendOnly.length > 0);
+  const knockoutDiffUndecided = knockoutDifferences.filter(row => !roundSettled(row.key));
+  const knockoutDiffSettled = knockoutDifferences.filter(row => roundSettled(row.key));
+  const hasUndecided = groupDiffUndecided.length > 0 || knockoutDiffUndecided.length > 0;
+  const hasSettled = groupDiffSettled.length > 0 || knockoutDiffSettled.length > 0;
 
   const renderGroupRow = (row: (typeof groupComparisons)[number], compact = false) => {
     const { match, live, minePick, friendPick, same, missing, minePoints, friendPoints } = row;
@@ -394,145 +483,275 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
     );
   };
 
+  const renderAdvancementRow = (slot: string, mineCode: string | null, friendCode: string | null) => {
+    const same = !!mineCode && mineCode === friendCode;
+    const rowTone = same ? 'bg-wc-green/[0.06]' : '';
+    return (
+      <div className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg px-2 py-1.5 ${rowTone}`}>
+        <div className="flex min-w-0 items-center justify-start">
+          {mineCode
+            ? <TeamToken code={mineCode} tone={same ? 'both' : 'mine'} flagsByCode={teamFlagsByCode} />
+            : <span className="text-xs italic text-neutral-600">—</span>}
+        </div>
+        <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-neutral-400">{slot}</span>
+        <div className="flex min-w-0 items-center justify-end">
+          {friendCode
+            ? <TeamToken code={friendCode} tone={same ? 'both' : 'friend'} flagsByCode={teamFlagsByCode} />
+            : <span className="text-xs italic text-neutral-600">—</span>}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm animate-fade-in sm:p-4">
       <div
         className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-background-dark shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ===== HERO SCOREBOARD ===== */}
         <div className="border-b border-white/10 px-4 py-4 sm:px-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-primary/80">
-                <span className="material-symbols-outlined text-[16px]">social_leaderboard</span>
-                Head-to-head
-              </div>
-              <h2 className="truncate text-xl font-black text-white">{mineName} vs {friendName}</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-primary/80">
+              <span className="material-symbols-outlined text-[16px]">swords</span>
+              Head-to-head
             </div>
             <button
               onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/15 hover:text-white"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/15 hover:text-white"
               aria-label="Close comparison"
             >
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-stretch gap-1.5 sm:gap-2">
-            <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/10 px-2 py-2.5 sm:px-3 sm:py-3">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-primary/70 sm:text-[10px]">First prediction</div>
-              <div className="mt-1 flex items-end justify-between gap-1.5 sm:gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-black text-white sm:text-sm">{mine.name || mineName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-neutral-400">
-                    {mineChampion && <TeamToken code={mineChampion} tone="mine" flagsByCode={teamFlagsByCode} />}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-xl font-black text-primary tabular-nums sm:text-2xl">{mineResults.summary.totalPoints}</div>
-                  <div className="text-[9px] font-bold uppercase text-primary/60 sm:text-[10px]">Points</div>
-                </div>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+            {/* YOU */}
+            <div className="flex flex-col items-center text-center">
+              {mineRank ? (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-black">#{mineRank}</span>
+              ) : (
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary/70">First pick</span>
+              )}
+              <div className="mt-1.5 max-w-full truncate text-sm font-black text-white sm:text-base">{mineName}</div>
+              {mineChampion && (
+                <div className="mt-1"><TeamToken code={mineChampion} tone="mine" flagsByCode={teamFlagsByCode} /></div>
+              )}
+              <div className="mt-1.5 text-2xl font-black tabular-nums text-primary sm:text-3xl">{minePoints}</div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-primary/60">points</div>
+            </div>
+
+            {/* VS + gap */}
+            <div className="flex flex-col items-center px-1">
+              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-600">vs</div>
+              <div className={`mt-1 flex flex-col items-center rounded-xl border px-2.5 py-1.5 ${
+                aheadOrBehind === 'behind'
+                  ? 'border-wc-red/30 bg-wc-red/10'
+                  : aheadOrBehind === 'ahead'
+                    ? 'border-wc-green/30 bg-wc-green/10'
+                    : 'border-white/10 bg-neutral-900/70'
+              }`}>
+                <span className={`material-symbols-outlined text-[16px] ${
+                  aheadOrBehind === 'behind' ? 'text-wc-red' : aheadOrBehind === 'ahead' ? 'text-wc-green' : 'text-neutral-400'
+                }`}>
+                  {aheadOrBehind === 'behind' ? 'trending_down' : aheadOrBehind === 'ahead' ? 'trending_up' : 'drag_handle'}
+                </span>
+                <span className={`text-sm font-black tabular-nums ${
+                  aheadOrBehind === 'behind' ? 'text-wc-red' : aheadOrBehind === 'ahead' ? 'text-wc-green' : 'text-neutral-300'
+                }`}>
+                  {summary.pointDelta > 0 ? '+' : ''}{summary.pointDelta}
+                </span>
+                <span className={`text-[8px] font-bold uppercase tracking-wider ${
+                  aheadOrBehind === 'behind' ? 'text-wc-red/70' : aheadOrBehind === 'ahead' ? 'text-wc-green/70' : 'text-neutral-500'
+                }`}>{aheadOrBehind}</span>
               </div>
             </div>
 
-            <div className="flex w-[4.5rem] shrink-0 items-center justify-center rounded-xl border border-white/10 bg-neutral-900/70 px-1.5 py-2 text-center sm:w-auto sm:px-4 sm:py-3">
-              <div>
-                <div className="text-xl font-black text-white tabular-nums sm:text-3xl">{summary.overlap}%</div>
-                <div className="text-[8px] font-bold uppercase tracking-wider text-neutral-500 sm:text-[10px]">Overlap</div>
-                <div className={`mt-0.5 text-[10px] font-black tabular-nums sm:mt-1 sm:text-xs ${summary.pointDelta >= 0 ? 'text-wc-green' : 'text-wc-red'}`}>
-                  {summary.pointDelta >= 0 ? '+' : ''}{summary.pointDelta} pts
-                </div>
-              </div>
+            {/* FRIEND */}
+            <div className="flex flex-col items-center text-center">
+              {friendRank ? (
+                <span className="rounded-full bg-wc-blue px-2 py-0.5 text-[10px] font-black text-white">#{friendRank}</span>
+              ) : (
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-300/70">Second pick</span>
+              )}
+              <div className="mt-1.5 max-w-full truncate text-sm font-black text-white sm:text-base">{friendName}</div>
+              {friendChampion && (
+                <div className="mt-1"><TeamToken code={friendChampion} tone="friend" flagsByCode={teamFlagsByCode} /></div>
+              )}
+              <div className="mt-1.5 text-2xl font-black tabular-nums text-blue-300 sm:text-3xl">{friendPoints}</div>
+              <div className="text-[9px] font-bold uppercase tracking-wider text-blue-300/60">points</div>
             </div>
+          </div>
 
-            <div className="min-w-0 rounded-xl border border-wc-blue/20 bg-wc-blue/10 px-2 py-2.5 sm:px-3 sm:py-3">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-blue-300/80 sm:text-[10px]">
-                {friendRank ? `Rank #${friendRank}` : 'Second prediction'}
-              </div>
-              <div className="mt-1 flex items-end justify-between gap-1.5 sm:gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-black text-white sm:text-sm">{friend.name || friendName}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-neutral-400">
-                    {friendChampion && <TeamToken code={friendChampion} tone="friend" flagsByCode={teamFlagsByCode} />}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-xl font-black text-blue-300 tabular-nums sm:text-2xl">{friendResults.summary.totalPoints}</div>
-                  <div className="text-[9px] font-bold uppercase text-blue-300/60 sm:text-[10px]">Points</div>
-                </div>
-              </div>
+          {/* tug-of-war + overlap */}
+          <div className="mt-4">
+            <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div className="h-full bg-primary transition-all" style={{ width: `${mineShare}%` }} />
+              <div className="h-full bg-wc-blue transition-all" style={{ width: `${100 - mineShare}%` }} />
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-[10px] font-bold">
+              <span className="text-primary/70">{summary.overlap}% picks agree</span>
+              <span className="text-neutral-500">·</span>
+              <span className="text-blue-300/70">{summary.different} differ</span>
             </div>
           </div>
 
           <CompareTabRail activeTab={activeTab} onSelect={setActiveTab} />
         </div>
 
+        {/* ===== BODY ===== */}
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-          {activeTab === 'differences' && (
-            <div className="space-y-4">
-              {groupDifferences.length === 0 && knockoutDifferences.length === 0 ? (
-                <div className="rounded-2xl border border-wc-green/20 bg-wc-green/10 px-4 py-8 text-center">
-                  <span className="material-symbols-outlined text-4xl text-wc-green">verified</span>
-                  <p className="mt-2 text-sm font-black text-white">These predictions are nearly identical.</p>
-                  <p className="mt-1 text-xs text-neutral-400 font-body">No group or knockout differences are available yet.</p>
+
+          {activeTab === 'overview' && (
+            <div className="space-y-5">
+              <section>
+                <h3 className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/60">Where the gap comes from</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Group stage', mine: mineResults.summary.groupPoints, friend: friendResults.summary.groupPoints },
+                    { label: 'Knockout', mine: mineResults.summary.knockoutPoints, friend: friendResults.summary.knockoutPoints },
+                  ].map(item => {
+                    const delta = item.mine - item.friend;
+                    return (
+                      <div key={item.label} className="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">{item.label}</span>
+                          {delta !== 0 && (
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-black ${delta > 0 ? 'bg-primary/15 text-primary' : 'bg-wc-blue/15 text-blue-300'}`}>
+                              {delta > 0 ? mineName : friendName} +{Math.abs(delta)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-2 flex items-end justify-between text-sm font-black tabular-nums">
+                          <span className="text-primary">{item.mine}</span>
+                          <span className="text-xs text-neutral-600">vs</span>
+                          <span className="text-blue-300">{item.friend}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                <>
-                  {groupDifferences.length > 0 && (
-                    <section>
-                      <div className="mb-2 flex items-center justify-between">
-                        <h3 className="text-[11px] font-black uppercase tracking-widest text-white/60">Group pick differences</h3>
-                        <span className="text-[10px] font-bold uppercase text-primary/70">+{GROUP_POINTS} per match</span>
-                      </div>
-                      <div className="space-y-2">{groupDifferences.map(row => renderGroupRow(row))}</div>
-                    </section>
-                  )}
-                  {knockoutDifferences.length > 0 && (
-                    <section>
-                      <div className="mb-2 flex items-center justify-between">
-                        <h3 className="text-[11px] font-black uppercase tracking-widest text-white/60">Knockout differences</h3>
-                        <span className="text-[10px] font-bold uppercase text-primary/70">Team-round scoring</span>
-                      </div>
-                      <div className="space-y-2">
-                        {knockoutDifferences.map(comparison => (
-                          <RoundDiffBlock
-                            key={comparison.key}
-                            comparison={comparison}
-                            mineName={mineName}
-                            friendName={friendName}
-                            flagsByCode={teamFlagsByCode}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-                </>
-              )}
+              </section>
+
+              <section className="rounded-xl border border-wc-green/20 bg-wc-green/5 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-wc-green">join_inner</span>
+                  <span className="text-[11px] font-black uppercase tracking-widest text-wc-green">Common ground · {summary.same} shared picks</span>
+                </div>
+                <p className="mt-1.5 text-[11px] text-neutral-400 font-body">
+                  You agree on {summary.overlap}% of compared picks — {summary.same} the same, {summary.different} different.
+                </p>
+              </section>
             </div>
           )}
 
           {activeTab === 'groups' && (
-            <div className="space-y-4">
-              {groups.map(group => {
-                const rows = groupComparisons.filter(row => row.match.group === group);
-                const diffCount = rows.filter(row => !row.same).length;
-                return (
-                  <section key={group}>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-white/60">Group {group}</h3>
-                      <span className={`text-[10px] font-bold uppercase ${diffCount > 0 ? 'text-primary/70' : 'text-wc-green'}`}>
-                        {diffCount > 0 ? `${diffCount} different` : 'all same'}
-                      </span>
-                    </div>
-                    <div className="space-y-2">{rows.map(row => renderGroupRow(row, true))}</div>
-                  </section>
-                );
-              })}
+            <div className="space-y-5">
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/80">
+                    <span className="material-symbols-outlined text-[16px] text-primary">military_tech</span>
+                    Group advancement
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase text-neutral-500">{summary.groupAgree} / {groups.length} groups agree</span>
+                </div>
+                <p className="mb-3 text-[11px] leading-snug text-neutral-500">
+                  Who each of you sends out of every group — Winner &amp; Runner-up, slot by slot.
+                  <span className="font-bold text-wc-green"> Green = same pick</span>, split = you disagree.
+                </p>
+                <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 text-[9px] font-black uppercase tracking-widest">
+                  <span className="text-primary">{mineName}</span>
+                  <span className="text-neutral-600">slot</span>
+                  <span className="text-right text-blue-300">{friendName}</span>
+                </div>
+                <div className="space-y-2">
+                  {groupAdvancement.map(row => {
+                    let chip: { label: string; tone: string };
+                    if (row.incomplete) chip = { label: 'incomplete', tone: 'bg-wc-amber/15 text-wc-amber' };
+                    else if (row.winnerSame && row.runnerSame) chip = { label: 'both agree', tone: 'bg-wc-green/15 text-wc-green' };
+                    else if (row.sameTeams) chip = { label: 'seed flip', tone: 'bg-primary/15 text-primary' };
+                    else if (row.winnerSame || row.runnerSame) chip = { label: 'one differs', tone: 'bg-primary/15 text-primary' };
+                    else chip = { label: 'both differ', tone: 'bg-primary/15 text-primary' };
+                    const borderTone = chip.label === 'both agree' ? 'border-white/10' : chip.label === 'incomplete' ? 'border-wc-amber/20' : 'border-primary/20';
+                    return (
+                      <div key={row.g} className={`rounded-xl border bg-neutral-900/50 p-3 ${borderTone}`}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-[11px] font-black uppercase tracking-widest text-white">Group {row.g}</span>
+                          <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase ${chip.tone}`}>{chip.label}</span>
+                        </div>
+                        {renderAdvancementRow('1st', row.mineWinner, row.friendWinner)}
+                        <div className="mt-1">{renderAdvancementRow('2nd', row.mineRunner, row.friendRunner)}</div>
+                        {row.sameTeams && !row.winnerSame && (
+                          <p className="mt-1.5 px-1 text-[10px] text-neutral-500">Same two teams through — but you flipped who tops the group.</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/60">Match-by-match</h3>
+                <div className="space-y-4">
+                  {groups.map(group => {
+                    const rows = groupComparisons.filter(row => row.match.group === group);
+                    const diffCount = rows.filter(row => !row.same).length;
+                    return (
+                      <div key={group}>
+                        <div className="mb-2 flex items-center justify-between">
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-white/60">Group {group}</h4>
+                          <span className={`text-[10px] font-bold uppercase ${diffCount > 0 ? 'text-primary/70' : 'text-wc-green'}`}>
+                            {diffCount > 0 ? `${diffCount} different` : 'all same'}
+                          </span>
+                        </div>
+                        <div className="space-y-2">{rows.map(row => renderGroupRow(row, true))}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
             </div>
           )}
 
           {activeTab === 'knockout' && (
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-neutral-900/50 p-2 text-center">
+                <div>
+                  <div className="text-lg font-black tabular-nums text-wc-green">{summary.knockoutSame}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-neutral-500">shared teams</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black tabular-nums text-primary">{summary.knockoutMineOnly}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-neutral-500">only {mineName}</div>
+                </div>
+                <div>
+                  <div className="text-lg font-black tabular-nums text-blue-300">{summary.knockoutFriendOnly}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-neutral-500">only {friendName}</div>
+                </div>
+              </div>
+
+              {/* Champion head-to-head */}
+              <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/[0.06] to-wc-blue/[0.06] p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-white">Champion</span>
+                  <span className="text-[9px] font-bold uppercase text-primary/70">+{WINNER_POINTS.FIN}</span>
+                </div>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    {mineChampion ? <TeamToken code={mineChampion} tone="mine" flagsByCode={teamFlagsByCode} points={actualByRound.finalWinner.advanced.has(mineChampion) ? actualByRound.finalWinner.points : 0} /> : <span className="text-xs italic text-neutral-600">—</span>}
+                  </div>
+                  <span className="material-symbols-outlined text-[18px] text-neutral-600">trophy</span>
+                  <div className="flex items-center justify-end gap-2">
+                    {friendChampion ? <TeamToken code={friendChampion} tone="friend" flagsByCode={teamFlagsByCode} points={actualByRound.finalWinner.advanced.has(friendChampion) ? actualByRound.finalWinner.points : 0} /> : <span className="text-xs italic text-neutral-600">—</span>}
+                  </div>
+                </div>
+                <p className="mt-2 text-center text-[10px] text-neutral-500">
+                  {mineChampion && mineChampion === friendChampion
+                    ? `You both crown ${teamName(mineChampion)}.`
+                    : `You disagree on the champion — ${teamName(mineChampion)} vs ${teamName(friendChampion)}.`}
+                </p>
+              </div>
+
               {roundComparisons.map(comparison => (
                 <RoundDiffBlock
                   key={comparison.key}
@@ -540,68 +759,86 @@ export default function PredictionCompareModal({ mine, friend, friendRank, onClo
                   mineName={mineName}
                   friendName={friendName}
                   flagsByCode={teamFlagsByCode}
+                  roundPoints={actualByRound[comparison.key].points}
+                  advanced={actualByRound[comparison.key].advanced}
                 />
               ))}
             </div>
           )}
 
-          {activeTab === 'summary' && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  { label: 'Same picks', value: summary.same, tone: 'text-wc-green' },
-                  { label: 'Different', value: summary.different, tone: 'text-primary' },
-                  { label: 'Missing group', value: summary.groupMissing, tone: 'text-wc-amber' },
-                  { label: 'Point delta', value: `${summary.pointDelta >= 0 ? '+' : ''}${summary.pointDelta}`, tone: summary.pointDelta >= 0 ? 'text-wc-green' : 'text-wc-red' },
-                ].map(item => (
-                  <div key={item.label} className="rounded-xl border border-white/10 bg-neutral-900/60 px-3 py-3 text-center">
-                    <div className={`text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</div>
-                    <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">{item.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
-                <h3 className="mb-2 text-[11px] font-black uppercase tracking-widest text-white/60">Scoring split</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-lg bg-black/20 p-3">
-                    <div className="text-sm font-black text-white">{mineName}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-body">
-                      <span className="text-neutral-400">Group</span>
-                      <span className="text-right font-bold text-wc-green">{mineResults.summary.groupPoints}</span>
-                      <span className="text-neutral-400">Knockout</span>
-                      <span className="text-right font-bold text-blue-300">{mineResults.summary.knockoutPoints}</span>
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-black/20 p-3">
-                    <div className="text-sm font-black text-white">{friendName}</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs font-body">
-                      <span className="text-neutral-400">Group</span>
-                      <span className="text-right font-bold text-wc-green">{friendResults.summary.groupPoints}</span>
-                      <span className="text-neutral-400">Knockout</span>
-                      <span className="text-right font-bold text-blue-300">{friendResults.summary.knockoutPoints}</span>
-                    </div>
-                  </div>
+          {activeTab === 'inplay' && (
+            <div className="space-y-5">
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/80">
+                    <span className="material-symbols-outlined text-[16px] text-wc-amber">local_fire_department</span>
+                    Still in play
+                  </h3>
                 </div>
-              </div>
+                <p className="mb-3 text-[11px] leading-snug text-neutral-500">
+                  Where your picks differ and the outcome isn&apos;t decided yet — these are what can still move the gap.
+                </p>
+                {hasUndecided ? (
+                  <div className="space-y-4">
+                    {knockoutDiffUndecided.length > 0 && (
+                      <div className="space-y-2">
+                        {knockoutDiffUndecided.map(comparison => (
+                          <RoundDiffBlock
+                            key={comparison.key}
+                            comparison={comparison}
+                            mineName={mineName}
+                            friendName={friendName}
+                            flagsByCode={teamFlagsByCode}
+                            roundPoints={actualByRound[comparison.key].points}
+                            advanced={actualByRound[comparison.key].advanced}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {groupDiffUndecided.length > 0 && (
+                      <div>
+                        <div className="mb-2 flex items-center justify-between">
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-white/60">Group matches</h4>
+                          <span className="text-[10px] font-bold uppercase text-primary/70">+{GROUP_POINTS} per match</span>
+                        </div>
+                        <div className="space-y-2">{groupDiffUndecided.map(row => renderGroupRow(row))}</div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-wc-green/20 bg-wc-green/10 px-4 py-8 text-center">
+                    <span className="material-symbols-outlined text-4xl text-wc-green">verified</span>
+                    <p className="mt-2 text-sm font-black text-white">No open differences.</p>
+                    <p className="mt-1 text-xs text-neutral-400 font-body">Every divergent pick is either shared or already settled.</p>
+                  </div>
+                )}
+              </section>
 
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                <h3 className="mb-2 text-[11px] font-black uppercase tracking-widest text-primary/80">Biggest swing categories</h3>
-                <div className="space-y-1.5 text-sm font-body">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-neutral-300">Champion mismatch</span>
-                    <span className="font-black text-primary tabular-nums">{mineChampion !== friendChampion ? `+${WINNER_POINTS.FIN}` : 'same'}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-neutral-300">Finalist differences</span>
-                    <span className="font-black text-primary tabular-nums">{roundComparisons.find(r => r.key === 'FIN')?.mineOnly.length ?? 0} vs {roundComparisons.find(r => r.key === 'FIN')?.friendOnly.length ?? 0}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-neutral-300">Semifinalist differences</span>
-                    <span className="font-black text-primary tabular-nums">{roundComparisons.find(r => r.key === 'SF')?.mineOnly.length ?? 0} vs {roundComparisons.find(r => r.key === 'SF')?.friendOnly.length ?? 0}</span>
-                  </div>
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-white/60">Settled differences</h3>
                 </div>
-              </div>
+                {hasSettled ? (
+                  <div className="space-y-2">
+                    {knockoutDiffSettled.map(comparison => (
+                      <RoundDiffBlock
+                        key={comparison.key}
+                        comparison={comparison}
+                        mineName={mineName}
+                        friendName={friendName}
+                        flagsByCode={teamFlagsByCode}
+                        roundPoints={actualByRound[comparison.key].points}
+                        advanced={actualByRound[comparison.key].advanced}
+                      />
+                    ))}
+                    {groupDiffSettled.map(row => renderGroupRow(row))}
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-white/10 bg-neutral-900/40 px-3 py-4 text-center text-xs text-neutral-500 font-body">
+                    No results have settled yet — check back once matches finish.
+                  </p>
+                )}
+              </section>
             </div>
           )}
         </div>

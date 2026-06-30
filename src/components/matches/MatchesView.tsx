@@ -283,7 +283,7 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
               <div className="overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 divide-y divide-white/5">
                 {section.items.map(match => (
                   <MatchRow
-                    key={match.apiMatchId}
+                    key={match.localMatchId ?? match.apiMatchId}
                     match={match}
                     teamFlagsByCode={teamFlagsByCode}
                     onSelect={match.localMatchId ? () => setSelectedMatch(match) : undefined}

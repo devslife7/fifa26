@@ -320,14 +320,13 @@ function MatchRow({
   const isFinished = match.status === 'FINISHED';
   const showScore = match.score != null && (isLive || isFinished);
 
-  // Penalty shootout: the on-field score is level, so the winner comes from the
-  // shootout tally. Derived for display only — settlement is unchanged.
+  // Penalty shootout: the on-field score is level and the shootout tally is shown
+  // alongside it. The winner itself comes from actualResult, which already folds in
+  // the shootout result (see getActualResult), so no separate penalty comparison.
   const pens = isFinished ? match.penalties : null;
-  const penHomeWon = pens != null && pens.home > pens.away;
-  const penAwayWon = pens != null && pens.away > pens.home;
 
-  const homeWon = (isFinished && match.actualResult === 'home') || penHomeWon;
-  const awayWon = (isFinished && match.actualResult === 'away') || penAwayWon;
+  const homeWon = isFinished && match.actualResult === 'home';
+  const awayWon = isFinished && match.actualResult === 'away';
 
   // For knockout slots without resolved teams, label the card with the bracket
   // path (e.g. "Runner-up A") instead of a bare "TBD".

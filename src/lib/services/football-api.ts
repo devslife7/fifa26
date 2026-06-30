@@ -218,11 +218,21 @@ function mapKnockoutMatchToLocalId(stage: string, matchIndex: number): string | 
 }
 
 // --- Determine actual result ---
-function getActualResult(apiMatch: FDApiMatch): LiveMatch['actualResult'] {
+// The feed's `score.winner` is the authoritative source, but for shootout-decided
+// matches it frequently arrives as null/DRAW (see mapScore note). When regulation
+// is level and we have a derived shootout tally, the penalties decide the winner —
+// otherwise knockout matches would settle with no winner at all.
+function getActualResult(
+  apiMatch: FDApiMatch,
+  penalties: LiveMatch['penalties'],
+): LiveMatch['actualResult'] {
   if (apiMatch.status !== 'FINISHED') return null;
   const winner = apiMatch.score.winner;
   if (winner === 'HOME_TEAM') return 'home';
   if (winner === 'AWAY_TEAM') return 'away';
+  if (penalties && penalties.home !== penalties.away) {
+    return penalties.home > penalties.away ? 'home' : 'away';
+  }
   if (winner === 'DRAW') return 'draw';
   return null;
 }
@@ -262,7 +272,7 @@ function mapApiMatch(
     venue: apiMatch.venue ?? null,
     score,
     penalties,
-    actualResult: getActualResult(apiMatch),
+    actualResult: getActualResult(apiMatch, penalties),
     stage,
     group,
   };

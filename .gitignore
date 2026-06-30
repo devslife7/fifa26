@@ -43,3 +43,7 @@ node_modules
 
 /.playwright-mcp
 /.claude
+
+# Snapshot data — keep it local. README is safe to commit.
+/backups/*
+!/backups/README.md

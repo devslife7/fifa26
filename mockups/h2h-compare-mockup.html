@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Head-to-Head Redesign Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#f5c542',
+          'primary-dark': '#b98212',
+          'background-dark': '#05070d',
+          'wc-green': '#00a859',
+          'wc-red': '#d71920',
+          'wc-blue': '#0057b8',
+          'wc-amber': '#f59e0b',
+          cyan: { brand: '#1ccad8' },
+        },
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #02030a; }
+  .font-black { font-weight: 900; }
+  .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 500; }
+  /* tug of war animated gradient */
+  .stake-glow { box-shadow: 0 0 0 1px rgba(245,197,66,.15), 0 8px 30px rgba(245,197,66,.08); }
+</style>
+</head>
+<body class="p-4 sm:p-8">
+
+<div class="mx-auto w-full max-w-2xl">
+  <p class="mb-3 text-center text-[11px] font-bold uppercase tracking-widest text-neutral-600">Mockup · Head-to-Head Redesign · no backend</p>
+
+  <!-- ============ MODAL SHELL ============ -->
+  <div class="flex max-h-[92vh] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-background-dark shadow-2xl">
+
+    <!-- ===== HERO SCOREBOARD ===== -->
+    <div class="relative border-b border-white/10 px-5 pt-4 pb-5">
+      <div class="mb-3 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-primary/80">
+          <span class="material-symbols-outlined text-[16px]">swords</span> Head-to-head
+        </div>
+        <button class="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-neutral-400 hover:text-white">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- competitors -->
+      <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <!-- YOU -->
+        <div class="flex flex-col items-center text-center">
+          <span class="rounded-full bg-primary px-2 py-0.5 text-[10px] font-black text-black">#2</span>
+          <div class="mt-1.5 truncate text-base font-black text-white">You</div>
+          <div class="mt-1 flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            🇧🇷 Brazil
+          </div>
+          <div class="mt-2 text-3xl font-black tabular-nums text-primary">247</div>
+          <div class="text-[9px] font-bold uppercase tracking-wider text-primary/60">points</div>
+        </div>
+
+        <!-- VS + gap -->
+        <div class="flex flex-col items-center px-1">
+          <div class="text-[10px] font-black uppercase tracking-widest text-neutral-600">vs</div>
+          <div class="mt-1 flex flex-col items-center rounded-xl border border-wc-red/30 bg-wc-red/10 px-2.5 py-1.5">
+            <span class="material-symbols-outlined text-[16px] text-wc-red">trending_down</span>
+            <span class="text-sm font-black tabular-nums text-wc-red">-16</span>
+            <span class="text-[8px] font-bold uppercase tracking-wider text-wc-red/70">behind</span>
+          </div>
+        </div>
+
+        <!-- RIVAL -->
+        <div class="flex flex-col items-center text-center">
+          <span class="rounded-full bg-wc-blue px-2 py-0.5 text-[10px] font-black text-white">#1</span>
+          <div class="mt-1.5 truncate text-base font-black text-white">Diego</div>
+          <div class="mt-1 flex items-center gap-1 rounded-full border border-wc-blue/30 bg-wc-blue/10 px-2 py-0.5 text-[10px] font-bold text-blue-300">
+            🇫🇷 France
+          </div>
+          <div class="mt-2 text-3xl font-black tabular-nums text-blue-300">263</div>
+          <div class="text-[9px] font-bold uppercase tracking-wider text-blue-300/60">points</div>
+        </div>
+      </div>
+
+      <!-- tug of war bar -->
+      <div class="mt-4">
+        <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-800">
+          <div class="h-full bg-primary" style="width:48.4%"></div>
+          <div class="h-full bg-wc-blue" style="width:51.6%"></div>
+        </div>
+        <div class="mt-1.5 flex items-center justify-between text-[10px] font-bold">
+          <span class="text-primary/70">73% picks agree</span>
+          <span class="text-neutral-500">·</span>
+          <span class="text-blue-300/70">27 still in play</span>
+        </div>
+      </div>
+
+      <!-- ===== TAB RAIL ===== -->
+      <div id="tabRail" class="relative mt-4 grid grid-cols-4 gap-1 overflow-hidden rounded-xl border border-white/10 bg-neutral-950/60 p-1">
+        <div id="tabPill" aria-hidden="true"
+          class="absolute left-1 top-1 bottom-1 rounded-lg bg-primary shadow-[0_8px_24px_rgba(245,197,66,0.25)] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          style="width: calc((100% - 0.75rem) / 4); transform: translateX(0);"></div>
+        <button data-tab="overview" class="tab-btn relative z-10 rounded-lg px-1 py-2 text-[10px] font-black uppercase tracking-wide text-black transition-colors sm:text-[11px]">Overview</button>
+        <button data-tab="groups"   class="tab-btn relative z-10 rounded-lg px-1 py-2 text-[10px] font-black uppercase tracking-wide text-neutral-400 transition-colors hover:text-white sm:text-[11px]">Groups</button>
+        <button data-tab="knockout" class="tab-btn relative z-10 rounded-lg px-1 py-2 text-[10px] font-black uppercase tracking-wide text-neutral-400 transition-colors hover:text-white sm:text-[11px]">Knockout</button>
+        <button data-tab="inplay"   class="tab-btn relative z-10 rounded-lg px-1 py-2 text-[10px] font-black uppercase tracking-wide text-neutral-400 transition-colors hover:text-white sm:text-[11px]">In&nbsp;Play</button>
+      </div>
+    </div>
+
+    <!-- ===== BODY (tabbed panels) ===== -->
+    <div class="flex-1 overflow-y-auto px-5 py-5">
+
+      <!-- ===== TAB PANEL: OVERVIEW ===== -->
+      <div class="cmp-panel space-y-5" data-panel="overview">
+
+      <!-- WHERE THE GAP COMES FROM -->
+      <section>
+        <h3 class="mb-2 text-[11px] font-black uppercase tracking-widest text-white/60">Where the gap comes from</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Group stage</span>
+              <span class="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-black text-primary">You +6</span>
+            </div>
+            <div class="mt-2 flex items-end justify-between text-sm font-black tabular-nums">
+              <span class="text-primary">132</span>
+              <span class="text-neutral-600 text-xs">vs</span>
+              <span class="text-blue-300">126</span>
+            </div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Knockout</span>
+              <span class="rounded bg-wc-blue/15 px-1.5 py-0.5 text-[10px] font-black text-blue-300">Diego +22</span>
+            </div>
+            <div class="mt-2 flex items-end justify-between text-sm font-black tabular-nums">
+              <span class="text-primary">115</span>
+              <span class="text-neutral-600 text-xs">vs</span>
+              <span class="text-blue-300">137</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COMMON GROUND (lives in Overview) -->
+      <section>
+        <button class="flex w-full items-center justify-between rounded-xl border border-wc-green/20 bg-wc-green/5 px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-wc-green">join_inner</span>
+            <span class="text-[11px] font-black uppercase tracking-widest text-wc-green">Common ground · 73 shared picks</span>
+          </div>
+          <span class="material-symbols-outlined text-[18px] text-neutral-500">expand_more</span>
+        </button>
+      </section>
+
+      </div><!-- /overview -->
+
+      <!-- ===== TAB PANEL: GROUPS ===== -->
+      <div class="cmp-panel hidden space-y-5" data-panel="groups">
+
+      <!-- ===== GROUP ADVANCEMENT — who each person sends through ===== -->
+      <section>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/80">
+            <span class="material-symbols-outlined text-[16px] text-primary">military_tech</span>
+            Group advancement
+          </h3>
+          <span class="text-[10px] font-bold uppercase text-neutral-500">19 / 24 qualifiers agree</span>
+        </div>
+        <p class="mb-3 text-[11px] leading-snug text-neutral-500">
+          Who each of you sent out of every group — Winner &amp; Runner-up, slot by slot.
+          <span class="text-wc-green font-bold">Green = same pick</span>, split = you disagree.
+        </p>
+
+        <!-- legend row -->
+        <div class="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-1 text-[9px] font-black uppercase tracking-widest">
+          <span class="text-primary">You</span>
+          <span class="text-neutral-600">slot</span>
+          <span class="text-right text-blue-300">Diego</span>
+        </div>
+
+        <div class="space-y-2">
+
+          <!-- GROUP A — full agreement -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Group A</span>
+              <span class="rounded bg-wc-green/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-wc-green">both agree</span>
+            </div>
+            <!-- winner row -->
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-wc-green/[0.06] px-2 py-1.5">
+              <div class="flex items-center gap-1.5"><span class="text-base">🇲🇽</span><span class="text-xs font-bold text-white">Mexico</span></div>
+              <span class="rounded bg-neutral-800 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-neutral-400">1st</span>
+              <div class="flex items-center justify-end gap-1.5"><span class="text-xs font-bold text-white">Mexico</span><span class="text-base">🇲🇽</span></div>
+            </div>
+            <!-- runner-up row -->
+            <div class="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-wc-green/[0.06] px-2 py-1.5">
+              <div class="flex items-center gap-1.5"><span class="text-base">🇳🇴</span><span class="text-xs font-bold text-white">Norway</span></div>
+              <span class="rounded bg-neutral-800 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-neutral-400">2nd</span>
+              <div class="flex items-center justify-end gap-1.5"><span class="text-xs font-bold text-white">Norway</span><span class="text-base">🇳🇴</span></div>
+            </div>
+          </div>
+
+          <!-- GROUP B — runner-up differs -->
+          <div class="rounded-xl border border-primary/20 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Group B</span>
+              <span class="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-primary">runner-up split</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg bg-wc-green/[0.06] px-2 py-1.5">
+              <div class="flex items-center gap-1.5"><span class="text-base">🇪🇸</span><span class="text-xs font-bold text-white">Spain</span></div>
+              <span class="rounded bg-neutral-800 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-neutral-400">1st</span>
+              <div class="flex items-center justify-end gap-1.5"><span class="text-xs font-bold text-white">Spain</span><span class="text-base">🇪🇸</span></div>
+            </div>
+            <!-- differing runner-up -->
+            <div class="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 py-1.5">
+              <div class="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-1"><span class="text-base">🇭🇷</span><span class="text-xs font-bold text-primary">Croatia</span></div>
+              <span class="material-symbols-outlined text-[15px] text-neutral-500">sync_alt</span>
+              <div class="flex items-center justify-end gap-1.5 rounded-lg border border-wc-blue/30 bg-wc-blue/10 px-1.5 py-1"><span class="text-xs font-bold text-blue-300">Morocco</span><span class="text-base">🇲🇦</span></div>
+            </div>
+          </div>
+
+          <!-- GROUP C — both slots differ -->
+          <div class="rounded-xl border border-primary/20 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Group C</span>
+              <span class="rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-black uppercase text-primary">both differ</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 py-1.5">
+              <div class="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-1"><span class="text-base">🇦🇷</span><span class="text-xs font-bold text-primary">Argentina</span></div>
+              <span class="rounded bg-neutral-800 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-neutral-400">1st</span>
+              <div class="flex items-center justify-end gap-1.5 rounded-lg border border-wc-blue/30 bg-wc-blue/10 px-1.5 py-1"><span class="text-xs font-bold text-blue-300">Germany</span><span class="text-base">🇩🇪</span></div>
+            </div>
+            <div class="mt-1 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 py-1.5">
+              <div class="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-1.5 py-1"><span class="text-base">🇩🇪</span><span class="text-xs font-bold text-primary">Germany</span></div>
+              <span class="material-symbols-outlined text-[15px] text-neutral-500">sync_alt</span>
+              <div class="flex items-center justify-end gap-1.5 rounded-lg border border-wc-blue/30 bg-wc-blue/10 px-1.5 py-1"><span class="text-xs font-bold text-blue-300">Argentina</span><span class="text-base">🇦🇷</span></div>
+            </div>
+            <p class="mt-1.5 px-1 text-[10px] text-neutral-500">Same two teams through — but you flipped who tops the group.</p>
+          </div>
+
+          <button class="w-full rounded-lg border border-white/10 py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 hover:bg-white/5">
+            Show all 12 groups
+          </button>
+        </div>
+      </section>
+
+      </div><!-- /groups -->
+
+      <!-- ===== TAB PANEL: KNOCKOUT ===== -->
+      <div class="cmp-panel hidden space-y-5" data-panel="knockout">
+
+      <!-- ===== KNOCKOUT STAGE — teams each player has advancing per round ===== -->
+      <section>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/80">
+            <span class="material-symbols-outlined text-[16px] text-primary">account_tree</span>
+            Knockout stage
+          </h3>
+          <span class="text-[10px] font-bold uppercase text-neutral-500">how deep each team goes</span>
+        </div>
+        <p class="mb-3 text-[11px] leading-snug text-neutral-500">
+          The teams you each have surviving every round.
+          <span class="font-bold text-wc-green">Green = you both have them</span> ·
+          <span class="font-bold text-primary">gold = only you</span> ·
+          <span class="font-bold text-blue-300">blue = only Diego</span>.
+        </p>
+
+        <!-- shared legend bar -->
+        <div class="mb-3 grid grid-cols-3 gap-2 rounded-xl border border-white/10 bg-neutral-900/50 p-2 text-center">
+          <div><div class="text-lg font-black tabular-nums text-wc-green">11</div><div class="text-[9px] font-bold uppercase tracking-wider text-neutral-500">shared teams</div></div>
+          <div><div class="text-lg font-black tabular-nums text-primary">5</div><div class="text-[9px] font-bold uppercase tracking-wider text-neutral-500">only you</div></div>
+          <div><div class="text-lg font-black tabular-nums text-blue-300">5</div><div class="text-[9px] font-bold uppercase tracking-wider text-neutral-500">only Diego</div></div>
+        </div>
+
+        <div class="space-y-2">
+
+          <!-- ROUND OF 16 -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Round of 16</span>
+              <span class="text-[9px] font-bold uppercase text-primary/70">+3 / team</span>
+            </div>
+            <!-- both -->
+            <div class="mb-2">
+              <div class="mb-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-wc-green"><span class="material-symbols-outlined text-[12px]">check</span>both have</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇧🇷 Brazil</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇫🇷 France</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇪🇸 Spain</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇦🇷 Argentina</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇵🇹 Portugal</span>
+                <span class="rounded-full border border-white/10 px-2 py-0.5 text-[11px] font-semibold text-neutral-500">+6 more</span>
+              </div>
+            </div>
+            <!-- diff split -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="mb-1 text-[9px] font-black uppercase tracking-wider text-primary">only you</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">🇭🇷 Croatia</span>
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">🇲🇽 Mexico</span>
+                </div>
+              </div>
+              <div>
+                <div class="mb-1 text-right text-[9px] font-black uppercase tracking-wider text-blue-300">only Diego</div>
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-wc-blue/35 bg-wc-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-300">🇩🇪 Germany</span>
+                  <span class="inline-flex items-center gap-1 rounded-full border border-wc-blue/35 bg-wc-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-300">🇲🇦 Morocco</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- QUARTER-FINALS -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Quarter-finals</span>
+              <span class="text-[9px] font-bold uppercase text-primary/70">+6 / team</span>
+            </div>
+            <div class="mb-2">
+              <div class="mb-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-wc-green"><span class="material-symbols-outlined text-[12px]">check</span>both have</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇧🇷 Brazil</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇫🇷 France</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇪🇸 Spain</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="mb-1 text-[9px] font-black uppercase tracking-wider text-primary">only you</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">🇦🇷 Argentina</span>
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">🇵🇹 Portugal</span>
+                </div>
+              </div>
+              <div>
+                <div class="mb-1 text-right text-[9px] font-black uppercase tracking-wider text-blue-300">only Diego</div>
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-wc-blue/35 bg-wc-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-300">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England</span>
+                  <span class="inline-flex items-center gap-1 rounded-full border border-wc-blue/35 bg-wc-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-300">🇩🇪 Germany</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEMI-FINALS -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Semi-finals</span>
+              <span class="text-[9px] font-bold uppercase text-primary/70">+9 / team</span>
+            </div>
+            <div class="mb-2">
+              <div class="mb-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-wc-green"><span class="material-symbols-outlined text-[12px]">check</span>both have</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇧🇷 Brazil</span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-wc-green/35 bg-wc-green/10 px-2 py-0.5 text-[11px] font-semibold text-wc-green">🇫🇷 France</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="mb-1 text-[9px] font-black uppercase tracking-wider text-primary">only you</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-primary/35 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">🇦🇷 Argentina</span>
+                </div>
+              </div>
+              <div>
+                <div class="mb-1 text-right text-[9px] font-black uppercase tracking-wider text-blue-300">only Diego</div>
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <span class="inline-flex items-center gap-1 rounded-full border border-wc-blue/35 bg-wc-blue/10 px-2 py-0.5 text-[11px] font-semibold text-blue-300">🇪🇸 Spain</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FINAL + CHAMPION -->
+          <div class="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/[0.06] to-wc-blue/[0.06] p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-[11px] font-black uppercase tracking-widest text-white">Final &amp; Champion</span>
+              <span class="text-[9px] font-bold uppercase text-primary/70">+12 finalist · +25 champ</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div class="text-center">
+                <div class="text-[9px] font-black uppercase tracking-wider text-primary">your final</div>
+                <div class="mt-1 space-y-1">
+                  <div class="rounded-lg border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-black text-primary">🇧🇷 Brazil 👑</div>
+                  <div class="rounded-lg border border-white/10 px-2 py-1 text-xs font-bold text-neutral-300">🇦🇷 Argentina</div>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[18px] text-neutral-600">trophy</span>
+              <div class="text-center">
+                <div class="text-[9px] font-black uppercase tracking-wider text-blue-300">Diego's final</div>
+                <div class="mt-1 space-y-1">
+                  <div class="rounded-lg border border-wc-blue/30 bg-wc-blue/10 px-2 py-1 text-xs font-black text-blue-300">🇫🇷 France 👑</div>
+                  <div class="rounded-lg border border-white/10 px-2 py-1 text-xs font-bold text-neutral-300">🇧🇷 Brazil</div>
+                </div>
+              </div>
+            </div>
+            <p class="mt-2 text-center text-[10px] text-neutral-500">You share <b class="text-wc-green">Brazil</b> as a finalist — but disagree on everything else at the top.</p>
+          </div>
+
+        </div>
+      </section>
+
+      </div><!-- /knockout -->
+
+      <!-- ===== TAB PANEL: IN PLAY ===== -->
+      <div class="cmp-panel hidden space-y-5" data-panel="inplay">
+
+      <!-- 🔥 STILL IN PLAY — the new "better logic" section -->
+      <section>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-white/80">
+            <span class="material-symbols-outlined text-[16px] text-wc-amber">local_fire_department</span>
+            Still in play — swing picks
+          </h3>
+          <span class="text-[10px] font-bold uppercase text-wc-amber/80">38 pts at stake</span>
+        </div>
+        <p class="mb-3 text-[11px] leading-snug text-neutral-500">
+          Differences that aren't decided yet — sorted by how much they can move the gap. These are the picks that decide this matchup.
+        </p>
+
+        <div class="space-y-2">
+
+          <!-- swing card 1 (biggest stake) -->
+          <div class="stake-glow rounded-xl border border-primary/25 bg-gradient-to-r from-primary/[0.07] to-transparent p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="rounded-md bg-neutral-800 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-neutral-300">Champion</span>
+                <span class="flex items-center gap-1 text-[10px] font-bold text-neutral-500"><span class="h-1.5 w-1.5 rounded-full bg-neutral-500"></span>Undecided · Final Jul 19</span>
+              </div>
+              <span class="rounded-full bg-wc-amber/15 px-2 py-0.5 text-[10px] font-black text-wc-amber">±12 pts</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🇧🇷</span>
+                <div>
+                  <div class="text-sm font-black text-white">Brazil</div>
+                  <div class="text-[10px] font-bold text-primary">your champion</div>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[18px] text-neutral-600">bolt</span>
+              <div class="flex items-center justify-end gap-2 text-right">
+                <div>
+                  <div class="text-sm font-black text-white">France</div>
+                  <div class="text-[10px] font-bold text-blue-300">Diego's champion</div>
+                </div>
+                <span class="text-lg">🇫🇷</span>
+              </div>
+            </div>
+            <div class="mt-2 rounded-lg bg-black/30 px-2.5 py-1.5 text-[11px] text-neutral-400">
+              <span class="font-bold text-primary">If Brazil lifts the cup</span> you gain <b class="text-primary">+12</b> and erase most of the gap.
+            </div>
+          </div>
+
+          <!-- swing card 2 -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="rounded-md bg-neutral-800 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-neutral-300">Semi-final</span>
+                <span class="flex items-center gap-1 text-[10px] font-bold text-wc-green"><span class="h-1.5 w-1.5 animate-pulse rounded-full bg-wc-green"></span>LIVE 1-1 · 67'</span>
+              </div>
+              <span class="rounded-full bg-wc-amber/15 px-2 py-0.5 text-[10px] font-black text-wc-amber">±9 pts</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-lg">🇦🇷</span>
+                <div><div class="text-sm font-black text-white">Argentina</div><div class="text-[10px] font-bold text-primary">you have to SF</div></div>
+              </div>
+              <span class="material-symbols-outlined text-[18px] text-neutral-600">bolt</span>
+              <div class="flex items-center justify-end gap-2 text-right">
+                <div><div class="text-sm font-black text-white">Spain</div><div class="text-[10px] font-bold text-blue-300">Diego has to SF</div></div>
+                <span class="text-lg">🇪🇸</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- swing card 3 -->
+          <div class="rounded-xl border border-white/10 bg-neutral-900/50 p-3">
+            <div class="mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="rounded-md bg-neutral-800 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-neutral-300">Group F · match 41</span>
+                <span class="flex items-center gap-1 text-[10px] font-bold text-neutral-500"><span class="h-1.5 w-1.5 rounded-full bg-neutral-500"></span>Kicks off Jul 2</span>
+              </div>
+              <span class="rounded-full bg-wc-amber/15 px-2 py-0.5 text-[10px] font-black text-wc-amber">±3 pts</span>
+            </div>
+            <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+              <div class="flex items-center gap-2"><span class="text-base">🇵🇹</span><div class="text-sm font-bold text-white">Portugal win</div></div>
+              <span class="material-symbols-outlined text-[16px] text-neutral-600">bolt</span>
+              <div class="flex items-center justify-end gap-2 text-right"><div class="text-sm font-bold text-white">Draw</div><span class="material-symbols-outlined text-[16px] text-neutral-400">handshake</span></div>
+            </div>
+          </div>
+
+          <button class="w-full rounded-lg border border-white/10 py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 hover:bg-white/5">
+            + 9 more swing picks
+          </button>
+        </div>
+      </section>
+
+      <!-- SETTLED DIFFERENCES (history of the gap) -->
+      <section>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="text-[11px] font-black uppercase tracking-widest text-white/60">Settled differences</h3>
+          <span class="text-[10px] font-bold uppercase text-neutral-500">You won 7 · Diego won 11</span>
+        </div>
+        <div class="space-y-1.5">
+          <!-- row: you won -->
+          <div class="flex items-center gap-3 rounded-lg border border-white/5 bg-neutral-950/40 px-3 py-2">
+            <span class="material-symbols-outlined text-[18px] text-wc-green">check_circle</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Round of 16 · qualifier</div>
+              <div class="truncate text-xs font-bold text-white">🇳🇱 Netherlands reached R16 — you had them, Diego didn't</div>
+            </div>
+            <span class="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-black text-primary">You +3</span>
+          </div>
+          <!-- row: diego won -->
+          <div class="flex items-center gap-3 rounded-lg border border-white/5 bg-neutral-950/40 px-3 py-2">
+            <span class="material-symbols-outlined text-[18px] text-wc-red">cancel</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Quarter-final · qualifier</div>
+              <div class="truncate text-xs font-bold text-white">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England reached QF — Diego had them, you didn't</div>
+            </div>
+            <span class="rounded bg-wc-blue/15 px-1.5 py-0.5 text-[10px] font-black text-blue-300">Diego +6</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-lg border border-white/5 bg-neutral-950/40 px-3 py-2">
+            <span class="material-symbols-outlined text-[18px] text-wc-red">cancel</span>
+            <div class="min-w-0 flex-1">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Group C · match 23</div>
+              <div class="truncate text-xs font-bold text-white">Germany 2-0 Japan — Diego called the win, you took the draw</div>
+            </div>
+            <span class="rounded bg-wc-blue/15 px-1.5 py-0.5 text-[10px] font-black text-blue-300">Diego +3</span>
+          </div>
+          <button class="w-full rounded-lg border border-white/10 py-2 text-[11px] font-bold uppercase tracking-wider text-neutral-400 hover:bg-white/5">
+            View all 18 settled differences
+          </button>
+        </div>
+      </section>
+
+      </div><!-- /inplay -->
+
+    </div>
+  </div>
+
+  <p class="mt-4 text-center text-[11px] leading-relaxed text-neutral-600">
+    Persistent scoreboard + 4 tabs → <b class="text-neutral-400">Overview (gap &amp; common ground) · Groups · Knockout · In&nbsp;Play (swing &amp; settled).</b>
+  </p>
+</div>
+
+<script>
+  const pill = document.getElementById('tabPill');
+  const btns = Array.from(document.querySelectorAll('.tab-btn'));
+  const panels = Array.from(document.querySelectorAll('.cmp-panel'));
+  const order = ['overview', 'groups', 'knockout', 'inplay'];
+  const scroller = document.querySelector('.cmp-panel').closest('[class*="overflow-y-auto"]');
+
+  function activate(tab) {
+    const i = order.indexOf(tab);
+    pill.style.transform = `translateX(calc(${i} * (100% + 0.25rem)))`;
+    btns.forEach(b => {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle('text-black', on);
+      b.classList.toggle('text-neutral-400', !on);
+    });
+    panels.forEach(p => p.classList.toggle('hidden', p.dataset.panel !== tab));
+    if (scroller) scroller.scrollTop = 0;
+  }
+
+  btns.forEach(b => b.addEventListener('click', () => activate(b.dataset.tab)));
+  activate('overview');
+</script>
+
+</body>
+</html>

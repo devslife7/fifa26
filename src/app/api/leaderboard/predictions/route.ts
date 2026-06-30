@@ -2,24 +2,28 @@ import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/services/supabase/server';
 import { arePredictionDetailsPublic, isLateSubmission } from '@/data/tournament';
 import { getFinishedActualResults } from '@/lib/services/actual-results';
-import {
-  computeLeaderboardPositionChanges,
-  getLastFinishedMatch,
-  positionChangesByKey,
-} from '@/lib/services/leaderboard-position';
+import { positionChangeFromRanks } from '@/lib/services/leaderboard-position';
 import { calculateScore } from '@/lib/logic/scoring';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = createServiceClient();
     const detailsAvailable = arePredictionDetailsPublic();
+    const includePreview = new URL(request.url).searchParams.get('preview') === '1';
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('predictions')
       .select('id, prediction_number, user_id, name, submitter_name, group_matches, knockout_matches, third_place_tiebreaker, champion_code, completed_at, created_at, updated_at, is_approved')
-      .eq('is_complete', true)
-      .eq('is_approved', true)
-      .order('completed_at', { ascending: true });
+      .eq('is_complete', true);
+
+    // Non-approved predictions are normally hidden. The "just for fun" preview
+    // mode opts in to also receive them (each row stays tagged with is_approved
+    // so the client can mark them as non-competing).
+    if (!includePreview) {
+      query = query.eq('is_approved', true);
+    }
+
+    const { data, error } = await query.order('completed_at', { ascending: true });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -31,7 +35,7 @@ export async function GET() {
     ] = await Promise.all([
       supabase
         .from('scores')
-        .select('prediction_id, prediction_number, total_points'),
+        .select('prediction_id, prediction_number, total_points, rank, previous_rank'),
       getFinishedActualResults(supabase),
     ]);
 
@@ -45,18 +49,38 @@ export async function GET() {
       return Number.isFinite(parsed) ? parsed : null;
     };
 
+    const normalizeRank = (value: unknown): number | null => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    type RankInfo = { rank: number | null; previous_rank: number | null };
     const pointsByPredictionId = new Map<string, number>();
     const pointsByPredictionNumber = new Map<number, number>();
+    const rankByPredictionId = new Map<string, RankInfo>();
+    const rankByPredictionNumber = new Map<number, RankInfo>();
     const scoreCacheRows = scoresError ? [] : (scoreRows ?? []);
     for (const row of scoreCacheRows) {
+      const rankInfo: RankInfo = {
+        rank: normalizeRank(row.rank),
+        previous_rank: normalizeRank(row.previous_rank),
+      };
+      const predictionNumber = typeof row.prediction_number === 'number'
+        ? row.prediction_number
+        : Number(row.prediction_number);
+      if (typeof row.prediction_id === 'string') {
+        rankByPredictionId.set(row.prediction_id, rankInfo);
+      }
+      if (Number.isFinite(predictionNumber)) {
+        rankByPredictionNumber.set(predictionNumber, rankInfo);
+      }
+
       const totalPoints = normalizePoints(row.total_points);
       if (totalPoints == null) continue;
       if (typeof row.prediction_id === 'string') {
         pointsByPredictionId.set(row.prediction_id, totalPoints);
       }
-      const predictionNumber = typeof row.prediction_number === 'number'
-        ? row.prediction_number
-        : Number(row.prediction_number);
       if (Number.isFinite(predictionNumber)) {
         pointsByPredictionNumber.set(predictionNumber, totalPoints);
       }
@@ -82,34 +106,7 @@ export async function GET() {
       }
     }
 
-    const predictionRows = (data ?? []).map((row: Record<string, unknown>) => {
-      const userId = typeof row.user_id === 'string' ? row.user_id : null;
-      const predictionId = typeof row.id === 'string' ? row.id : '';
-      const predictionNumber = typeof row.prediction_number === 'number'
-        ? row.prediction_number
-        : Number(row.prediction_number);
-      return {
-        id: predictionId,
-        prediction_number: Number.isFinite(predictionNumber) ? predictionNumber : null,
-        user_id: userId,
-        name: (row.name as string) ?? null,
-        display_name: (row.submitter_name as string | null) || (userId ? profilesById.get(userId) : null) || 'Unknown',
-        group_matches: (row.group_matches as Record<string, string>) ?? {},
-        knockout_matches: (row.knockout_matches as Record<string, string>) ?? {},
-        champion_code: (row.champion_code as string | null) ?? null,
-        third_place_tiebreaker: (row.third_place_tiebreaker as string[] | null) ?? null,
-        completed_at: (row.completed_at as string | null) ?? null,
-      };
-    });
-
     const actualResults = actualResultsResult.data;
-    const lastMatch = await getLastFinishedMatch(supabase, actualResults);
-    const positionChanges = computeLeaderboardPositionChanges(
-      predictionRows,
-      actualResults,
-      lastMatch,
-    );
-    const changesByPredictionId = positionChangesByKey(positionChanges);
 
     const predictions = (data ?? []).map((row: Record<string, unknown>) => {
       const userId = typeof row.user_id === 'string' ? row.user_id : null;
@@ -133,8 +130,8 @@ export async function GET() {
         actualResults,
       );
       const totalPoints = cachedTotalPoints ?? computedTotalPoints;
-      const changeKey = predictionId
-        ?? (Number.isFinite(predictionNumber) ? `num-${predictionNumber}` : '');
+      const rankInfo = (predictionId && rankByPredictionId.get(predictionId))
+        || (Number.isFinite(predictionNumber) ? rankByPredictionNumber.get(predictionNumber) : undefined);
 
       return {
         prediction_number: row.prediction_number,
@@ -143,7 +140,7 @@ export async function GET() {
         display_name: (row.submitter_name as string | null) || (userId ? profilesById.get(userId) : null) || 'Unknown',
         champion_code: row.champion_code,
         total_points: totalPoints,
-        position_change: changesByPredictionId.get(changeKey),
+        position_change: positionChangeFromRanks(rankInfo?.rank, rankInfo?.previous_rank),
         ...(detailsAvailable
           ? {
               group_matches: row.group_matches ?? {},
@@ -160,7 +157,8 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ predictions, total_users: predictions.length });
+    const approvedCount = predictions.filter(prediction => prediction.is_approved).length;
+    return NextResponse.json({ predictions, total_users: approvedCount });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to load leaderboard predictions';
     return NextResponse.json({ error: message }, { status: 500 });

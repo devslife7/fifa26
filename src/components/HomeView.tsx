@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { TabId, LiveMatch } from '@/types';
 import DailyRecapCard from '@/components/home/DailyRecapCard';
 import SignedOutHero from '@/components/home/SignedOutHero';
-import LeaderboardPeek from '@/components/home/LeaderboardPeek';
 import KnockoutScoringCard from '@/components/home/KnockoutScoringCard';
 import AppFooter from '@/components/layout/AppFooter';
 import AuthModal from '@/components/auth/AuthModal';
@@ -118,7 +117,6 @@ export default function HomeView({
       ) : (
         <>
           <SignedOutHero onSignIn={() => setShowAuth(true)} />
-          <LeaderboardPeek onNavigate={onNavigate} onSignIn={() => setShowAuth(true)} />
         </>
       )}
 

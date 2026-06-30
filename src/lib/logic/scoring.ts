@@ -91,8 +91,20 @@ function addReal(set: Set<string>, code: string | undefined | null) {
   if (isRealCode(code)) set.add(code);
 }
 
-function qualifiersFromBracket(bracket: KnockoutMatch[], explicitChampion?: string | null): Qualifiers {
+function qualifiersFromBracket(
+  bracket: KnockoutMatch[],
+  explicitChampion?: string | null,
+  // Recorded match winners (by match id). When a real winner is recorded we trust
+  // it over the reconstructed bracket — the bracket can fail to resolve a side
+  // (e.g. an unresolved best-third placeholder), but the recorded result is ground
+  // truth for who actually advanced.
+  winnerOverrides?: Map<string, string>,
+): Qualifiers {
   const byRound = (round: KnockoutRound) => bracket.filter((m) => m.round === round);
+  const winnerOf = (m: KnockoutMatch): string | undefined => {
+    const recorded = winnerOverrides?.get(m.id);
+    return isRealCode(recorded) ? recorded : getMatchWinner(m);
+  };
 
   const R32 = new Set<string>();
   for (const m of byRound('R32')) {
@@ -101,25 +113,25 @@ function qualifiersFromBracket(bracket: KnockoutMatch[], explicitChampion?: stri
   }
 
   const R16 = new Set<string>();
-  for (const m of byRound('R32')) addReal(R16, getMatchWinner(m));
+  for (const m of byRound('R32')) addReal(R16, winnerOf(m));
 
   const QF = new Set<string>();
-  for (const m of byRound('R16')) addReal(QF, getMatchWinner(m));
+  for (const m of byRound('R16')) addReal(QF, winnerOf(m));
 
   const SF = new Set<string>();
-  for (const m of byRound('QF')) addReal(SF, getMatchWinner(m));
+  for (const m of byRound('QF')) addReal(SF, winnerOf(m));
 
   const thirdMatch = bracket.find((m) => m.id === '3RD-1');
   const thirdParticipants = new Set<string>();
   addReal(thirdParticipants, thirdMatch?.home);
   addReal(thirdParticipants, thirdMatch?.away);
-  const thirdWinner = thirdMatch ? getMatchWinner(thirdMatch) ?? null : null;
+  const thirdWinner = thirdMatch ? winnerOf(thirdMatch) ?? null : null;
 
   const finalMatch = bracket.find((m) => m.id === 'FIN-1');
   const finalParticipants = new Set<string>();
   addReal(finalParticipants, finalMatch?.home);
   addReal(finalParticipants, finalMatch?.away);
-  const finalWinnerFromBracket = finalMatch ? getMatchWinner(finalMatch) ?? null : null;
+  const finalWinnerFromBracket = finalMatch ? winnerOf(finalMatch) ?? null : null;
   const finalWinner = isRealCode(explicitChampion) ? explicitChampion : finalWinnerFromBracket;
 
   // The runner-up is the finalist who is not the champion.
@@ -147,6 +159,7 @@ export function getActualQualifiers(
 ): Qualifiers {
   const groupMatches: Record<string, MatchResult> = {};
   const knockoutMatches: Record<string, KnockoutResult> = {};
+  const winnerOverrides = new Map<string, string>();
   let actualChampion: string | null = null;
 
   for (const row of actualResults) {
@@ -156,6 +169,12 @@ export function getActualQualifiers(
       if (row.result === 'home' || row.result === 'away') {
         knockoutMatches[row.match_id] = row.result;
       }
+      // The recorded winner is the source of truth for who advanced — this credits
+      // matches whose loser/winner can't be reconstructed from the bracket (e.g. a
+      // best-third team whose qualification depends on an unresolved third-place tie).
+      if (isRealCode(row.winning_team)) {
+        winnerOverrides.set(row.match_id, row.winning_team);
+      }
       if (row.match_id === 'FIN-1') {
         actualChampion = row.winning_team;
       }
@@ -163,7 +182,7 @@ export function getActualQualifiers(
   }
 
   const bracket = generateBracket(groupMatches, knockoutMatches, tiebreakerFallback ?? undefined);
-  return qualifiersFromBracket(bracket, actualChampion);
+  return qualifiersFromBracket(bracket, actualChampion, winnerOverrides);
 }
 
 function intersectionSize(a: Set<string>, b: Set<string>): number {

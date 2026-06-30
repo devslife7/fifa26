@@ -320,8 +320,14 @@ function MatchRow({
   const isFinished = match.status === 'FINISHED';
   const showScore = match.score != null && (isLive || isFinished);
 
-  const homeWon = isFinished && match.actualResult === 'home';
-  const awayWon = isFinished && match.actualResult === 'away';
+  // Penalty shootout: the on-field score is level, so the winner comes from the
+  // shootout tally. Derived for display only — settlement is unchanged.
+  const pens = isFinished ? match.penalties : null;
+  const penHomeWon = pens != null && pens.home > pens.away;
+  const penAwayWon = pens != null && pens.away > pens.home;
+
+  const homeWon = (isFinished && match.actualResult === 'home') || penHomeWon;
+  const awayWon = (isFinished && match.actualResult === 'away') || penAwayWon;
 
   // For knockout slots without resolved teams, label the card with the bracket
   // path (e.g. "Runner-up A") instead of a bare "TBD".
@@ -361,6 +367,7 @@ function MatchRow({
           liveFlag={match.homeFlag}
           teamFlagsByCode={teamFlagsByCode}
           score={showScore ? match.score!.home : null}
+          penalty={pens?.home ?? null}
           emphasized={!isFinished || homeWon}
           winner={homeWon}
         />
@@ -370,6 +377,7 @@ function MatchRow({
           liveFlag={match.awayFlag}
           teamFlagsByCode={teamFlagsByCode}
           score={showScore ? match.score!.away : null}
+          penalty={pens?.away ?? null}
           emphasized={!isFinished || awayWon}
           winner={awayWon}
         />
@@ -395,6 +403,7 @@ function TeamLine({
   liveFlag,
   teamFlagsByCode,
   score,
+  penalty,
   emphasized,
   winner,
 }: {
@@ -403,6 +412,7 @@ function TeamLine({
   liveFlag?: string | null;
   teamFlagsByCode?: Record<string, string>;
   score: number | null;
+  penalty?: number | null;
   emphasized: boolean;
   winner: boolean;
 }) {
@@ -421,6 +431,9 @@ function TeamLine({
       {score != null && (
         <span className={`shrink-0 text-sm font-semibold tabular-nums ${winner ? 'text-primary' : emphasized ? 'text-white' : 'text-neutral-500'}`}>
           {score}
+          {penalty != null && (
+            <span className="ml-1 text-xs font-medium text-neutral-400">({penalty})</span>
+          )}
         </span>
       )}
     </div>

@@ -117,6 +117,7 @@ function orientApiToSlot(api: LiveMatch, homeResolved: string | null, awayResolv
   const h = swap ? awaySide : homeSide;
   const a = swap ? homeSide : awaySide;
   const score = api.score ? (swap ? { home: api.score.away, away: api.score.home } : api.score) : null;
+  const penalties = api.penalties ? (swap ? { home: api.penalties.away, away: api.penalties.home } : api.penalties) : null;
   let actualResult = api.actualResult;
   if (swap && actualResult === 'home') actualResult = 'away';
   else if (swap && actualResult === 'away') actualResult = 'home';
@@ -126,7 +127,7 @@ function orientApiToSlot(api: LiveMatch, homeResolved: string | null, awayResolv
     homeName: h.name, awayName: a.name,
     homeShortName: h.short, awayShortName: a.short,
     homeFlag: h.flag, awayFlag: a.flag,
-    score, actualResult,
+    score, penalties, actualResult,
   };
 }
 
@@ -162,6 +163,7 @@ export function buildR32DisplayRows(matches: LiveMatch[]): LiveMatch[] {
         status: 'SCHEDULED',
         venue: KNOCKOUT_VENUES[slot.id] ?? null,
         score: null,
+        penalties: null,
         actualResult: null,
         stage: 'R32',
         group: null,
@@ -184,6 +186,7 @@ export function buildR32DisplayRows(matches: LiveMatch[]): LiveMatch[] {
       status: api.status,
       venue: api.venue ?? KNOCKOUT_VENUES[slot.id] ?? null,
       score: o.score,
+      penalties: o.penalties,
       actualResult: o.actualResult,
       stage: 'R32',
       group: null,
@@ -259,6 +262,7 @@ export function buildKnockoutDisplayRows(matches: LiveMatch[]): LiveMatch[] {
           status: 'SCHEDULED',
           venue: KNOCKOUT_VENUES[slot.id] ?? null,
           score: null,
+          penalties: null,
           actualResult: null,
           stage: round,
           group: null,
@@ -283,6 +287,7 @@ export function buildKnockoutDisplayRows(matches: LiveMatch[]): LiveMatch[] {
           status: api.status,
           venue: api.venue ?? KNOCKOUT_VENUES[slot.id] ?? null,
           score: o.score,
+          penalties: o.penalties,
           actualResult: o.actualResult,
           stage: round,
           group: null,

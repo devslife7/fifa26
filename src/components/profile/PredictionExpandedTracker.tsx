@@ -222,12 +222,18 @@ function MatchupLine({
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
       <span>{homeName}</span>
       {showScore && outcome.score && (
-        <span className="tabular-nums">{outcome.score.home}</span>
+        <span className="tabular-nums">
+          {outcome.score.home}
+          {outcome.penalties && <span className="text-neutral-500"> ({outcome.penalties.home})</span>}
+        </span>
       )}
       <span className="text-neutral-600">v</span>
       <span>{awayName}</span>
       {showScore && outcome.score && (
-        <span className="tabular-nums">{outcome.score.away}</span>
+        <span className="tabular-nums">
+          {outcome.score.away}
+          {outcome.penalties && <span className="text-neutral-500"> ({outcome.penalties.away})</span>}
+        </span>
       )}
     </span>
   );

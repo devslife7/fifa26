@@ -21,6 +21,10 @@ function rowToMatch(row: any): LiveMatch {
       row.score_home !== null && row.score_away !== null
         ? { home: row.score_home, away: row.score_away }
         : null,
+    penalties:
+      row.penalty_home != null && row.penalty_away != null
+        ? { home: row.penalty_home, away: row.penalty_away }
+        : null,
     actualResult: row.actual_result ?? null,
     stage: row.stage,
     group: row.group,
@@ -44,6 +48,8 @@ function matchToRow(m: LiveMatch) {
     venue: m.venue,
     score_home: m.score?.home ?? null,
     score_away: m.score?.away ?? null,
+    penalty_home: m.penalties?.home ?? null,
+    penalty_away: m.penalties?.away ?? null,
     actual_result: m.actualResult,
     stage: m.stage,
     group: m.group,

@@ -186,6 +186,11 @@ export default function KnockoutMatchCard({
             {isFinished && liveMatch?.score && (
               <span className="text-[11px] font-bold tabular-nums text-neutral-300">
                 {liveMatch.score.home}–{liveMatch.score.away}
+                {liveMatch.penalties && (
+                  <span className="ml-1 font-medium text-neutral-400">
+                    ({liveMatch.penalties.home}–{liveMatch.penalties.away} pens)
+                  </span>
+                )}
               </span>
             )}
             {predictionCorrect !== null && (

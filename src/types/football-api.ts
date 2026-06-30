@@ -26,6 +26,13 @@ export interface FDApiFullScore {
   duration: 'REGULAR' | 'EXTRA_TIME' | 'PENALTY_SHOOTOUT';
   fullTime: FDApiScore;
   halfTime: FDApiScore;
+  // Present for matches that went beyond 90 minutes. `fullTime` folds the
+  // shootout into the score for PENALTY_SHOOTOUT matches, so the on-field
+  // result must be read from regularTime (+ extraTime), and the shootout tally
+  // from penalties.
+  regularTime?: FDApiScore;
+  extraTime?: FDApiScore;
+  penalties?: FDApiScore;
 }
 
 export type FDMatchStatus =

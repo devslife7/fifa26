@@ -156,7 +156,7 @@ function maxPointsForOutcome(outcome: PerMatchOutcome): number {
   return 0;
 }
 
-function TeamRow({ code, score, flagUrl, dim }: { code: string | null; score: number | null; flagUrl?: string; dim?: boolean }) {
+function TeamRow({ code, score, penalty, flagUrl, dim }: { code: string | null; score: number | null; penalty?: number | null; flagUrl?: string; dim?: boolean }) {
   if (!code) {
     return <span className="text-neutral-500 text-sm italic">TBD</span>;
   }
@@ -173,7 +173,12 @@ function TeamRow({ code, score, flagUrl, dim }: { code: string | null; score: nu
       )}
       <span className="text-sm font-semibold text-neutral-200 truncate font-body">{team?.name ?? code}</span>
       {score !== null && (
-        <span className="ml-auto tabular-nums font-black text-sm text-white">{score}</span>
+        <span className="ml-auto tabular-nums font-black text-sm text-white">
+          {score}
+          {penalty != null && (
+            <span className="ml-1 text-xs font-medium text-neutral-400">({penalty})</span>
+          )}
+        </span>
       )}
     </div>
   );
@@ -262,8 +267,8 @@ function MatchRow({ outcome, flagsByCode }: { outcome: PerMatchOutcome; flagsByC
           )}
         </div>
         <div className="space-y-1">
-          <TeamRow code={outcome.homeCode} score={showScore ? homeScore : null} flagUrl={homeFlag} />
-          <TeamRow code={outcome.awayCode} score={showScore ? awayScore : null} flagUrl={awayFlag} />
+          <TeamRow code={outcome.homeCode} score={showScore ? homeScore : null} penalty={showScore ? outcome.penalties?.home ?? null : null} flagUrl={homeFlag} />
+          <TeamRow code={outcome.awayCode} score={showScore ? awayScore : null} penalty={showScore ? outcome.penalties?.away ?? null : null} flagUrl={awayFlag} />
         </div>
         {label && (
           <div className="mt-1.5 flex items-center gap-1.5 text-[11px] flex-wrap">

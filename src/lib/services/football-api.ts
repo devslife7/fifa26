@@ -244,10 +244,7 @@ function mapApiMatch(
     localMatchId = mapKnockoutMatchToLocalId(apiMatch.stage, knockoutIndex);
   }
 
-  const score =
-    apiMatch.score.fullTime.home !== null && apiMatch.score.fullTime.away !== null
-      ? { home: apiMatch.score.fullTime.home, away: apiMatch.score.fullTime.away }
-      : null;
+  const { score, penalties } = mapScore(apiMatch.score);
 
   return {
     apiMatchId: apiMatch.id,
@@ -264,10 +261,70 @@ function mapApiMatch(
     status: apiMatch.status,
     venue: apiMatch.venue ?? null,
     score,
+    penalties,
     actualResult: getActualResult(apiMatch),
     stage,
     group,
   };
+}
+
+// --- Derive the displayed score and shootout tally ---
+// football-data.org folds the penalty shootout into `fullTime` for
+// PENALTY_SHOOTOUT matches: `fullTime = regularTime + extraTime + shootout`
+// (e.g. a 1-1 game won 4-3 on penalties reports fullTime as 5-4). We surface
+// the on-field 120-minute score (regularTime + extraTime) as the main score
+// and the shootout tally separately.
+//
+// NOTE: the standalone `penalties` and `winner` fields are NOT reliable in this
+// feed (observed e.g. penalties 4-4 / winner null for a match decided 4-3). The
+// only dependable source is `fullTime`, so we recover the shootout tally by
+// subtraction rather than trusting `penalties`.
+function mapScore(s: FDApiMatch['score']): {
+  score: LiveMatch['score'];
+  penalties: LiveMatch['penalties'];
+} {
+  if (s.duration === 'PENALTY_SHOOTOUT') {
+    const reg = s.regularTime;
+    const et = s.extraTime;
+    const ft = s.fullTime;
+
+    // On-field score = regulation + extra time (fall back to fullTime if the
+    // breakdown is missing, though that would include the shootout).
+    let score: LiveMatch['score'] = null;
+    if (reg && reg.home !== null && reg.away !== null) {
+      score = {
+        home: reg.home + (et?.home ?? 0),
+        away: reg.away + (et?.away ?? 0),
+      };
+    } else if (ft.home !== null && ft.away !== null) {
+      score = { home: ft.home, away: ft.away };
+    }
+
+    // Shootout tally = fullTime - (regularTime + extraTime). Only derivable when
+    // we have both the aggregate and the on-field breakdown.
+    let penalties: LiveMatch['penalties'] = null;
+    if (
+      ft.home !== null &&
+      ft.away !== null &&
+      reg &&
+      reg.home !== null &&
+      reg.away !== null
+    ) {
+      const penHome = ft.home - reg.home - (et?.home ?? 0);
+      const penAway = ft.away - reg.away - (et?.away ?? 0);
+      // Guard against bad feed data producing negatives.
+      if (penHome >= 0 && penAway >= 0) {
+        penalties = { home: penHome, away: penAway };
+      }
+    }
+    return { score, penalties };
+  }
+
+  const score =
+    s.fullTime.home !== null && s.fullTime.away !== null
+      ? { home: s.fullTime.home, away: s.fullTime.away }
+      : null;
+  return { score, penalties: null };
 }
 
 // --- Exported fetchers ---

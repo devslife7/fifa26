@@ -134,7 +134,10 @@ export interface LiveMatch {
   utcDate: string;
   status: string; // SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED, etc.
   venue: string | null;
+  // The on-field score. For penalty-shootout matches this is the 120-minute
+  // score (level), and the shootout tally lives in `penalties`.
   score: { home: number; away: number } | null;
+  penalties: { home: number; away: number } | null;
   actualResult: 'home' | 'draw' | 'away' | null;
   stage: string;
   group: string | null;

@@ -40,6 +40,7 @@ export interface PerMatchOutcome {
   utcDate?: string;
   status: LiveMatch['status'] | 'NOT_LIVE';
   score: { home: number; away: number } | null;
+  penalties: { home: number; away: number } | null;
 }
 
 export interface PointsSummary {
@@ -204,12 +205,13 @@ function computeKnockoutOutcome(
   r32Field: Set<string>,
   r32FieldKnown: boolean,
   predictionPick: KnockoutResult | undefined,
-): Pick<PerMatchOutcome, 'state' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score'> {
+): Pick<PerMatchOutcome, 'state' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score' | 'penalties'> {
   const homeCode = live?.homeCode ?? m.home ?? null;
   const awayCode = live?.awayCode ?? m.away ?? null;
   const utcDate = live?.utcDate;
   const status = (live?.status ?? 'NOT_LIVE') as LiveMatch['status'] | 'NOT_LIVE';
   const score = live?.score ?? null;
+  const penalties = live?.penalties ?? null;
   const actualResult = live?.actualResult ?? null;
 
   const isFinished = live?.status === 'FINISHED' && actualResult && live?.homeCode && live?.awayCode;
@@ -230,6 +232,7 @@ function computeKnockoutOutcome(
     utcDate,
     status,
     score,
+    penalties,
   };
 
   if (!predictionPick || !pickedTeamCode) {
@@ -395,6 +398,7 @@ export function computePredictionResults(
         utcDate: live?.utcDate,
         status: (live?.status ?? 'NOT_LIVE') as LiveMatch['status'] | 'NOT_LIVE',
         score: live?.score ?? null,
+        penalties: live?.penalties ?? null,
       };
     }
     const groupPoints = groupCorrect * GROUP_POINTS;

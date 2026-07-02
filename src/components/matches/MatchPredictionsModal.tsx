@@ -185,10 +185,9 @@ export default function MatchPredictionsModal({ match, predictions, teamFlagsByC
     return built.sort((a, b) => rank(a) - rank(b) || compareNames(a, b));
   }, [visiblePredictions, mode, knockoutRound, localId, homeCode, awayCode, isFinished, match.actualResult, actualWinnerCode]);
 
-  const pickedEntries = entries.filter(entry => entry.hasPick);
-  // On a resolved knockout match, only list players who actually back one of the
-  // two real teams — drop everyone whose bracket sends a different team through.
-  const listEntries = mode === 'knockoutResolved' ? pickedEntries : entries;
+  // Show every participant, including those whose bracket sends a different team
+  // through (rendered as "Different pick"). These entries already sort to the bottom.
+  const listEntries = entries;
 
   // Aggregate (group & resolved-knockout): vote tally on the real team(s).
   const aggregate = useMemo(() => {
@@ -436,7 +435,7 @@ function PickChip({
   if (!entry.hasPick) {
     return (
       <span className="shrink-0 text-[11px] font-bold text-neutral-500">
-        No pick
+        Different pick
       </span>
     );
   }

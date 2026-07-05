@@ -203,19 +203,15 @@ function mapGroupMatchToLocalId(
 
 // --- Knockout slot binding ---
 // football-data.org's knockout fixtures carry no venue, mostly-TBD teams, and
-// unreliable dates, so they can't be slotted by position. R32 fixtures are bound
-// by *team identity* against our bracket in mapMatchesResponse (see
-// buildR32TeamSlotIndex) — the only reliable key. Deeper rounds keep response
-// order for now (they need downstream knockout results to slot; documented
-// follow-up). We never use response order for R32, which would fabricate matchups.
-import { buildR32TeamSlotIndex } from '@/lib/logic/actual-bracket';
-
-function mapKnockoutMatchToLocalId(stage: string, matchIndex: number): string | null {
-  const round = STAGE_TO_ROUND[stage];
-  if (!round || round === 'GROUP') return null;
-  if (round === 'R32') return null; // bound by team identity in mapMatchesResponse
-  return `${round}-${matchIndex + 1}`;
-}
+// unreliable dates, so they can't be slotted by position or response order (which
+// once fabricated matchups — two R16 fixtures landed on the same slot and one
+// finished result overwrote the other). ALL knockout fixtures are bound by *team
+// identity* against our bracket in mapMatchesResponse: R32 via
+// buildR32TeamSlotIndex, deeper rounds via bindDeepKnockoutSlots (round-by-round
+// winner propagation). Fixtures left unbound (e.g. a partial `ids`/`today` fetch
+// with no group results to propagate from) fall back to their stored binding in
+// sync-matches' preserveKnownFixtureIdentity.
+import { buildR32TeamSlotIndex, bindDeepKnockoutSlots } from '@/lib/logic/actual-bracket';
 
 // --- Determine actual result ---
 // The feed's `score.winner` is the authoritative source, but for shootout-decided
@@ -238,21 +234,15 @@ function getActualResult(
 }
 
 // --- Map a single API match to LiveMatch ---
-function mapApiMatch(
-  apiMatch: FDApiMatch,
-  knockoutIndex: number,
-): LiveMatch | null {
+function mapApiMatch(apiMatch: FDApiMatch): LiveMatch | null {
   const homeCode = tlaToCode(apiMatch.homeTeam.tla);
   const awayCode = tlaToCode(apiMatch.awayTeam.tla);
   const group = extractGroupLetter(apiMatch.group);
   const stage = STAGE_TO_ROUND[apiMatch.stage] ?? apiMatch.stage;
 
-  let localMatchId: string | null = null;
-  if (stage === 'GROUP') {
-    localMatchId = mapGroupMatchToLocalId(homeCode, awayCode, group);
-  } else {
-    localMatchId = mapKnockoutMatchToLocalId(apiMatch.stage, knockoutIndex);
-  }
+  // Knockout fixtures are bound by team identity in mapMatchesResponse.
+  const localMatchId =
+    stage === 'GROUP' ? mapGroupMatchToLocalId(homeCode, awayCode, group) : null;
 
   const { score, penalties } = mapScore(apiMatch.score);
 
@@ -354,17 +344,9 @@ function mapMatchesResponse(data: FDMatchesResponse, force: boolean): {
   matches: LiveMatch[];
   source: 'api' | 'cache';
 } {
-  // Track knockout match indices per stage
-  const knockoutCounters: Record<string, number> = {};
-
   const matches: LiveMatch[] = [];
   for (const apiMatch of data.matches) {
-    const stage = apiMatch.stage;
-    if (!knockoutCounters[stage]) knockoutCounters[stage] = 0;
-    const idx = knockoutCounters[stage];
-    knockoutCounters[stage]++;
-
-    const mapped = mapApiMatch(apiMatch, idx);
+    const mapped = mapApiMatch(apiMatch);
     if (mapped) matches.push(mapped);
   }
 
@@ -378,6 +360,9 @@ function mapMatchesResponse(data: FDMatchesResponse, force: boolean): {
     const byAway = m.awayCode ? r32SlotByTeam.get(m.awayCode) : undefined;
     m.localMatchId = byHome ?? byAway ?? null;
   }
+
+  // Bind R16→Final the same way, propagating winners round by round.
+  bindDeepKnockoutSlots(matches);
 
   return { matches, source: force ? 'api' : 'cache' };
 }

@@ -1,4 +1,4 @@
-import type { LiveMatch, MatchResult, KnockoutResult } from '@/types';
+import type { KnockoutMatch, LiveMatch, MatchResult, KnockoutResult } from '@/types';
 import { KNOCKOUT_VENUES, KNOCKOUT_R32_DATES } from '@/data/matches';
 import { generateBracket, isPlaceholder } from './bracket';
 import { detectThirdPlaceTie } from './standings';
@@ -75,6 +75,70 @@ export function buildR32TeamSlotIndex(matches: LiveMatch[]): Map<string, string>
     }
   }
   return index;
+}
+
+// Record a finished fixture's result on its bracket slot in *bracket orientation*
+// (the feed's home/away can be flipped relative to ours). Only recorded when the
+// winner matches one of the slot's resolved teams — if our bracket disagrees with
+// reality (e.g. a divergent third-place tiebreak), downstream slots stay
+// unresolved rather than propagating a wrong team.
+function recordSlotResult(
+  results: Record<string, KnockoutResult>,
+  slot: KnockoutMatch,
+  fixture: LiveMatch,
+): void {
+  if (fixture.status !== 'FINISHED') return;
+  const r = fixture.actualResult;
+  if (r !== 'home' && r !== 'away') return;
+  const winner = r === 'home' ? fixture.homeCode : fixture.awayCode;
+  if (!winner) return;
+  if (slot.home === winner) results[slot.id] = 'home';
+  else if (slot.away === winner) results[slot.id] = 'away';
+}
+
+/** Bind R16→Final fixtures to their bracket slot by team identity, mirroring the
+ *  R32 binding above. The bracket is regenerated round by round with results
+ *  accumulated so far, so each round's slots carry real team codes derived from
+ *  the previous round's winners — the only reliable join key (the feed's deep
+ *  knockout fixtures can't be slotted by position or date). Fixtures whose teams
+ *  aren't resolvable yet keep their existing binding (or stay unbound and fall
+ *  back to the stored id during sync). Mutates `matches` in place. */
+export function bindDeepKnockoutSlots(matches: LiveMatch[]): void {
+  const groupResults = buildActualGroupResults(matches);
+  const tiebreaker = computeActualThirdPlaceTiebreaker(matches, groupResults);
+
+  // Seed propagation with finished R32 results (R32 fixtures are already bound).
+  const knockoutResults: Record<string, KnockoutResult> = {};
+  const r32Slots = new Map(computeR32Slots(matches).map(s => [s.id, s]));
+  for (const m of matches) {
+    if (m.stage !== 'R32' || !m.localMatchId) continue;
+    const slot = r32Slots.get(m.localMatchId);
+    if (slot) recordSlotResult(knockoutResults, slot, m);
+  }
+
+  const rounds = ['R16', 'QF', 'SF', '3RD', 'FIN'] as const;
+  for (const round of rounds) {
+    const slots = generateBracket(groupResults, knockoutResults, tiebreaker)
+      .filter(s => s.round === round);
+
+    const slotByTeam = new Map<string, KnockoutMatch>();
+    for (const slot of slots) {
+      for (const code of [slot.home, slot.away]) {
+        if (code && !isPlaceholder(code)) slotByTeam.set(code, slot);
+      }
+    }
+
+    for (const m of matches) {
+      if (m.stage !== round) continue;
+      const slot =
+        (m.homeCode ? slotByTeam.get(m.homeCode) : undefined) ??
+        (m.awayCode ? slotByTeam.get(m.awayCode) : undefined);
+      if (slot) {
+        m.localMatchId = slot.id;
+        recordSlotResult(knockoutResults, slot, m);
+      }
+    }
+  }
 }
 
 // --- Display rows ---

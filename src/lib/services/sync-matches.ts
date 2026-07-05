@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/services/supabase/server';
 import { fetchMatches, type MatchFetchMode } from '@/lib/services/football-api';
 import { getFixturesFromDb, upsertFixturesToDb } from '@/lib/services/fixtures-db';
 import { recalculateScores } from '@/lib/services/recalculate-scores';
+import { bindDeepKnockoutSlots } from '@/lib/logic/actual-bracket';
 import type { LiveMatch } from '@/types';
 
 const STALE_AFTER_BY_MODE_MS: Record<MatchFetchMode, number> = {
@@ -70,6 +71,16 @@ async function doSync(opts: SyncMatchesOptions): Promise<SyncResult> {
 
   const existing = await getFixturesFromDb();
   const fetchedMatches = preserveKnownFixtureIdentity(fetched.matches, existing);
+  // Re-derive deep knockout bindings with full DB context. A partial fetch
+  // (ids/today) has no group/R32 results of its own to propagate the bracket
+  // from, so binding inside mapMatchesResponse comes up empty and the stored id
+  // — which may be stale — would be trusted as-is. Binding against the union of
+  // the response and the stored fixtures slots fresh fixtures correctly and also
+  // heals stale stored bindings.
+  bindDeepKnockoutSlots([
+    ...existing.filter(e => !fetchedMatches.some(f => f.apiMatchId === e.apiMatchId)),
+    ...fetchedMatches,
+  ]);
   const relevantExisting = filterExistingToFetched(existing, fetchedMatches);
   if (matchesEqual(relevantExisting, fetchedMatches)) {
     if (force) {
@@ -196,7 +207,7 @@ function matchesEqual(a: LiveMatch[], b: LiveMatch[]): boolean {
 }
 
 async function bridgeFinishedToActualResults(matches: LiveMatch[]): Promise<number> {
-  const rows = matches
+  const allRows = matches
     .filter(m => m.status === 'FINISHED' && m.localMatchId && m.actualResult)
     .map(m => {
       const match_type = m.stage === 'GROUP' ? 'group' : 'knockout';
@@ -210,6 +221,18 @@ async function bridgeFinishedToActualResults(matches: LiveMatch[]): Promise<numb
         winning_team,
       };
     });
+
+  // Two fixtures claiming the same slot means at least one binding is wrong —
+  // writing either would corrupt actual_results (a stale slot collision once let
+  // one R16 result overwrite another's winner). Skip the contested slot entirely
+  // and let a later sync with corrected bindings bridge it.
+  const idCounts = new Map<string, number>();
+  for (const row of allRows) idCounts.set(row.match_id, (idCounts.get(row.match_id) ?? 0) + 1);
+  const rows = allRows.filter(row => idCounts.get(row.match_id) === 1);
+  const contested = [...idCounts].filter(([, n]) => n > 1).map(([id]) => id);
+  if (contested.length > 0) {
+    console.error('bridgeFinishedToActualResults: conflicting slot bindings, skipped', contested);
+  }
 
   if (rows.length === 0) return 0;
 

@@ -120,6 +120,7 @@ function lm(partial: Partial<LiveMatch> & { apiMatchId: number }): LiveMatch {
     status: 'SCHEDULED',
     venue: null,
     score: null,
+    penalties: null,
     actualResult: null,
     stage: 'GROUP',
     group: null,

@@ -8,6 +8,7 @@ import {
   buildR32TeamSlotIndex,
   buildR32DisplayRows,
   buildKnockoutDisplayRows,
+  bindDeepKnockoutSlots,
 } from './actual-bracket';
 
 function lm(partial: Partial<LiveMatch> & { apiMatchId: number }): LiveMatch {
@@ -25,6 +26,7 @@ function lm(partial: Partial<LiveMatch> & { apiMatchId: number }): LiveMatch {
     status: 'SCHEDULED',
     venue: null,
     score: null,
+    penalties: null,
     actualResult: null,
     stage: 'GROUP',
     group: null,
@@ -201,4 +203,117 @@ test('API-supplied R16 team codes are not overwritten by bracket', () => {
   assert.equal(row.apiMatchId, 9001);           // joined to API fixture
   assert.equal(row.homeCode, r16Slot.homeCode); // API code preserved, not overwritten
   assert.equal(row.awayCode, r16Slot.awayCode);
+});
+
+// --- bindDeepKnockoutSlots ---
+
+// Bound + finished R32 fixtures (home side wins), giving every R16 slot real teams.
+function boundFinishedR32Fixtures(groupMatches: LiveMatch[]): LiveMatch[] {
+  return buildR32DisplayRows(groupMatches)
+    .filter(s => s.homeCode && s.awayCode)
+    .map((s, i) =>
+      lm({
+        apiMatchId: 5000 + i,
+        localMatchId: s.localMatchId,
+        stage: 'R32',
+        homeCode: s.homeCode,
+        awayCode: s.awayCode,
+        status: 'FINISHED',
+        actualResult: 'home',
+      }),
+    );
+}
+
+test('binds R16 fixtures to their slot by team identity, correcting wrong ids', () => {
+  const groups = finishedGroups('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
+  const r32 = boundFinishedR32Fixtures(groups);
+  const r16Slots = buildKnockoutDisplayRows([...groups, ...r32]).filter(r =>
+    r.localMatchId?.startsWith('R16'),
+  );
+
+  // Regression shape of the Morocco bug: three finished R16 fixtures, one carrying
+  // a stale binding that collides with another slot, one with flipped home/away.
+  const fixtures = [
+    lm({
+      apiMatchId: 9101,
+      localMatchId: 'R16-1', // stale: actually the R16-2 matchup
+      stage: 'R16',
+      homeCode: r16Slots[1].homeCode,
+      awayCode: r16Slots[1].awayCode,
+      status: 'FINISHED',
+      actualResult: 'away',
+    }),
+    lm({
+      apiMatchId: 9102,
+      localMatchId: null,
+      stage: 'R16',
+      homeCode: r16Slots[0].awayCode, // flipped orientation
+      awayCode: r16Slots[0].homeCode,
+      status: 'FINISHED',
+      actualResult: 'home',
+    }),
+    lm({
+      apiMatchId: 9103,
+      localMatchId: 'R16-1', // stale collision
+      stage: 'R16',
+      homeCode: r16Slots[2].homeCode,
+      awayCode: r16Slots[2].awayCode,
+      status: 'FINISHED',
+      actualResult: 'away',
+    }),
+  ];
+
+  const matches = [...groups, ...r32, ...fixtures];
+  bindDeepKnockoutSlots(matches);
+
+  assert.equal(fixtures[0].localMatchId, r16Slots[1].localMatchId);
+  assert.equal(fixtures[1].localMatchId, r16Slots[0].localMatchId);
+  assert.equal(fixtures[2].localMatchId, r16Slots[2].localMatchId);
+});
+
+test('propagates R16 winners so QF fixtures bind to their slot', () => {
+  const groups = finishedGroups('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L');
+  const r32 = boundFinishedR32Fixtures(groups);
+  const r16Slots = buildKnockoutDisplayRows([...groups, ...r32]).filter(r =>
+    r.localMatchId?.startsWith('R16'),
+  );
+  // All eight R16 games finish (home side wins).
+  const r16 = r16Slots.map((s, i) =>
+    lm({
+      apiMatchId: 9200 + i,
+      localMatchId: null,
+      stage: 'R16',
+      homeCode: s.homeCode,
+      awayCode: s.awayCode,
+      status: 'FINISHED',
+      actualResult: 'home',
+    }),
+  );
+  // QF-1 pairs the winners of R16-1 and R16-2 (Article 12.8: M97 = W89 v W90).
+  const w = (slotId: string) => r16Slots.find(s => s.localMatchId === slotId)!.homeCode;
+  const qf = lm({
+    apiMatchId: 9301,
+    localMatchId: null,
+    stage: 'QF',
+    homeCode: w('R16-1'),
+    awayCode: w('R16-2'),
+    status: 'TIMED',
+  });
+
+  bindDeepKnockoutSlots([...groups, ...r32, ...r16, qf]);
+  assert.equal(qf.localMatchId, 'QF-1');
+});
+
+test('leaves deep knockout fixtures unbound when teams cannot be resolved (partial fetch)', () => {
+  const orphan = lm({
+    apiMatchId: 9401,
+    localMatchId: null,
+    stage: 'R16',
+    homeCode: 'BR',
+    awayCode: 'NO',
+    status: 'FINISHED',
+    actualResult: 'away',
+  });
+  bindDeepKnockoutSlots([orphan]); // no group/R32 context to propagate from
+  assert.equal(orphan.localMatchId, null);
 });

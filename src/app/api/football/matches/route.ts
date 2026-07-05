@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFixturesFromDb } from '@/lib/services/fixtures-db';
 import { syncMatches, type SyncMatchesOptions } from '@/lib/services/sync-matches';
 import { parseMatchSyncOptions } from '@/lib/services/match-sync-request';
-import { getHotUnfinishedApiIds } from '@/lib/utils/hot-matches';
+import { getHotMatchApiIds } from '@/lib/utils/hot-matches';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const hotIds = !parsed.explicitMode && !parsed.opts.force
-      ? getHotUnfinishedApiIds(matches)
+      ? getHotMatchApiIds(matches)
       : [];
     const syncOpts: SyncMatchesOptions = hotIds.length > 0
       ? { mode: 'ids', ids: hotIds }

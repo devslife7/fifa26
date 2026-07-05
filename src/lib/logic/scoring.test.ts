@@ -405,3 +405,263 @@ test('live results: a wrong runner-up pick earns no runner-up bonus', () => {
   assert.equal(summary.runnerUpPts, 0);
   assert.equal(summary.finWinPts, 0);
 });
+
+// ── Morocco R16 case ────────────────────────────────────────────────────────
+//
+// Repro for the "Morocco game finished but the row still shows the hourglass"
+// report. We build a fully-picked bracket where Morocco (MA) advances via
+// Group C → R32-4 → R16-3 → QF, then flip one live-fixture field at a time
+// to demonstrate exactly which condition controls whether the row transitions
+// from pending/upcoming to hit. The engine is TEAM-centric: as long as the
+// live fixture at ANY predicted R16 slot in the bracket is FINISHED with the
+// full triple (status, actualResult, homeCode/awayCode), Morocco is credited.
+
+// Group predictions that make MA win Group C. Every other group keeps the
+// "home always wins" baseline so the full bracket resolves to real teams.
+const moroccoGroupPreds: Record<string, MatchResult> = {
+  ...allGroupHome,
+  'C-1': 'away' as MatchResult, // BR v MA → MA wins
+  'C-3': 'away' as MatchResult, // GB-SCT v MA → MA wins
+  // C-5 (MA at home v HT) keeps 'home' so MA wins.
+};
+
+// Fill the full knockout bracket with 'home' picks. Because R16-3.home = winner
+// of R32-4 (MA), Jason's R16-3 pick 'home' picks Morocco to advance to the QF.
+const { tied: moroccoThirdTied, slotsToFill: moroccoThirdSlots } = detectThirdPlaceTie(moroccoGroupPreds);
+const moroccoThirdTiebreaker = moroccoThirdTied.slice(0, moroccoThirdSlots).map(e => e.team);
+const moroccoKoIds = generateBracket(moroccoGroupPreds, {}, moroccoThirdTiebreaker).map(m => m.id);
+const moroccoKoPreds = Object.fromEntries(
+  moroccoKoIds.map(id => [id, 'home' as KnockoutResult]),
+);
+const moroccoBracket = generateBracket(moroccoGroupPreds, moroccoKoPreds, moroccoThirdTiebreaker);
+const moroccoR32 = moroccoBracket.find(m => m.id === 'R32-4')!;
+const moroccoR16 = moroccoBracket.find(m => m.id === 'R16-3')!;
+
+test('Morocco: the crafted prediction really does place MA at R16-3 as home', () => {
+  assert.equal(moroccoR32.home, 'MA');
+  assert.equal(moroccoR16.home, 'MA');
+});
+
+const moroccoPrediction = {
+  user_id: 'jason',
+  group_matches: moroccoGroupPreds,
+  knockout_matches: moroccoKoPreds,
+  champion_code: null,
+  third_place_tiebreaker: moroccoThirdTiebreaker,
+} as unknown as SavedPrediction;
+
+// Groups + R32 all finished with home winning (matching the prediction). The
+// R16-3 fixture is populated per-probe below.
+function moroccoBaselineLive(): Record<string, LiveMatch> {
+  const live: Record<string, LiveMatch> = {};
+  allGroupMatches.forEach((m, i) => {
+    const pick = moroccoGroupPreds[m.id]!;
+    live[m.id] = lm({
+      apiMatchId: 7000 + i,
+      localMatchId: m.id,
+      stage: 'GROUP',
+      group: m.group,
+      status: 'FINISHED',
+      actualResult: pick,
+      homeCode: m.home,
+      awayCode: m.away,
+    });
+  });
+  moroccoBracket
+    .filter(m => m.round === 'R32')
+    .forEach((m, i) => {
+      live[m.id] = lm({
+        apiMatchId: 7100 + i,
+        localMatchId: m.id,
+        stage: 'R32',
+        status: 'FINISHED',
+        actualResult: 'home',
+        homeCode: m.home,
+        awayCode: m.away,
+        score: { home: 2, away: 0 },
+      });
+    });
+  return live;
+}
+
+test('Morocco: winning the R16 game credits the picker +4 (QF qualifier award)', () => {
+  const live = moroccoBaselineLive();
+  live['R16-3'] = lm({
+    apiMatchId: 7200,
+    localMatchId: 'R16-3',
+    stage: 'R16',
+    status: 'FINISHED',
+    actualResult: 'home', // MA (home) wins → advances to QF
+    homeCode: moroccoR16.home,
+    awayCode: moroccoR16.away,
+    score: { home: 1, away: 0 },
+  });
+
+  const { summary, perMatch, actual } = computePredictionResults(moroccoPrediction, live);
+
+  assert.equal(actual.QF.has('MA'), true);
+  assert.equal(perMatch['R16-3'].state, 'hit');
+  assert.equal(perMatch['R16-3'].points, QUALIFIER_POINTS.QF);
+  assert.equal(perMatch['R16-3'].pickedTeamCode, 'MA');
+  // The summary bucket (used by the leaderboard) matches — one QF qualifier hit.
+  assert.equal(summary.qfPts, QUALIFIER_POINTS.QF);
+});
+
+test('Morocco: the same live fixture also awards +4 through the leaderboard path (calculateScore)', () => {
+  // The leaderboard uses the `actual_results` rows, not liveMatches, but the
+  // rows are bridged from live via `bridgeFinishedToActualResults` — same
+  // trigger (status=FINISHED + winner known). Verify the aggregate path.
+  const priorActual: {
+    match_id: string;
+    match_type: 'group' | 'knockout';
+    result: 'home' | 'away' | 'draw';
+    winning_team: string | null;
+  }[] = [
+    ...allGroupMatches.map(m => ({
+      match_id: m.id,
+      match_type: 'group' as const,
+      result: moroccoGroupPreds[m.id]!,
+      winning_team: null,
+    })),
+    ...moroccoBracket
+      .filter(m => m.round === 'R32')
+      .map(m => ({
+        match_id: m.id,
+        match_type: 'knockout' as const,
+        result: 'home' as const,
+        winning_team: m.home ?? null,
+      })),
+  ];
+
+  const before = calculateScore({
+    user_id: 'jason',
+    group_matches: moroccoGroupPreds,
+    knockout_matches: moroccoKoPreds,
+    champion_code: null,
+    third_place_tiebreaker: moroccoThirdTiebreaker,
+  }, priorActual);
+
+  const afterActual = [
+    ...priorActual,
+    {
+      match_id: 'R16-3',
+      match_type: 'knockout' as const,
+      result: 'home' as const,
+      winning_team: 'MA',
+    },
+  ];
+  const after = calculateScore({
+    user_id: 'jason',
+    group_matches: moroccoGroupPreds,
+    knockout_matches: moroccoKoPreds,
+    champion_code: null,
+    third_place_tiebreaker: moroccoThirdTiebreaker,
+  }, afterActual);
+
+  // The only delta is the QF qualifier award for MA — 4 points.
+  assert.equal(after - before, QUALIFIER_POINTS.QF);
+});
+
+test('Morocco: R16 fixture FINISHED but missing actualResult withholds the +4 (row falls back to upcoming/pending)', () => {
+  // The shape the bug produces in the wild: the football-data.org sync marks
+  // the fixture FINISHED with the correct teams and a final score, but
+  // `actualResult` never resolves (e.g. a null `score.winner` on a shootout
+  // where the mapper couldn't recover the tally). `deriveActualFromLive`
+  // skips the fixture and MA is never added to actual.QF.
+  const live = moroccoBaselineLive();
+  live['R16-3'] = lm({
+    apiMatchId: 7200,
+    localMatchId: 'R16-3',
+    stage: 'R16',
+    status: 'FINISHED',
+    actualResult: null, // ← the missing bit
+    homeCode: moroccoR16.home,
+    awayCode: moroccoR16.away,
+    score: { home: 1, away: 0 },
+  });
+
+  const { summary, perMatch, actual } = computePredictionResults(moroccoPrediction, live);
+  assert.equal(actual.QF.has('MA'), false);
+  // With a utcDate present the row reads 'upcoming'; the point is it is NOT
+  // 'hit' — the +4 is withheld until actualResult populates.
+  assert.notEqual(perMatch['R16-3'].state, 'hit');
+  assert.equal(perMatch['R16-3'].points, 0);
+  assert.equal(summary.qfPts, 0);
+});
+
+test('Morocco: R16 fixture FINISHED but homeCode/awayCode unresolved (bad TLA) also withholds the +4', () => {
+  const live = moroccoBaselineLive();
+  live['R16-3'] = lm({
+    apiMatchId: 7200,
+    localMatchId: 'R16-3',
+    stage: 'R16',
+    status: 'FINISHED',
+    actualResult: 'home',
+    // Unbound: the API TLA didn't map to an app team code.
+    homeCode: null,
+    awayCode: null,
+    score: { home: 1, away: 0 },
+  });
+
+  const { summary, perMatch, actual } = computePredictionResults(moroccoPrediction, live);
+  assert.equal(actual.QF.has('MA'), false);
+  assert.notEqual(perMatch['R16-3'].state, 'hit');
+  assert.equal(perMatch['R16-3'].points, 0);
+  assert.equal(summary.qfPts, 0);
+});
+
+test('Morocco: still stuck at IN_PLAY (score in but no winner) is NOT a hit', () => {
+  const live = moroccoBaselineLive();
+  live['R16-3'] = lm({
+    apiMatchId: 7200,
+    localMatchId: 'R16-3',
+    stage: 'R16',
+    status: 'IN_PLAY',
+    actualResult: null,
+    homeCode: moroccoR16.home,
+    awayCode: moroccoR16.away,
+    score: { home: 1, away: 0 },
+  });
+
+  const { summary, perMatch, actual } = computePredictionResults(moroccoPrediction, live);
+  assert.equal(actual.QF.has('MA'), false);
+  assert.notEqual(perMatch['R16-3'].state, 'hit');
+  assert.equal(perMatch['R16-3'].points, 0);
+  assert.equal(summary.qfPts, 0);
+});
+
+test('Morocco: real R16 fixture bound to a DIFFERENT slot than Jason predicted still credits the picker', () => {
+  // The football-data R16 slot binding uses response order, so Morocco's real
+  // fixture can end up at R16-5 even though Jason placed MA at R16-3. The
+  // engine settles by team identity, so Jason still gets his +4.
+  const live = moroccoBaselineLive();
+  // Jason's predicted slot R16-3 has some *other* finished match. Choose
+  // teams that aren't already in his predicted knockout picks so nothing
+  // else in his bracket flips.
+  live['R16-3'] = lm({
+    apiMatchId: 7200,
+    localMatchId: 'R16-3',
+    stage: 'R16',
+    status: 'FINISHED',
+    actualResult: 'home',
+    homeCode: 'HT',
+    awayCode: 'AU',
+    score: { home: 1, away: 0 },
+  });
+  // Morocco's real R16 slot in this alt reality.
+  live['R16-5'] = lm({
+    apiMatchId: 7201,
+    localMatchId: 'R16-5',
+    stage: 'R16',
+    status: 'FINISHED',
+    actualResult: 'home',
+    homeCode: 'MA',
+    awayCode: 'FR',
+    score: { home: 1, away: 0 },
+  });
+
+  const { perMatch, actual } = computePredictionResults(moroccoPrediction, live);
+  assert.equal(actual.QF.has('MA'), true);
+  assert.equal(perMatch['R16-3'].state, 'hit');
+  assert.equal(perMatch['R16-3'].points, QUALIFIER_POINTS.QF);
+});

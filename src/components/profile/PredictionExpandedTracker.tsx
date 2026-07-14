@@ -20,15 +20,17 @@ import {
 } from '@/hooks/useTrackerTabState';
 import { formatMatchDateTimeET, getDateBucket, groupItemsByDate } from '@/lib/utils/match-dates';
 
-// Points a correct pick in each knockout round is worth — the team you send on
-// scores its *next* round's qualifier points (or the winner bonus for 3rd/Final).
+// Max points a correct pick in each knockout round can earn. The winner of the pick
+// scores its next round's qualifier points (or the winner bonus for 3rd/Final); SF
+// and Final picks can additionally earn a secondary bonus when the predicted loser
+// matches the actual 3rd-place participant or Final runner-up, respectively.
 const KNOCKOUT_POSSIBLE_POINTS: Record<KnockoutRound, number> = {
   R32: QUALIFIER_POINTS.R16,
   R16: QUALIFIER_POINTS.QF,
   QF: QUALIFIER_POINTS.SF,
-  SF: QUALIFIER_POINTS.FIN,
+  SF: QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD'],
   '3RD': WINNER_POINTS['3RD'],
-  FIN: WINNER_POINTS.FIN,
+  FIN: WINNER_POINTS.FIN + RUNNER_UP_POINTS,
 };
 
 const STAGE_TABS: { id: TrackerStageId; label: string }[] = [

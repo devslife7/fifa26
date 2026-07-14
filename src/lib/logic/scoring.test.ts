@@ -120,6 +120,7 @@ function lm(partial: Partial<LiveMatch> & { apiMatchId: number }): LiveMatch {
     status: 'SCHEDULED',
     venue: null,
     score: null,
+    penalties: null,
     actualResult: null,
     stage: 'GROUP',
     group: null,
@@ -341,6 +342,55 @@ test('correctly predicting 2nd place adds the runner-up bonus on top of the cham
   const wrongFinal = calculateScore(wrongFinalPrediction, fullActualResults);
 
   assert.equal(correct - wrongFinal, WINNER_POINTS.FIN + RUNNER_UP_POINTS);
+});
+
+test('a fully correct tournament prediction earns the current maximum of 210 points', () => {
+  assert.equal(calculateScore(fullCorrectPrediction, fullActualResults), 210);
+});
+
+test('scores recalculate cleanly after each finished match and after a result correction', () => {
+  const [first, second] = allGroupMatches;
+  const homePicker = {
+    user_id: 'home-picker',
+    group_matches: { [first.id]: 'home', [second.id]: 'home' } as Record<string, MatchResult>,
+    knockout_matches: {} as Record<string, KnockoutResult>,
+    champion_code: null,
+    third_place_tiebreaker: null,
+  };
+  const awayPicker = {
+    ...homePicker,
+    user_id: 'away-picker',
+    group_matches: { [first.id]: 'away', [second.id]: 'away' } as Record<string, MatchResult>,
+  };
+
+  const afterFirst = [
+    { match_id: first.id, match_type: 'group' as const, result: 'home' as const, winning_team: first.home },
+  ];
+  assert.deepEqual(
+    [calculateScore(homePicker, afterFirst), calculateScore(awayPicker, afterFirst)],
+    [1, 0],
+  );
+
+  const afterSecond = [
+    ...afterFirst,
+    { match_id: second.id, match_type: 'group' as const, result: 'away' as const, winning_team: second.away },
+  ];
+  assert.deepEqual(
+    [calculateScore(homePicker, afterSecond), calculateScore(awayPicker, afterSecond)],
+    [1, 1],
+  );
+  // Re-running against the same finished-result snapshot replaces the cached total;
+  // it does not increment it a second time.
+  assert.equal(calculateScore(homePicker, afterSecond), 1);
+
+  const corrected = [
+    { match_id: first.id, match_type: 'group' as const, result: 'away' as const, winning_team: first.away },
+    afterSecond[1],
+  ];
+  assert.deepEqual(
+    [calculateScore(homePicker, corrected), calculateScore(awayPicker, corrected)],
+    [0, 2],
+  );
 });
 
 test('live results: finishing the Final awards champion + runner-up bonuses', () => {

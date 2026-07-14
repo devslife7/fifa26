@@ -20,18 +20,34 @@ import {
 } from '@/hooks/useTrackerTabState';
 import { formatMatchDateTimeET, getDateBucket, groupItemsByDate } from '@/lib/utils/match-dates';
 
-// Max points a correct pick in each knockout round can earn. The winner of the pick
-// scores its next round's qualifier points (or the winner bonus for 3rd/Final); SF
-// and Final picks can additionally earn a secondary bonus when the predicted loser
-// matches the actual 3rd-place participant or Final runner-up, respectively.
+// Points the primary "team you sent forward" component of each knockout pick is
+// worth — the team you send on scores its *next* round's qualifier points (or the
+// winner bonus for 3rd/Final). SF and Final picks can also earn a secondary bonus
+// when the predicted loser matches the actual 3rd-place participant or Final
+// runner-up, but that credit is surfaced in the Third Place Match and Bonus
+// podium sections instead of on the SF/Final row so the same +3/+6 isn't shown
+// twice.
 const KNOCKOUT_POSSIBLE_POINTS: Record<KnockoutRound, number> = {
   R32: QUALIFIER_POINTS.R16,
   R16: QUALIFIER_POINTS.QF,
   QF: QUALIFIER_POINTS.SF,
-  SF: QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD'],
+  SF: QUALIFIER_POINTS.FIN,
   '3RD': WINNER_POINTS['3RD'],
-  FIN: WINNER_POINTS.FIN + RUNNER_UP_POINTS,
+  FIN: WINNER_POINTS.FIN,
 };
+
+// The "primary" component of a hit — everything except the SF/Final secondary
+// bonuses tracked separately in the third-place/bonus sections.
+function primaryEarnedPoints(outcome: PerMatchOutcome): number {
+  if (outcome.kind !== 'knockout' || outcome.state !== 'hit') return outcome.points;
+  if (outcome.round === 'SF') {
+    return outcome.points >= QUALIFIER_POINTS.FIN ? QUALIFIER_POINTS.FIN : 0;
+  }
+  if (outcome.round === 'FIN') {
+    return outcome.points >= WINNER_POINTS.FIN ? WINNER_POINTS.FIN : 0;
+  }
+  return outcome.points;
+}
 
 const STAGE_TABS: { id: TrackerStageId; label: string }[] = [
   { id: 'group', label: 'Group Stage' },
@@ -346,8 +362,8 @@ function MatchCard({
                 <TeamFlag code={outcome.pickedTeamCode} flagUrl={pickedFlagUrl} size="md" />
               )}
               <span className="min-w-0 truncate text-lg font-bold leading-snug text-white font-body md:text-[15px]">{label}</span>
-              {outcome.state === 'hit' && (
-                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{outcome.points}</span>
+              {outcome.state === 'hit' && primaryEarnedPoints(outcome) > 0 && (
+                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{primaryEarnedPoints(outcome)}</span>
               )}
             </span>
           ) : (

@@ -3,9 +3,15 @@ import type { LiveMatch } from '@/types';
 export const HOT_MATCH_WINDOW_BEFORE_MS = 15 * 60 * 1000;
 export const HOT_MATCH_WINDOW_AFTER_KICKOFF_MS = 195 * 60 * 1000;
 
+/** A final whistle is not settled for scoring until the provider publishes its winner. */
+export function isWinnerPending(match: LiveMatch): boolean {
+  return match.status === 'FINISHED' && match.actualResult === null;
+}
+
 export function getHotUnfinishedMatches(matches: LiveMatch[], now = Date.now()): LiveMatch[] {
   return matches.filter((match) => {
-    if (match.status === 'FINISHED') return false;
+    // Keep a finished match hot until the authoritative winner/result arrives.
+    if (match.status === 'FINISHED') return isWinnerPending(match);
     // Keep polling any match the API still reports as actively in progress,
     // regardless of elapsed time, so the status never gets stuck as "Live".
     if (match.status === 'IN_PLAY' || match.status === 'PAUSED') return true;

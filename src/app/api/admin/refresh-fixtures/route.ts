@@ -46,6 +46,12 @@ export async function POST(request: Request) {
   if (result.status === 'upsert_failed') {
     return NextResponse.json({ error: 'DB upsert failed' }, { status: 500 });
   }
+  if (result.status === 'result_bridge_failed' || result.status === 'score_recalculation_failed') {
+    return NextResponse.json(
+      { error: result.error ?? 'Scores could not be updated', syncStatus: result.status },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({
     message: 'Fixtures refreshed',

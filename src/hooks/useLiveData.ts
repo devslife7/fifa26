@@ -5,7 +5,18 @@ import type { GroupLetter, LiveMatch } from '@/types';
 import { readCachedLiveData, writeCachedLiveData } from '@/lib/client/live-data-cache';
 import { buildHotMatchRefreshQuery } from '@/lib/utils/hot-matches';
 
-const HOT_POLL_INTERVAL_MS = 30_000;
+// Six automated calls/minute stays below the free-tier limit of ten and leaves
+// headroom for manual refreshes.
+const HOT_POLL_INTERVAL_MS = 10_000;
+
+export interface LiveDataRefreshResult {
+  ok: boolean;
+  status: 'updated' | 'winner_pending' | 'rate_limited' | 'error';
+  winnerPendingIds: number[];
+  resultsBridged: number;
+  scoresUpdated: number;
+  message?: string;
+}
 
 interface LiveDataResult {
   matches: LiveMatch[];
@@ -16,7 +27,7 @@ interface LiveDataResult {
   error: string | null;
   rateLimited: boolean;
   lastUpdated: number | null;
-  refetch: (query?: string) => Promise<void>;
+  refetch: (query?: string) => Promise<LiveDataRefreshResult>;
 }
 
 function buildMatchesByLocalId(matches: LiveMatch[]): Record<string, LiveMatch> {
@@ -63,7 +74,11 @@ export function useLiveData(): LiveDataResult {
   const [rateLimited, setRateLimited] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
-  const fetchData = useCallback(async (force: boolean, query?: string, showLoading = true) => {
+  const fetchData = useCallback(async (
+    force: boolean,
+    query?: string,
+    showLoading = true,
+  ): Promise<LiveDataRefreshResult> => {
     if (showLoading) setLoading(true);
     try {
       const params = new URLSearchParams(query);
@@ -72,22 +87,56 @@ export function useLiveData(): LiveDataResult {
       const matchesUrl = queryString ? `/api/football/matches?${queryString}` : '/api/football/matches';
       const matchesRes = await fetch(matchesUrl, { cache: 'no-store' });
 
-      if (matchesRes.status === 429) {
-        setRateLimited(true);
-        return;
-      }
-      setRateLimited(false);
-      if (!matchesRes.ok) throw new Error('Failed to fetch');
       const matchesData = await matchesRes.json();
       const liveMatches: LiveMatch[] = matchesData.matches ?? [];
-      setMatches(liveMatches);
-      setTeamFlagsByCode(buildTeamFlagsByCode(liveMatches));
-      setGroupMatchesByGroup(buildGroupMatchesByGroup(liveMatches));
-      setLastUpdated(Date.now());
+      // Error responses can still carry newly persisted fixture data. Apply it so
+      // the match UI stays fresh while surfacing the scoring failure separately.
+      if (liveMatches.length > 0) {
+        setMatches(liveMatches);
+        setTeamFlagsByCode(buildTeamFlagsByCode(liveMatches));
+        setGroupMatchesByGroup(buildGroupMatchesByGroup(liveMatches));
+        setLastUpdated(Date.now());
+        writeCachedLiveData(liveMatches);
+      }
+
+      const winnerPendingIds = Array.isArray(matchesData.winnerPendingIds)
+        ? matchesData.winnerPendingIds.filter((id: unknown): id is number => typeof id === 'number')
+        : [];
+      const resultsBridged = Number(matchesData.resultsBridged) || 0;
+      const scoresUpdated = Number(matchesData.scoresUpdated) || 0;
+      const isRateLimited = matchesRes.status === 429 || matchesData.rateLimited === true;
+      setRateLimited(isRateLimited);
+
+      if (isRateLimited) {
+        setError(null);
+        return { ok: false, status: 'rate_limited', winnerPendingIds, resultsBridged, scoresUpdated };
+      }
+      if (!matchesRes.ok || matchesData.scoringStatus === 'error') {
+        const message = typeof matchesData.syncError === 'string'
+          ? matchesData.syncError
+          : 'Results loaded, but points could not be updated';
+        setError(message);
+        return { ok: false, status: 'error', winnerPendingIds, resultsBridged, scoresUpdated, message };
+      }
+
       setError(null);
-      writeCachedLiveData(liveMatches);
+      return {
+        ok: true,
+        status: winnerPendingIds.length > 0 ? 'winner_pending' : 'updated',
+        winnerPendingIds,
+        resultsBridged,
+        scoresUpdated,
+      };
     } catch {
       setError('Live scores unavailable');
+      return {
+        ok: false,
+        status: 'error',
+        winnerPendingIds: [],
+        resultsBridged: 0,
+        scoresUpdated: 0,
+        message: 'Live scores unavailable',
+      };
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -103,7 +152,7 @@ export function useLiveData(): LiveDataResult {
       setLastUpdated(cached.fetchedAt);
       setLoading(false);
     }
-    fetchData(false);
+    void fetchData(false);
   }, [fetchData]);
 
   const refetch = useCallback((query?: string) => fetchData(true, query), [fetchData]);

@@ -369,6 +369,172 @@ function MatchCard({
   );
 }
 
+function PlacementTeamRow({
+  code,
+  actualParticipants,
+  possiblePoints,
+  flagsByCode,
+  showTopDivider = false,
+  showRailConnector = false,
+}: {
+  code: string;
+  actualParticipants: Set<string>;
+  possiblePoints: number;
+  flagsByCode: Record<string, string>;
+  showTopDivider?: boolean;
+  showRailConnector?: boolean;
+}) {
+  const hit = actualParticipants.has(code);
+  const settled = hit || actualParticipants.size >= 2;
+  const state: MatchOutcomeState = hit ? 'hit' : settled ? 'miss' : 'upcoming';
+
+  return (
+    <div className="relative flex gap-3 px-1 py-3 md:px-3">
+      {showTopDivider && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-0 h-px bg-white/5"
+          style={{ left: `calc(0.75rem + ${RAIL_ICON_SIZE_PX}px + 0.75rem)` }}
+        />
+      )}
+      <div className="relative flex w-6 shrink-0 justify-center self-stretch">
+        {showRailConnector && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-px -translate-x-1/2 bg-white/10"
+            style={{ height: 'calc(100% + 1.5rem)' }}
+          />
+        )}
+        <div className="relative flex h-full items-center pt-0.5">
+          <MatchCardRailIcon state={state} status="NOT_LIVE" />
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <TeamFlag code={code} flagUrl={flagsByCode[code]} size="md" />
+          <span className="min-w-0 truncate text-lg font-bold leading-snug text-white font-body md:text-[15px]">
+            {teamDisplayName(code)}
+          </span>
+          {hit && (
+            <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">
+              +{possiblePoints}
+            </span>
+          )}
+        </span>
+        <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-neutral-500 md:text-[10px]">
+          +{possiblePoints} pts
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PlacementMatchSection({
+  label,
+  participants,
+  actualParticipants,
+  possiblePoints,
+  flagsByCode,
+}: {
+  label: string;
+  participants: Set<string>;
+  actualParticipants: Set<string>;
+  possiblePoints: number;
+  flagsByCode: Record<string, string>;
+}) {
+  const teamCodes = Array.from(participants);
+
+  return (
+    <section aria-label={label}>
+      <div className="px-1 pb-1 pt-2 md:px-3">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-400">
+          {label}
+        </h3>
+      </div>
+      {teamCodes.length > 0 ? (
+        <div className="relative">
+          {teamCodes.map((code, index) => (
+            <PlacementTeamRow
+              key={code}
+              code={code}
+              actualParticipants={actualParticipants}
+              possiblePoints={possiblePoints}
+              flagsByCode={flagsByCode}
+              showTopDivider={index > 0}
+              showRailConnector={index < teamCodes.length - 1}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="px-1 py-3 text-sm font-semibold text-neutral-500 font-body md:px-3">
+          Teams not decided
+        </p>
+      )}
+    </section>
+  );
+}
+
+function OutcomeMatchSection({
+  label,
+  outcomes,
+  flagsByCode,
+}: {
+  label: string;
+  outcomes: PerMatchOutcome[];
+  flagsByCode: Record<string, string>;
+}) {
+  return (
+    <section aria-label={label}>
+      <div className="px-1 pb-1 pt-2 md:px-3">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-neutral-400">
+          {label}
+        </h3>
+      </div>
+      <div className="relative">
+        {outcomes.map((outcome, index) => (
+          <MatchCard
+            key={outcome.matchId}
+            outcome={outcome}
+            flagsByCode={flagsByCode}
+            showTopDivider={index > 0}
+            showRailConnector={index < outcomes.length - 1}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MedalMatchPredictions({
+  predicted,
+  actual,
+  finalOutcomes,
+  flagsByCode,
+}: {
+  predicted: Qualifiers;
+  actual: Qualifiers;
+  finalOutcomes: PerMatchOutcome[];
+  flagsByCode: Record<string, string>;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <OutcomeMatchSection
+        label="Final Match"
+        outcomes={finalOutcomes}
+        flagsByCode={flagsByCode}
+      />
+      <PlacementMatchSection
+        label="Third Place Match"
+        participants={predicted.thirdParticipants}
+        actualParticipants={actual.thirdParticipants}
+        possiblePoints={QUALIFIER_POINTS['3RD']}
+        flagsByCode={flagsByCode}
+      />
+    </div>
+  );
+}
+
 type BonusRow = {
   key: string;
   label: string;
@@ -513,6 +679,7 @@ export default function PredictionExpandedTracker({
   const { trackerStage, setTrackerStage, groupTab, setGroupTab, knockoutRound, setKnockoutRound } = useTrackerTabState();
   const { perMatch, summary, predicted, actual, hasSignal } = usePredictionResults(prediction, liveMatches);
 
+  const showMedalMatches = trackerStage === 'knockout' && knockoutRound === 'SF';
   const showBonusPodium = trackerStage === 'knockout' && knockoutRound === 'FIN';
 
   // Captured once per mount so "today" stays stable across live-poll re-renders.
@@ -636,7 +803,14 @@ export default function PredictionExpandedTracker({
         />
       )}
 
-      {showBonusPodium ? (
+      {showMedalMatches ? (
+        <MedalMatchPredictions
+          predicted={predicted}
+          actual={actual}
+          finalOutcomes={sortedOutcomes}
+          flagsByCode={teamFlagsByCode}
+        />
+      ) : showBonusPodium ? (
         <BonusPodium
           predicted={predicted}
           actual={actual}

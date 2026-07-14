@@ -5,6 +5,7 @@ import {
   buildHotMatchRefreshQuery,
   getHotMatchApiIds,
   getHotMatches,
+  isWinnerPending,
   HOT_MATCH_WINDOW_AFTER_KICKOFF_MS,
   HOT_MATCH_WINDOW_BEFORE_MS,
 } from './hot-matches';
@@ -73,10 +74,22 @@ test('a FINISHED match still inside the post-kickoff window stays hot (so late a
   assert.equal(getHotMatches([match], justFinished).length, 1);
 });
 
-test('a FINISHED match past the post-kickoff window falls off (no forever-poll)', () => {
-  const match = fixture({ apiMatchId: 42, status: 'FINISHED' });
+test('a FINISHED match past the post-kickoff window falls off once the winner is known', () => {
+  const match = fixture({ apiMatchId: 42, status: 'FINISHED', actualResult: 'home' });
   const wellPast = KICKOFF + HOT_MATCH_WINDOW_AFTER_KICKOFF_MS + 60_000;
   assert.equal(getHotMatches([match], wellPast).length, 0);
+});
+
+// ── isWinnerPending: stay hot indefinitely until the provider settles it ──
+
+test('a FINISHED match with no actualResult stays hot even past the post-kickoff window', () => {
+  const pending = fixture({ apiMatchId: 42, status: 'FINISHED' });
+  const settled = fixture({ apiMatchId: 43, status: 'FINISHED', actualResult: 'away' });
+  const wellPast = KICKOFF + HOT_MATCH_WINDOW_AFTER_KICKOFF_MS + 60_000;
+
+  assert.equal(isWinnerPending(pending), true);
+  assert.equal(isWinnerPending(settled), false);
+  assert.deepEqual(getHotMatches([pending, settled], wellPast), [pending]);
 });
 
 // ── Query builder ─────────────────────────────────────────────────────────
@@ -109,4 +122,11 @@ test('getHotMatchApiIds dedupes and filters out fixtures without an apiMatchId',
   const b = fixture({ apiMatchId: 1, status: 'IN_PLAY' }); // duplicate id
   const c = fixture({ apiMatchId: Number.NaN as unknown as number, status: 'IN_PLAY' });
   assert.deepEqual(getHotMatchApiIds([a, b, c]).sort(), [1]);
+});
+
+test('polling stops once every finished match has an official result', () => {
+  const settled = fixture({ apiMatchId: 21, status: 'FINISHED', actualResult: 'draw' });
+  const wellPast = KICKOFF + HOT_MATCH_WINDOW_AFTER_KICKOFF_MS + 60_000;
+  assert.deepEqual(getHotMatchApiIds([settled], wellPast), []);
+  assert.equal(buildHotMatchRefreshQuery([settled]), null);
 });

@@ -428,7 +428,38 @@ test('live results: finishing the Final awards champion + runner-up bonuses', ()
   assert.equal(summary.finWinPts, WINNER_POINTS.FIN);
   // The Final row reflects both the champion and the runner-up bonus.
   assert.equal(perMatch['FIN-1'].state, 'hit');
+  assert.equal(perMatch['FIN-1'].teamPoints, WINNER_POINTS.FIN);
+  assert.equal(perMatch['FIN-1'].relatedPoints, RUNNER_UP_POINTS);
   assert.equal(perMatch['FIN-1'].points, WINNER_POINTS.FIN + RUNNER_UP_POINTS);
+});
+
+test('semifinal rows attribute finalist and third-place points to their own teams', () => {
+  const live: Record<string, LiveMatch> = {};
+  resolvedBracket.forEach((m, i) => {
+    live[m.id] = lm({
+      apiMatchId: 7000 + i,
+      localMatchId: m.id,
+      status: 'FINISHED',
+      actualResult: 'home',
+      homeCode: m.home,
+      awayCode: m.away,
+      score: { home: 1, away: 0 },
+    });
+  });
+
+  const { summary, perMatch } = computePredictionResults(
+    fullCorrectPrediction as unknown as SavedPrediction,
+    live,
+  );
+
+  for (const id of ['SF-1', 'SF-2']) {
+    assert.equal(perMatch[id].state, 'hit');
+    assert.equal(perMatch[id].teamPoints, QUALIFIER_POINTS.FIN);
+    assert.equal(perMatch[id].relatedPoints, QUALIFIER_POINTS['3RD']);
+    assert.equal(perMatch[id].points, QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD']);
+  }
+  assert.equal(summary.finPartPts, 2 * QUALIFIER_POINTS.FIN);
+  assert.equal(summary.thirdPartPts, 2 * QUALIFIER_POINTS['3RD']);
 });
 
 test('live results: a wrong runner-up pick earns no runner-up bonus', () => {

@@ -345,7 +345,7 @@ function MatchCard({
               )}
               <span className="min-w-0 truncate text-lg font-bold leading-snug text-white font-body md:text-[15px]">{label}</span>
               {outcome.state === 'hit' && (
-                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{outcome.points}</span>
+                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{outcome.teamPoints}</span>
               )}
             </span>
           ) : (

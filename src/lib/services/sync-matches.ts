@@ -5,7 +5,9 @@ import { recalculateScores } from '@/lib/services/recalculate-scores';
 import type { LiveMatch } from '@/types';
 
 const STALE_AFTER_BY_MODE_MS: Record<MatchFetchMode, number> = {
-  ids: 20_000,
+  // The free plan allows 10 calls/minute. Clients poll every 10 seconds, while
+  // this guard prevents duplicate requests from overlapping clients.
+  ids: 8_000,
   live: 20_000,
   today: 60_000,
   full: 6 * 60 * 60 * 1000,
@@ -17,13 +19,19 @@ export type SyncStatus =
   | 'skipped_unchanged'
   | 'api_unavailable'
   | 'rate_limited'
-  | 'upsert_failed';
+  | 'upsert_failed'
+  | 'result_bridge_failed'
+  | 'score_recalculation_failed';
+
+export type ScoringStatus = 'updated' | 'unchanged' | 'error';
 
 export interface SyncResult {
   status: SyncStatus;
   upserted?: number;
   resultsBridged?: number;
   scoresUpdated?: number;
+  scoringStatus?: ScoringStatus;
+  error?: string;
 }
 
 export interface SyncMatchesOptions {
@@ -73,12 +81,25 @@ async function doSync(opts: SyncMatchesOptions): Promise<SyncResult> {
   const relevantExisting = filterExistingToFetched(existing, fetchedMatches);
   if (matchesEqual(relevantExisting, fetchedMatches)) {
     if (force) {
-      const resultsBridged = await bridgeFinishedToActualResults(fetchedMatches);
+      const bridge = await bridgeFinishedToActualResults(fetchedMatches);
+      if (!bridge.ok) {
+        return { status: 'result_bridge_failed', resultsBridged: 0, scoringStatus: 'error', error: bridge.error };
+      }
       const recalc = await recalculateScores();
+      if (!recalc.ok) {
+        return {
+          status: 'score_recalculation_failed',
+          resultsBridged: bridge.count,
+          scoresUpdated: 0,
+          scoringStatus: 'error',
+          error: recalc.error,
+        };
+      }
       return {
         status: 'skipped_unchanged',
-        resultsBridged,
-        scoresUpdated: recalc.ok ? recalc.updated : 0,
+        resultsBridged: bridge.count,
+        scoresUpdated: recalc.updated,
+        scoringStatus: 'updated',
       };
     }
     return { status: 'skipped_unchanged' };
@@ -87,16 +108,29 @@ async function doSync(opts: SyncMatchesOptions): Promise<SyncResult> {
   const upserted = await upsertFixturesToDb(fetchedMatches);
   if (upserted === null) return { status: 'upsert_failed' };
 
-  const resultsBridged = await bridgeFinishedToActualResults(fetchedMatches);
+  const bridge = await bridgeFinishedToActualResults(fetchedMatches);
+  if (!bridge.ok) {
+    return { status: 'result_bridge_failed', upserted, resultsBridged: 0, scoringStatus: 'error', error: bridge.error };
+  }
 
   const recalc = await recalculateScores();
-  const scoresUpdated = recalc.ok ? recalc.updated : 0;
+  if (!recalc.ok) {
+    return {
+      status: 'score_recalculation_failed',
+      upserted,
+      resultsBridged: bridge.count,
+      scoresUpdated: 0,
+      scoringStatus: 'error',
+      error: recalc.error,
+    };
+  }
 
   return {
     status: 'synced',
     upserted,
-    resultsBridged,
-    scoresUpdated,
+    resultsBridged: bridge.count,
+    scoresUpdated: recalc.updated,
+    scoringStatus: 'updated',
   };
 }
 
@@ -195,8 +229,24 @@ function matchesEqual(a: LiveMatch[], b: LiveMatch[]): boolean {
   return true;
 }
 
-async function bridgeFinishedToActualResults(matches: LiveMatch[]): Promise<number> {
-  const rows = matches
+async function bridgeFinishedToActualResults(
+  matches: LiveMatch[],
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const rows = finishedMatchesToActualResults(matches);
+
+  if (rows.length === 0) return { ok: true, count: 0 };
+
+  const supabase = createServiceClient();
+  const { error } = await supabase
+    .from('actual_results')
+    .upsert(rows, { onConflict: 'match_id' });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, count: rows.length };
+}
+
+/** Convert only settled fixtures into the authoritative scoring rows. */
+export function finishedMatchesToActualResults(matches: LiveMatch[]) {
+  return matches
     .filter(m => m.status === 'FINISHED' && m.localMatchId && m.actualResult)
     .map(m => {
       const match_type = m.stage === 'GROUP' ? 'group' : 'knockout';
@@ -210,13 +260,4 @@ async function bridgeFinishedToActualResults(matches: LiveMatch[]): Promise<numb
         winning_team,
       };
     });
-
-  if (rows.length === 0) return 0;
-
-  const supabase = createServiceClient();
-  const { error } = await supabase
-    .from('actual_results')
-    .upsert(rows, { onConflict: 'match_id' });
-  if (error) return 0;
-  return rows.length;
 }

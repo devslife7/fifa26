@@ -348,6 +348,39 @@ test('a fully correct tournament prediction earns the current maximum of 210 poi
   assert.equal(calculateScore(fullCorrectPrediction, fullActualResults), 210);
 });
 
+test('recorded winners fill finalists, 3rd-place participants and runner-up when the bracket cannot resolve', () => {
+  // Production shape: the bridge records winning_team for every knockout result, but
+  // the actual third-place seeding cannot be reconstructed from home/draw/away results
+  // alone, so without a valid tiebreaker the reconstructed bracket leaves the deep
+  // slots (SF/3RD/FIN sides) as placeholders. The recorded winners must still settle
+  // who reached the Final and the 3rd-place match.
+  const bracketById = new Map(resolvedBracket.map(m => [m.id, m]));
+  const withWinners = fullActualResults.map(row => {
+    if (row.match_type !== 'knockout') return row;
+    const match = bracketById.get(row.match_id)!;
+    return { ...row, winning_team: getMatchWinner(match) ?? null };
+  });
+
+  // No tiebreaker → the reconstructed actual bracket does not resolve to real teams.
+  const actual = getActualQualifiers(withWinners, null);
+
+  const sfLosers = (['SF-1', 'SF-2'] as const).map(id => {
+    const m = bracketById.get(id)!;
+    return (m.result === 'home' ? m.away : m.home) as string;
+  });
+  const thirdMatch = bracketById.get('3RD-1')!;
+  const thirdWinnerCode = getMatchWinner(thirdMatch) as string;
+
+  assert.deepEqual([...actual.finalParticipants].sort(), [championCode, runnerUpCode].sort());
+  assert.equal(actual.finalWinner, championCode);
+  assert.equal(actual.finalRunnerUp, runnerUpCode);
+  assert.deepEqual([...actual.thirdParticipants].sort(), sfLosers.sort());
+  assert.equal(actual.thirdWinner, thirdWinnerCode);
+
+  // A fully correct prediction therefore still earns the maximum score.
+  assert.equal(calculateScore(fullCorrectPrediction, withWinners), 210);
+});
+
 test('scores recalculate cleanly after each finished match and after a result correction', () => {
   const [first, second] = allGroupMatches;
   const homePicker = {

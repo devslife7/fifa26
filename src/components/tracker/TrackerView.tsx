@@ -150,7 +150,7 @@ function maxPointsForOutcome(outcome: PerMatchOutcome): number {
   if (outcome.round === 'R32') return QUALIFIER_POINTS.R16;
   if (outcome.round === 'R16') return QUALIFIER_POINTS.QF;
   if (outcome.round === 'QF') return QUALIFIER_POINTS.SF;
-  if (outcome.round === 'SF') return QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD'];
+  if (outcome.round === 'SF') return QUALIFIER_POINTS.FIN;
   if (outcome.round === '3RD') return WINNER_POINTS['3RD'];
   if (outcome.round === 'FIN') return WINNER_POINTS.FIN;
   return 0;
@@ -286,7 +286,7 @@ function MatchRow({ outcome, flagsByCode }: { outcome: PerMatchOutcome; flagsByC
         )}
       </div>
       <div className="flex-shrink-0">
-        <StateBadge state={outcome.state} points={outcome.points} status={outcome.status} />
+        <StateBadge state={outcome.state} points={outcome.teamPoints} status={outcome.status} />
       </div>
     </div>
   );

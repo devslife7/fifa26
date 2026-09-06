@@ -1,5 +1,5 @@
 import type { KnockoutMatch, KnockoutResult, KnockoutRound, MatchResult } from '@/types';
-import { generateBracket, getMatchWinner } from './bracket';
+import { generateBracket, getDownstreamMatchIds, getMatchWinner } from './bracket';
 
 interface ActualResult {
   match_id: string;
@@ -121,24 +121,37 @@ function qualifiersFromBracket(
   const SF = new Set<string>();
   for (const m of byRound('QF')) addReal(SF, winnerOf(m));
 
-  const thirdMatch = bracket.find((m) => m.id === '3RD-1');
+  // Finalists and 3rd-place participants are derived from the feeder chain rather
+  // than read off the FIN-1/3RD-1 slots: the reconstructed bracket can leave those
+  // slots as placeholders (e.g. unresolved best-third seeding), while the recorded
+  // winners still identify who won each semi-final (→ finalist) and who reached the
+  // semis but lost (→ 3rd-place participant). Without overrides winnerOf() falls
+  // back to the bracket itself, so the derivation matches the slot reads exactly.
+  const finalParticipants = new Set<string>();
+  for (const m of byRound('SF')) addReal(finalParticipants, winnerOf(m));
+
   const thirdParticipants = new Set<string>();
-  addReal(thirdParticipants, thirdMatch?.home);
-  addReal(thirdParticipants, thirdMatch?.away);
+  for (const qf of byRound('QF')) {
+    const semifinalist = winnerOf(qf);
+    if (!isRealCode(semifinalist)) continue;
+    const sfId = getDownstreamMatchIds(qf.id).find((id) => id.startsWith('SF-'));
+    const sf = sfId ? bracket.find((m) => m.id === sfId) : undefined;
+    const sfWinner = sf ? winnerOf(sf) : undefined;
+    if (isRealCode(sfWinner) && sfWinner !== semifinalist) thirdParticipants.add(semifinalist);
+  }
+
+  const thirdMatch = bracket.find((m) => m.id === '3RD-1');
   const thirdWinner = thirdMatch ? winnerOf(thirdMatch) ?? null : null;
 
   const finalMatch = bracket.find((m) => m.id === 'FIN-1');
-  const finalParticipants = new Set<string>();
-  addReal(finalParticipants, finalMatch?.home);
-  addReal(finalParticipants, finalMatch?.away);
   const finalWinnerFromBracket = finalMatch ? winnerOf(finalMatch) ?? null : null;
   const finalWinner = isRealCode(explicitChampion) ? explicitChampion : finalWinnerFromBracket;
 
   // The runner-up is the finalist who is not the champion.
   let finalRunnerUp: string | null = null;
   if (finalWinner) {
-    if (isRealCode(finalMatch?.home) && finalMatch?.home !== finalWinner) finalRunnerUp = finalMatch!.home;
-    else if (isRealCode(finalMatch?.away) && finalMatch?.away !== finalWinner) finalRunnerUp = finalMatch!.away;
+    const nonChampions = [...finalParticipants].filter((team) => team !== finalWinner);
+    if (nonChampions.length === 1) finalRunnerUp = nonChampions[0];
   }
 
   return { R32, R16, QF, SF, thirdParticipants, thirdWinner, finalParticipants, finalWinner, finalRunnerUp };

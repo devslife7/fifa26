@@ -36,19 +36,6 @@ const KNOCKOUT_POSSIBLE_POINTS: Record<KnockoutRound, number> = {
   FIN: WINNER_POINTS.FIN,
 };
 
-// The "primary" component of a hit — everything except the SF/Final secondary
-// bonuses tracked separately in the third-place/bonus sections.
-function primaryEarnedPoints(outcome: PerMatchOutcome): number {
-  if (outcome.kind !== 'knockout' || outcome.state !== 'hit') return outcome.points;
-  if (outcome.round === 'SF') {
-    return outcome.points >= QUALIFIER_POINTS.FIN ? QUALIFIER_POINTS.FIN : 0;
-  }
-  if (outcome.round === 'FIN') {
-    return outcome.points >= WINNER_POINTS.FIN ? WINNER_POINTS.FIN : 0;
-  }
-  return outcome.points;
-}
-
 const STAGE_TABS: { id: TrackerStageId; label: string }[] = [
   { id: 'group', label: 'Group Stage' },
   { id: 'knockout', label: 'Bracket Stage' },
@@ -362,8 +349,8 @@ function MatchCard({
                 <TeamFlag code={outcome.pickedTeamCode} flagUrl={pickedFlagUrl} size="md" />
               )}
               <span className="min-w-0 truncate text-lg font-bold leading-snug text-white font-body md:text-[15px]">{label}</span>
-              {outcome.state === 'hit' && primaryEarnedPoints(outcome) > 0 && (
-                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{primaryEarnedPoints(outcome)}</span>
+              {outcome.state === 'hit' && outcome.teamPoints > 0 && (
+                <span className="text-lg font-bold tabular-nums text-primary font-body md:text-[15px]">+{outcome.teamPoints}</span>
               )}
             </span>
           ) : (

@@ -36,6 +36,11 @@ export interface PerMatchOutcome {
   actualResult: 'home' | 'draw' | 'away' | null;
   actualWinnerCode: string | null;
   state: MatchOutcomeState;
+  /** Points attributable to the team named by this row. */
+  teamPoints: number;
+  /** Points earned by the other team derived from the same placement pick. */
+  relatedPoints: number;
+  /** Total points sourced by this prediction, including related placement points. */
   points: number;
   utcDate?: string;
   status: LiveMatch['status'] | 'NOT_LIVE';
@@ -205,7 +210,7 @@ function computeKnockoutOutcome(
   r32Field: Set<string>,
   r32FieldKnown: boolean,
   predictionPick: KnockoutResult | undefined,
-): Pick<PerMatchOutcome, 'state' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score' | 'penalties'> {
+): Pick<PerMatchOutcome, 'state' | 'teamPoints' | 'relatedPoints' | 'points' | 'actualResult' | 'actualWinnerCode' | 'pickedTeamCode' | 'homeCode' | 'awayCode' | 'utcDate' | 'status' | 'score' | 'penalties'> {
   const homeCode = live?.homeCode ?? m.home ?? null;
   const awayCode = live?.awayCode ?? m.away ?? null;
   const utcDate = live?.utcDate;
@@ -236,7 +241,7 @@ function computeKnockoutOutcome(
   };
 
   if (!predictionPick || !pickedTeamCode) {
-    return { ...base, state: isFinished ? 'no-pick' : utcDate ? 'upcoming' : 'pending', points: 0 };
+    return { ...base, state: isFinished ? 'no-pick' : utcDate ? 'upcoming' : 'pending', teamPoints: 0, relatedPoints: 0, points: 0 };
   }
 
   // The picked team advances if it appears in the actual qualifier set for the round
@@ -252,29 +257,30 @@ function computeKnockoutOutcome(
   // after failing to escape its group).
   const groupEliminated = r32FieldKnown && !isPlaceholder(pickedTeamCode) && !r32Field.has(pickedTeamCode);
 
-  let earned = 0;
+  let teamPoints = 0;
+  let relatedPoints = 0;
   let isHit = false;
   let decided = false;
 
   if (m.round === 'R32') {
-    if (reached(actual.R16)) { earned += QUALIFIER_POINTS.R16; isHit = true; decided = true; }
+    if (reached(actual.R16)) { teamPoints += QUALIFIER_POINTS.R16; isHit = true; decided = true; }
     else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'R16') {
-    if (reached(actual.QF)) { earned += QUALIFIER_POINTS.QF; isHit = true; decided = true; }
+    if (reached(actual.QF)) { teamPoints += QUALIFIER_POINTS.QF; isHit = true; decided = true; }
     else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'QF') {
-    if (reached(actual.SF)) { earned += QUALIFIER_POINTS.SF; isHit = true; decided = true; }
+    if (reached(actual.SF)) { teamPoints += QUALIFIER_POINTS.SF; isHit = true; decided = true; }
     else if (knockedOut || groupEliminated) decided = true;
   } else if (m.round === 'SF') {
-    if (reached(actual.finalParticipants)) { earned += QUALIFIER_POINTS.FIN; isHit = true; decided = true; }
-    if (predictedLoser && actual.thirdParticipants.has(predictedLoser)) { earned += QUALIFIER_POINTS['3RD']; isHit = true; decided = true; }
+    if (reached(actual.finalParticipants)) { teamPoints += QUALIFIER_POINTS.FIN; isHit = true; decided = true; }
+    if (predictedLoser && actual.thirdParticipants.has(predictedLoser)) { relatedPoints += QUALIFIER_POINTS['3RD']; }
     if (!isHit && (knockedOut || groupEliminated)) decided = true;
   } else if (m.round === '3RD') {
-    if (actual.thirdWinner === pickedTeamCode) { earned += WINNER_POINTS['3RD']; isHit = true; decided = true; }
+    if (actual.thirdWinner === pickedTeamCode) { teamPoints += WINNER_POINTS['3RD']; isHit = true; decided = true; }
     else if (actual.thirdWinner || groupEliminated) decided = true;
   } else if (m.round === 'FIN') {
-    if (actual.finalWinner === pickedTeamCode) { earned += WINNER_POINTS.FIN; isHit = true; decided = true; }
-    if (predictedLoser && actual.finalRunnerUp && actual.finalRunnerUp === predictedLoser) { earned += RUNNER_UP_POINTS; isHit = true; decided = true; }
+    if (actual.finalWinner === pickedTeamCode) { teamPoints += WINNER_POINTS.FIN; isHit = true; decided = true; }
+    if (predictedLoser && actual.finalRunnerUp && actual.finalRunnerUp === predictedLoser) { relatedPoints += RUNNER_UP_POINTS; }
     if (!isHit && (actual.finalWinner || groupEliminated)) decided = true;
   }
 
@@ -283,7 +289,7 @@ function computeKnockoutOutcome(
   else if (decided) state = 'miss';
   else state = utcDate ? 'upcoming' : 'pending';
 
-  return { ...base, state, points: earned };
+  return { ...base, state, teamPoints, relatedPoints, points: teamPoints + relatedPoints };
 }
 
 export function computePredictionResults(
@@ -394,6 +400,8 @@ export function computePredictionResults(
           ? (live!.actualResult === 'home' ? gm.home : live!.actualResult === 'away' ? gm.away : null)
           : null,
         state,
+        teamPoints: points,
+        relatedPoints: 0,
         points,
         utcDate: live?.utcDate,
         status: (live?.status ?? 'NOT_LIVE') as LiveMatch['status'] | 'NOT_LIVE',

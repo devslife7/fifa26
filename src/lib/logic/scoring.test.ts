@@ -348,6 +348,39 @@ test('a fully correct tournament prediction earns the current maximum of 210 poi
   assert.equal(calculateScore(fullCorrectPrediction, fullActualResults), 210);
 });
 
+test('recorded winners fill finalists, 3rd-place participants and runner-up when the bracket cannot resolve', () => {
+  // Production shape: the bridge records winning_team for every knockout result, but
+  // the actual third-place seeding cannot be reconstructed from home/draw/away results
+  // alone, so without a valid tiebreaker the reconstructed bracket leaves the deep
+  // slots (SF/3RD/FIN sides) as placeholders. The recorded winners must still settle
+  // who reached the Final and the 3rd-place match.
+  const bracketById = new Map(resolvedBracket.map(m => [m.id, m]));
+  const withWinners = fullActualResults.map(row => {
+    if (row.match_type !== 'knockout') return row;
+    const match = bracketById.get(row.match_id)!;
+    return { ...row, winning_team: getMatchWinner(match) ?? null };
+  });
+
+  // No tiebreaker → the reconstructed actual bracket does not resolve to real teams.
+  const actual = getActualQualifiers(withWinners, null);
+
+  const sfLosers = (['SF-1', 'SF-2'] as const).map(id => {
+    const m = bracketById.get(id)!;
+    return (m.result === 'home' ? m.away : m.home) as string;
+  });
+  const thirdMatch = bracketById.get('3RD-1')!;
+  const thirdWinnerCode = getMatchWinner(thirdMatch) as string;
+
+  assert.deepEqual([...actual.finalParticipants].sort(), [championCode, runnerUpCode].sort());
+  assert.equal(actual.finalWinner, championCode);
+  assert.equal(actual.finalRunnerUp, runnerUpCode);
+  assert.deepEqual([...actual.thirdParticipants].sort(), sfLosers.sort());
+  assert.equal(actual.thirdWinner, thirdWinnerCode);
+
+  // A fully correct prediction therefore still earns the maximum score.
+  assert.equal(calculateScore(fullCorrectPrediction, withWinners), 210);
+});
+
 test('scores recalculate cleanly after each finished match and after a result correction', () => {
   const [first, second] = allGroupMatches;
   const homePicker = {
@@ -428,7 +461,38 @@ test('live results: finishing the Final awards champion + runner-up bonuses', ()
   assert.equal(summary.finWinPts, WINNER_POINTS.FIN);
   // The Final row reflects both the champion and the runner-up bonus.
   assert.equal(perMatch['FIN-1'].state, 'hit');
+  assert.equal(perMatch['FIN-1'].teamPoints, WINNER_POINTS.FIN);
+  assert.equal(perMatch['FIN-1'].relatedPoints, RUNNER_UP_POINTS);
   assert.equal(perMatch['FIN-1'].points, WINNER_POINTS.FIN + RUNNER_UP_POINTS);
+});
+
+test('semifinal rows attribute finalist and third-place points to their own teams', () => {
+  const live: Record<string, LiveMatch> = {};
+  resolvedBracket.forEach((m, i) => {
+    live[m.id] = lm({
+      apiMatchId: 7000 + i,
+      localMatchId: m.id,
+      status: 'FINISHED',
+      actualResult: 'home',
+      homeCode: m.home,
+      awayCode: m.away,
+      score: { home: 1, away: 0 },
+    });
+  });
+
+  const { summary, perMatch } = computePredictionResults(
+    fullCorrectPrediction as unknown as SavedPrediction,
+    live,
+  );
+
+  for (const id of ['SF-1', 'SF-2']) {
+    assert.equal(perMatch[id].state, 'hit');
+    assert.equal(perMatch[id].teamPoints, QUALIFIER_POINTS.FIN);
+    assert.equal(perMatch[id].relatedPoints, QUALIFIER_POINTS['3RD']);
+    assert.equal(perMatch[id].points, QUALIFIER_POINTS.FIN + QUALIFIER_POINTS['3RD']);
+  }
+  assert.equal(summary.finPartPts, 2 * QUALIFIER_POINTS.FIN);
+  assert.equal(summary.thirdPartPts, 2 * QUALIFIER_POINTS['3RD']);
 });
 
 test('live results: a wrong runner-up pick earns no runner-up bonus', () => {

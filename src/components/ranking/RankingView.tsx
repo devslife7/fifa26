@@ -87,38 +87,6 @@ function formatUpdatedAt(date: Date): string {
   });
 }
 
-function PositionTrendIcon({ icon }: { icon: string }) {
-  return (
-    <span className="inline-flex size-5 shrink-0 items-center justify-center overflow-hidden md:size-[18px]">
-      <span className="material-symbols-outlined origin-center scale-[0.95] text-[22px] leading-none md:scale-[0.88] md:text-xl">{icon}</span>
-    </span>
-  );
-}
-
-function renderPositionChange(change?: number) {
-  if (change == null || change === 0) {
-    return (
-      <span className="inline-flex shrink-0 items-center text-neutral-500" title={change == null ? 'No data' : 'No change'}>
-        <PositionTrendIcon icon="remove" />
-      </span>
-    );
-  }
-  if (change > 0) {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1 font-medium text-wc-green" title={`Up ${change} positions today`}>
-        <PositionTrendIcon icon="trending_up" />
-        <span className="text-base tabular-nums md:text-[12px]">{change}</span>
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 font-medium text-wc-red" title={`Down ${Math.abs(change)} positions today`}>
-      <PositionTrendIcon icon="trending_down" />
-      <span className="text-base tabular-nums md:text-[12px]">{Math.abs(change)}</span>
-    </span>
-  );
-}
-
 function getFallbackPredictions(entries: LeaderboardEntry[]): LeaderboardPrediction[] {
   if (entries.length > 0) return leaderboardEntriesToPredictions(entries);
   return [];
@@ -502,8 +470,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
                       const primaryName = getPredictionPrimaryName(pred);
                       const medal = isPreview ? null : getMedalIcon(rank);
                       const points = getPredictionPoints(pred);
-                      const entry = leaderboard.find(e => entryMatchesPrediction(e, pred));
-                      const positionChange = pred.position_change ?? entry?.position_change;
                       const isSelectedForCompare = isSamePrediction(comparisonBasePrediction, pred);
                       const isCompareTarget = comparisonBasePrediction
                         && !isSelectedForCompare
@@ -534,7 +500,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
                         <div className="flex-grow min-w-0">
                           <div className={`font-medium text-base flex items-center gap-1.5 min-w-0 transition-colors md:text-sm ${pred.details_available ? 'group-hover:text-primary' : ''}`}>
                             <span className="truncate">{primaryName}</span>
-                            {!isPreview && renderPositionChange(positionChange)}
                             {isPreview && (
                               <span className="shrink-0 rounded-full border border-dashed border-white/25 bg-white/5 px-1.5 py-0.5 text-[10px] md:text-[9px] font-black uppercase text-neutral-400">
                                 Preview

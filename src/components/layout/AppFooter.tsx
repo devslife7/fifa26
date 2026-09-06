@@ -4,7 +4,7 @@ interface AppFooterProps {
 
 const PAST_SEASONS = [
   { year: '2024', label: 'Copa America 2024', href: 'https://copaamerica24.vercel.app/' },
-  { year: '2022', label: 'Qatar World Cup 2022', href: 'https://main.d311px3iblll1g.amplifyapp.com/' },
+  { year: '2022', label: 'Qatar World Cup 2022', href: 'https://qatar2022-jet.vercel.app/' },
 ];
 
 export default function AppFooter({ className = '' }: AppFooterProps) {

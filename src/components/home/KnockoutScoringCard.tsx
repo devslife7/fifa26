@@ -121,7 +121,7 @@ export default function KnockoutScoringCard() {
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-neutral-900/80 to-background-dark">
+    <section className="home-scoring-card relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-b from-neutral-900/80 to-background-dark">
       <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
 
       <div className="px-4 pt-4">

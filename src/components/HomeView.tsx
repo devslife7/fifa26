@@ -73,8 +73,10 @@ function HomeAccountBar({ displayName, onSignOut }: { displayName: string; onSig
 
 function HomeHeader({ compact }: { compact: boolean }) {
   return (
-    <section className="relative -mx-3 pb-3 sm:-mx-4 md:mx-0">
-      <div className="relative mx-auto w-full overflow-hidden shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-w-[440px] sm:rounded-b-[32px] md:max-w-full">
+    <section className="home-member-hero relative -mx-3 pb-3 sm:-mx-4 md:mx-0">
+      <div className="home-hero-frame relative mx-auto w-full overflow-hidden shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-w-[440px] sm:rounded-b-[32px] md:max-w-full">
+        <picture className="contents">
+          <source media="(min-width: 1024px)" srcSet="/images/desktop-hero-2026.png" />
         <img
           src="/images/promotional-image-hero.png"
           alt="FIFA World Cup 2026"
@@ -84,6 +86,7 @@ function HomeHeader({ compact }: { compact: boolean }) {
               : 'block w-full object-cover object-[50%_15%] min-h-[260px] [height:calc(100svh-300px)] [max-height:560px]'
           }
         />
+        </picture>
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[26%] bg-gradient-to-t from-[#0a0a0a]/80 to-transparent"
@@ -104,7 +107,7 @@ export default function HomeView({
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3 pb-8 pt-0">
+    <div className="home-view flex flex-col gap-3 pb-8 pt-0">
       {user ? (
         <>
           {showRecap && <DailyRecapCard recap={recap} onNavigate={onNavigate} />}

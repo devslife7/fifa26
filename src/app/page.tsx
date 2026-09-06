@@ -653,7 +653,7 @@ export default function Home() {
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl pl-3 pr-5 sm:px-4' :
         activeTab === 'matches' ? 'max-w-md md:max-w-3xl px-3 sm:px-4' :
         activeTab === 'profile' ? 'max-w-md px-3 sm:px-4' :
-        activeTab === 'home' ? 'max-w-md md:max-w-5xl px-3 sm:px-4' :
+        activeTab === 'home' ? 'max-w-md md:max-w-5xl lg:max-w-[1440px] px-3 sm:px-4 lg:px-8' :
         'max-w-md px-3 sm:px-4'
       }`}>
         {activeTab === 'home' && (

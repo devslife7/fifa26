@@ -1,10 +1,12 @@
 import { MetadataRoute } from 'next';
 
+export const dynamic = 'force-static';
+
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'FIFA World Cup 2026 Predictor',
+        name: 'FIFA World Cup 2026 Archive',
         short_name: 'FIFA World Cup',
-        description: 'Predict every match of the FIFA World Cup 2026',
+        description: 'Final tournament results and the original prediction workflow',
         start_url: '/',
         display: 'standalone',
         background_color: '#f8f8f5',

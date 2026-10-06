@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TabId, MatchResult, KnockoutResult, SavedPrediction, GroupLetter } from '@/types';
+import { TabId, MatchResult, KnockoutResult, GroupLetter, LiveMatch } from '@/types';
 import { allGroupMatches } from '@/data/matches';
 import { groups } from '@/data/teams';
 import {
@@ -11,15 +11,7 @@ import {
   getBestThirdDependentR32Matches,
 } from '@/lib/logic/bracket';
 import { calculateGroupStandings } from '@/lib/logic/standings';
-import { loadPredictions, savePredictions, getEditingPredictionName, loadFromServer, resetAllPredictions, setEditingPrediction } from '@/lib/client/storage';
-import {
-  createPredictionSnapshot,
-  getHasSubmittedBefore,
-  getPredictionFlowState,
-  getSubmittedForSnapshot,
-  markSnapshotSubmitted,
-} from '@/lib/logic/prediction-flow';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { getPredictionFlowState } from '@/lib/logic/prediction-flow';
 import { useLiveData } from '@/hooks/useLiveData';
 import GroupMatchCard from '@/components/groups/GroupMatchCard';
 import GroupQualifiersStrip from '@/components/groups/GroupQualifiersStrip';
@@ -28,18 +20,10 @@ import BracketView from '@/components/bracket/BracketView';
 import BottomNav from '@/components/layout/BottomNav';
 import StepperBar from '@/components/layout/StepperBar';
 import AppFooter from '@/components/layout/AppFooter';
-import SaveIndicator from '@/components/ui/SaveIndicator';
 import RankingView from '@/components/ranking/RankingView';
-import ChampionOverlay from '@/components/champion/ChampionOverlay';
+import DemoChampion from '@/components/champion/DemoChampion';
 import HomeView from '@/components/HomeView';
 import MatchesView from '@/components/matches/MatchesView';
-import ProfileView from '@/components/profile/ProfileView';
-import {
-  PREDICTIONS_ACCEPTING_SUBMISSIONS,
-  PREDICTIONS_CLOSED_MESSAGE,
-  PREDICTIONS_CLOSED_TITLE,
-} from '@/data/tournament';
-
 function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?: string } | undefined>) {
   return groups.flatMap(group =>
     allGroupMatches
@@ -53,86 +37,22 @@ function getOrderedGroupMatches(liveMatchesByLocalId?: Record<string, { utcDate?
   );
 }
 
-const ACTIVE_TAB_STORAGE_KEY = 'fifa26_active_tab';
-const VALID_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'ranking', 'home', 'matches', 'submit', 'profile'];
 const PREDICTION_ENTRY_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 
-function isTabId(value: string | null): value is TabId {
-  return VALID_TABS.includes(value as TabId);
-}
-
-function PredictionsClosedView({
-  onNavigate,
-}: {
-  onNavigate: (tab: TabId) => void;
-}) {
-  return (
-    <section className="mx-auto flex min-h-[calc(100svh-150px)] max-w-md flex-col justify-center py-8">
-      <div className="overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.035] shadow-[0_22px_70px_-34px_rgba(0,0,0,0.9)]">
-        <div className="relative min-h-[190px] bg-neutral-950">
-          <img
-            src="/images/promotional-image-hero.png"
-            alt="FIFA World Cup 2026"
-            className="absolute inset-0 h-full w-full object-cover object-[50%_22%] opacity-72"
-          />
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/58 to-black/10"
-          />
-          <div className="relative flex h-full min-h-[190px] flex-col justify-end px-5 pb-5">
-            <span className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/25 bg-black/45 px-3 py-1 backdrop-blur-md">
-              <span className="material-symbols-outlined text-[14px] text-primary">lock</span>
-              <span className="font-body text-[9px] font-black uppercase tracking-[0.22em] text-primary">
-                Tournament in progress
-              </span>
-            </span>
-            <h1 className="text-[28px] font-black leading-none text-white">{PREDICTIONS_CLOSED_TITLE}</h1>
-          </div>
-        </div>
-
-        <div className="space-y-4 px-5 py-5">
-          <p className="font-body text-sm font-semibold leading-relaxed text-neutral-300">
-            {PREDICTIONS_CLOSED_MESSAGE}
-          </p>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => onNavigate('ranking')}
-              className="flex items-center justify-center gap-2 rounded-[16px] bg-primary px-4 py-3 font-body text-xs font-black text-black transition-colors hover:bg-primary/90"
-            >
-              <span className="material-symbols-outlined text-[17px]">leaderboard</span>
-              View leaderboard
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('matches')}
-              className="flex items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.045] px-4 py-3 font-body text-xs font-black text-neutral-100 transition-colors hover:bg-white/[0.075]"
-            >
-              <span className="material-symbols-outlined text-[17px]">sports_soccer</span>
-              Match center
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function Home() {
-  const { user } = useAuth();
   const {
     matches: liveMatchesList,
     matchesByLocalId: liveMatchesByLocalId,
     teamFlagsByCode,
-    error: liveError,
     loading: liveLoading,
-    rateLimited,
-    lastUpdated,
-    refetch: refetchLiveData,
   } = useLiveData();
-  const [showRateLimitToast, setShowRateLimitToast] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('ranking');
+
+  const demoMatches = useMemo<Record<string, LiveMatch>>(() => Object.fromEntries(
+    Object.entries(liveMatchesByLocalId).map(([id, match]) => [id, {
+      ...match, status: 'TIMED', score: null, penalties: null, actualResult: null,
+    }]),
+  ), [liveMatchesByLocalId]);
 
   const [groupPredictions, setGroupPredictions] = useState<Record<string, MatchResult>>({});
   const [knockoutPredictions, setKnockoutPredictions] = useState<Record<string, KnockoutResult>>({});
@@ -257,56 +177,15 @@ export default function Home() {
     }, 1200);
   }, [scrollToMatch]);
 
-  // Load local predictions on mount
+  // Demo state belongs only to this visit. Existing browser drafts are untouched.
   useEffect(() => {
-    const saved = loadPredictions();
-    const savedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
-    setGroupPredictions(saved.groupMatches);
-    setKnockoutPredictions(saved.knockoutMatches);
-    setThirdPlaceTiebreaker(saved.thirdPlaceTiebreaker ?? []);
-    if (savedTab === 'tracker' || savedTab === 'news') {
-      setActiveTab('matches');
-    } else if (isTabId(savedTab)) {
-      setActiveTab(savedTab);
-    } else {
-      setActiveTab('ranking');
-    }
+    if (window.location.hash === '#demo') setActiveTab('groups');
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
-  }, [activeTab, mounted]);
 
   const orderedGroupMatches = useMemo(() => {
     return getOrderedGroupMatches(liveMatchesByLocalId);
   }, [liveMatchesByLocalId]);
-
-  // Sync server predictions on auth (hydrate localStorage if local is empty)
-  useEffect(() => {
-    if (!user || !mounted) return;
-
-    const local = loadPredictions();
-    const hasLocal = Object.keys(local.groupMatches).length > 0;
-
-    if (!hasLocal) {
-      fetch('/api/predictions')
-        .then(res => res.json())
-        .then(data => {
-          // API now returns an array of predictions
-          const predictions: SavedPrediction[] = data.predictions ?? [];
-          const toLoad = predictions.find(p => p.is_complete) ?? predictions[0];
-          if (toLoad) {
-            loadFromServer(toLoad);
-            setGroupPredictions(toLoad.group_matches ?? {});
-            setKnockoutPredictions(toLoad.knockout_matches ?? {});
-            setThirdPlaceTiebreaker(toLoad.third_place_tiebreaker ?? []);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [user, mounted]);
 
   const handleGroupPredict = useCallback((matchId: string, result: MatchResult) => {
     setGroupPredictions(prev => {
@@ -330,11 +209,6 @@ export default function Home() {
         for (const id of idsToClear) {
           delete nextKO[id];
         }
-        const predictions = loadPredictions();
-        predictions.groupMatches = next;
-        predictions.knockoutMatches = nextKO;
-        predictions.thirdPlaceTiebreaker = [];
-        savePredictions(predictions);
         return nextKO;
       });
 
@@ -378,10 +252,6 @@ export default function Home() {
       for (const id of idsToClear) {
         delete nextKO[id];
       }
-      const predictions = loadPredictions();
-      predictions.thirdPlaceTiebreaker = picks;
-      predictions.knockoutMatches = nextKO;
-      savePredictions(predictions);
       return nextKO;
     });
   }, []);
@@ -392,11 +262,6 @@ export default function Home() {
     allGroupMatches.forEach(m => {
       randomized[m.id] = outcomes[Math.floor(Math.random() * 3)];
     });
-    const predictions = loadPredictions();
-    predictions.groupMatches = randomized;
-    predictions.knockoutMatches = {};
-    predictions.thirdPlaceTiebreaker = [];
-    savePredictions(predictions);
     setGroupPredictions(randomized);
     setKnockoutPredictions({});
     setThirdPlaceTiebreaker([]);
@@ -407,12 +272,6 @@ export default function Home() {
       clearTimeout(autoNavTimerRef.current);
       autoNavTimerRef.current = null;
     }
-    const predictions = loadPredictions();
-    predictions.groupMatches = {};
-    predictions.knockoutMatches = {};
-    predictions.thirdPlaceTiebreaker = [];
-    savePredictions(predictions);
-    setEditingPrediction(null);
     setGroupPredictions({});
     setKnockoutPredictions({});
     setThirdPlaceTiebreaker([]);
@@ -422,9 +281,6 @@ export default function Home() {
   const handleRandomizeBracket = useCallback(() => {
     const randomPredictions = generateRandomKnockoutPredictions(groupPredictions, thirdPlaceTiebreaker);
     setKnockoutPredictions(randomPredictions);
-    const predictions = loadPredictions();
-    predictions.knockoutMatches = randomPredictions;
-    savePredictions(predictions);
   }, [groupPredictions, thirdPlaceTiebreaker]);
 
   const handleKnockoutPredict = useCallback((matchId: string, result: KnockoutResult) => {
@@ -438,9 +294,6 @@ export default function Home() {
         for (const id of downstream) {
           delete next[id];
         }
-        const predictions = loadPredictions();
-        predictions.knockoutMatches = next;
-        savePredictions(predictions);
         return next;
       }
 
@@ -449,9 +302,6 @@ export default function Home() {
       for (const id of downstream) {
         delete next[id];
       }
-      const predictions = loadPredictions();
-      predictions.knockoutMatches = next;
-      savePredictions(predictions);
 
       // Auto-navigate to submit tab after picking the final
       if (matchId === 'FIN-1') {
@@ -461,13 +311,6 @@ export default function Home() {
       return next;
     });
   }, []);
-
-  useEffect(() => {
-    if (!rateLimited) return;
-    setShowRateLimitToast(true);
-    const t = setTimeout(() => setShowRateLimitToast(false), 4000);
-    return () => clearTimeout(t);
-  }, [rateLimited]);
 
   const prevGroupCountRef = useRef<number>(-1);
   const prevTiesResolvedRef = useRef<boolean | null>(null);
@@ -486,20 +329,6 @@ export default function Home() {
   const groupCount = flowState.groupCount;
   const readyForBracket = flowState.groupsComplete && flowState.thirdPlaceComplete;
   const needsThirdPlaceInput = flowState.groupsComplete && flowState.thirdPlaceRequired && !flowState.thirdPlaceComplete;
-  const champion = flowState.championCode;
-  const predictionSnapshot = useMemo(
-    () => createPredictionSnapshot(groupPredictions, knockoutPredictions, thirdPlaceTiebreaker),
-    [groupPredictions, knockoutPredictions, thirdPlaceTiebreaker]
-  );
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [hasSubmittedBefore, setHasSubmittedBefore] = useState(false);
-
-  useEffect(() => {
-    if (!mounted) return;
-    setIsSubmitted(getSubmittedForSnapshot(predictionSnapshot));
-    setHasSubmittedBefore(getHasSubmittedBefore());
-  }, [mounted, predictionSnapshot]);
-
   useEffect(() => {
     if (!mounted || activeTab !== 'submit' || flowState.submitAvailable) return;
     setActiveTab(flowState.nextPredictionTab);
@@ -577,42 +406,6 @@ export default function Home() {
     if (next) scrollToMatch(next.id);
   }, [groupPredictions, orderedGroupMatches, scrollToMatch]);
 
-  const handleLoadPrediction = useCallback((prediction: SavedPrediction) => {
-    loadFromServer(prediction);
-    const nextGroupPredictions = prediction.group_matches ?? {};
-    const nextKnockoutPredictions = prediction.knockout_matches ?? {};
-    const nextThirdPlaceTiebreaker = prediction.third_place_tiebreaker ?? [];
-    setGroupPredictions(nextGroupPredictions);
-    setKnockoutPredictions(nextKnockoutPredictions);
-    setThirdPlaceTiebreaker(nextThirdPlaceTiebreaker);
-    const nextFlow = getPredictionFlowState(nextGroupPredictions, nextKnockoutPredictions, nextThirdPlaceTiebreaker);
-    navigateTo(nextFlow.nextPredictionTab);
-  }, [navigateTo]);
-
-  const handleNewPrediction = useCallback(() => {
-    if (!PREDICTIONS_ACCEPTING_SUBMISSIONS) {
-      navigateTo('groups');
-      return;
-    }
-
-    resetAllPredictions();
-    localStorage.removeItem('prediction_submitted');
-    localStorage.removeItem('prediction_submitted_snapshot');
-    localStorage.removeItem('prediction_submitted_confirmation');
-    localStorage.removeItem('prediction_has_submitted');
-    setGroupPredictions({});
-    setKnockoutPredictions({});
-    setThirdPlaceTiebreaker([]);
-    setEditingPrediction(null);
-    setIsSubmitted(false);
-    setHasSubmittedBefore(false);
-    navigateTo('groups');
-  }, [navigateTo]);
-
-  const handleNavigateToPredictions = useCallback((view?: TabId) => {
-    navigateTo(view ?? flowState.nextPredictionTab);
-  }, [flowState.nextPredictionTab, navigateTo]);
-
   const matchesByGroup = useMemo(() => {
     return groups.map(group => {
       const matches = orderedGroupMatches.filter(m => m.group === group);
@@ -630,16 +423,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen pb-page-safe">
-      {liveError && (
-        <LiveBanner message={liveError} />
-      )}
-      <SaveIndicator />
-      {PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) && (
+      <div className="border-b border-primary/15 bg-primary/5 px-4 py-2 text-center font-body text-xs text-neutral-300">
+        {PREDICTION_ENTRY_TABS.includes(activeTab)
+          ? 'Archive demo — picks are not submitted. Choices reset on reload.'
+          : 'Tournament archive · Final results · View only'}
+      </div>
+      {PREDICTION_ENTRY_TABS.includes(activeTab) && (
         <div className="sticky top-0 z-30 bg-background-dark border-b border-white/5">
           <div className="max-w-2xl mx-auto px-3 sm:px-4">
             <StepperBar
             flowState={flowState}
-            isSubmitted={isSubmitted}
+            isSubmitted={false}
             activeTab={activeTab}
             onNavigate={navigateTo}
             />
@@ -647,12 +441,10 @@ export default function Home() {
         </div>
       )}
       <main className={`mx-auto ${
-        !PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'bracket' ? 'max-w-full' :
         activeTab === 'groups' || activeTab === 'thirdplace' || activeTab === 'submit' ? 'max-w-2xl px-3 sm:px-4' :
         activeTab === 'ranking' ? 'max-w-md md:max-w-4xl pl-3 pr-5 sm:px-4' :
         activeTab === 'matches' ? 'max-w-md md:max-w-3xl px-3 sm:px-4' :
-        activeTab === 'profile' ? 'max-w-md px-3 sm:px-4' :
         activeTab === 'home' ? 'max-w-md md:max-w-5xl lg:max-w-[1440px] px-3 sm:px-4 lg:px-8' :
         'max-w-md px-3 sm:px-4'
       }`}>
@@ -663,21 +455,7 @@ export default function Home() {
           />
         )}
 
-        {!PREDICTIONS_ACCEPTING_SUBMISSIONS && PREDICTION_ENTRY_TABS.includes(activeTab) && (
-          <PredictionsClosedView onNavigate={navigateTo} />
-        )}
-
-        {PREDICTIONS_ACCEPTING_SUBMISSIONS && (activeTab === 'groups' || activeTab === 'bracket' || activeTab === 'thirdplace') && (() => {
-          const editName = getEditingPredictionName();
-          return editName ? (
-            <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-primary/10 border border-primary/20">
-              <span className="material-symbols-outlined text-primary text-[16px]">edit_note</span>
-              <span className="text-xs font-semibold text-primary truncate">Editing: {editName}</span>
-            </div>
-          ) : null;
-        })()}
-
-        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'groups' && (() => {
+        {activeTab === 'groups' && (() => {
           const totalGroups = matchesByGroup.length;
           return (
           <div>
@@ -691,7 +469,7 @@ export default function Home() {
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/10 text-neutral-400 font-semibold text-[11px] hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[13px]">backspace</span>
-                  Clear all predictions
+                  Reset demo picks
                 </button>
                 <button
                   onClick={handleRandomizeGroups}
@@ -761,7 +539,7 @@ export default function Home() {
                               result={groupPredictions[match.id]}
                               onPredict={handleGroupPredict}
                               focused={focusedMatchId === match.id}
-                              liveMatch={liveMatchesByLocalId?.[match.id]}
+                              liveMatch={demoMatches[match.id]}
                               teamFlagsByCode={teamFlagsByCode}
                               groupLabel={match.group}
                             />
@@ -778,7 +556,7 @@ export default function Home() {
           );
         })()}
 
-        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'thirdplace' && (
+        {activeTab === 'thirdplace' && (
           <ThirdPlaceTable
             predictions={groupPredictions}
             tiebreakerPicks={thirdPlaceTiebreaker}
@@ -787,14 +565,14 @@ export default function Home() {
           />
         )}
 
-        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'bracket' && (
+        {activeTab === 'bracket' && (
           <BracketView
             groupPredictions={groupPredictions}
             knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
             onPredict={handleKnockoutPredict}
             onRandomize={handleRandomizeBracket}
-            liveMatches={liveMatchesByLocalId}
+            liveMatches={demoMatches}
             teamFlagsByCode={teamFlagsByCode}
           />
         )}
@@ -804,7 +582,6 @@ export default function Home() {
             <RankingView
               liveMatches={liveMatchesByLocalId}
               teamFlagsByCode={teamFlagsByCode}
-              onRefreshLiveData={refetchLiveData}
             />
             <AppFooter />
           </div>
@@ -818,42 +595,11 @@ export default function Home() {
           />
         )}
 
-        {activeTab === 'profile' && (
-          <ProfileView
-            groupPredictions={groupPredictions}
-            knockoutPredictions={knockoutPredictions}
+        {activeTab === 'submit' && (
+          <DemoChampion groupPredictions={groupPredictions} knockoutPredictions={knockoutPredictions}
             thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-            liveMatches={liveMatchesByLocalId}
-            teamFlagsByCode={teamFlagsByCode}
-            onNavigate={navigateTo}
-            onNavigateToPredictions={handleNavigateToPredictions}
-            onLoadPrediction={handleLoadPrediction}
-            onNewPrediction={handleNewPrediction}
-            onClearPredictions={handleClearGroups}
-          />
-        )}
-
-        {PREDICTIONS_ACCEPTING_SUBMISSIONS && activeTab === 'submit' && (
-          <ChampionOverlay
-            isPage
-            groupPredictions={groupPredictions}
-            knockoutPredictions={knockoutPredictions}
-            thirdPlaceTiebreaker={thirdPlaceTiebreaker}
-            user={user ?? null}
-            isSubmitted={isSubmitted}
-            onDismiss={() => setActiveTab('bracket')}
-            onSubmitted={(confirmation) => {
-              markSnapshotSubmitted(predictionSnapshot, confirmation);
-              setIsSubmitted(true);
-              setHasSubmittedBefore(true);
-            }}
-            onNavigateToRanking={() => {
-              navigateTo('ranking');
-            }}
-            onAuthenticated={() => {
-              navigateTo('home');
-            }}
-          />
+            onReset={() => { handleClearGroups(); navigateTo('groups'); }}
+            onBrowse={() => navigateTo('bracket')} />
         )}
       </main>
 
@@ -874,8 +620,8 @@ export default function Home() {
             className="w-full max-w-sm rounded-2xl bg-neutral-900 border border-white/10 p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-white font-bold text-base">Clear all predictions?</h3>
-            <p className="mt-1 text-neutral-400 text-sm">This will remove every group stage and bracket pick. This can&rsquo;t be undone.</p>
+            <h3 className="text-white font-bold text-base">Reset demo picks?</h3>
+            <p className="mt-1 text-neutral-400 text-sm">This resets this demo only. Archived predictions and results stay unchanged.</p>
             <div className="mt-5 flex gap-2">
               <button
                 onClick={() => setShowClearConfirm(false)}
@@ -887,36 +633,14 @@ export default function Home() {
                 onClick={() => { handleClearGroups(); setShowClearConfirm(false); }}
                 className="flex-1 py-2.5 rounded-lg bg-wc-red text-white font-semibold text-sm hover:bg-wc-red/90 transition-colors"
               >
-                Clear all
+                Reset demo
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Rate limit toast */}
-      {showRateLimitToast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-neutral-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg animate-fade-in">
-          <span className="material-symbols-outlined text-[15px] text-wc-amber">warning</span>
-          API rate limit reached (10 req/min) — try again shortly
-        </div>
-      )}
-    </div>
-  );
-}
 
-function LiveBanner({ message }: { message: string }) {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
-  return (
-    <div className="bg-wc-amber/15 border-b border-wc-amber/30 px-4 py-2 flex items-center justify-between text-sm">
-      <span className="text-wc-amber font-medium">{message}</span>
-      <button
-        onClick={() => setDismissed(true)}
-        className="text-wc-amber hover:text-wc-amber ml-2"
-      >
-        <span className="material-symbols-outlined text-[18px]">close</span>
-      </button>
     </div>
   );
 }

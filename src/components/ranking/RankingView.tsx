@@ -1,128 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { LeaderboardEntry, LeaderboardPrediction, SavedPrediction, LiveMatch } from '@/types';
-import { isLateSubmission } from '@/data/tournament';
-import { useAuth } from '@/components/providers/AuthProvider';
-import { computePredictionResults } from '@/hooks/usePredictionResults';
+import { useState } from 'react';
+import { archive, archiveDate } from '@/lib/client/archive';
+import { LeaderboardPrediction, LiveMatch } from '@/types';
 import PublicPredictionProfileModal from './PublicPredictionProfileModal';
 import PredictionCompareModal from './PredictionCompareModal';
 import KnockoutScoringCard from '@/components/home/KnockoutScoringCard';
 import { computeTiedRanks } from '@/lib/services/leaderboard-position';
-import { buildHotMatchRefreshQuery } from '@/lib/utils/hot-matches';
-import type { LiveDataRefreshResult } from '@/hooks/useLiveData';
 
 function getPredictionPrimaryName(pred: LeaderboardPrediction): string {
   const accountName = pred.display_name && pred.display_name !== 'Unknown' ? pred.display_name : null;
   const predictionName = pred.name?.trim() || null;
   return predictionName || accountName || 'Anonymous';
-}
-
-function savedPredictionToLeaderboardPrediction(prediction: SavedPrediction, userId: string, displayName: string): LeaderboardPrediction {
-  return {
-    prediction_number: prediction.prediction_number,
-    name: prediction.name,
-    user_id: userId,
-    display_name: displayName,
-    champion_code: prediction.champion_code,
-    group_matches: prediction.group_matches ?? {},
-    knockout_matches: prediction.knockout_matches ?? {},
-    third_place_tiebreaker: prediction.third_place_tiebreaker,
-    is_approved: prediction.is_approved ?? false,
-    details_available: true,
-    is_late_submission: isLateSubmission(prediction.completed_at, prediction.prediction_number),
-    completed_at: prediction.completed_at,
-    created_at: prediction.created_at,
-    updated_at: prediction.updated_at,
-  };
-}
-
-function mergeOwnPredictions(
-  publicPredictions: LeaderboardPrediction[],
-  ownPredictions: LeaderboardPrediction[],
-): LeaderboardPrediction[] {
-  const ownByNumber = new Map(
-    ownPredictions
-      .filter(prediction => prediction.prediction_number != null)
-      .map(prediction => [prediction.prediction_number, prediction]),
-  );
-  const merged = publicPredictions.map(prediction => {
-    if (prediction.prediction_number == null) return prediction;
-    const own = ownByNumber.get(prediction.prediction_number);
-    if (!own) return prediction;
-    return {
-      ...own,
-      total_points: own.total_points ?? prediction.total_points,
-      position_change: own.position_change ?? prediction.position_change,
-    };
-  });
-  const publicNumbers = new Set(publicPredictions.map(prediction => prediction.prediction_number));
-  const missingOwn = ownPredictions.filter(prediction => !publicNumbers.has(prediction.prediction_number));
-  return [...missingOwn, ...merged];
-}
-
-function leaderboardEntriesToPredictions(entries: LeaderboardEntry[]): LeaderboardPrediction[] {
-  return entries.map(entry => ({
-    prediction_number: entry.prediction_number,
-    user_id: entry.user_id ?? `prediction-${entry.prediction_number}`,
-    name: entry.name ?? null,
-    display_name: entry.display_name,
-    champion_code: entry.champion_code,
-    total_points: entry.total_points,
-    position_change: entry.position_change,
-    details_available: false,
-    is_late_submission: false,
-    is_approved: true,
-    created_at: entry.calculated_at,
-    updated_at: entry.calculated_at,
-  }));
-}
-
-function formatUpdatedAt(date: Date): string {
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function getFallbackPredictions(entries: LeaderboardEntry[]): LeaderboardPrediction[] {
-  if (entries.length > 0) return leaderboardEntriesToPredictions(entries);
-  return [];
-}
-
-function normalizePredictionNumber(value: unknown): number | null {
-  if (value == null || value === '') return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function getPredictionKey(prediction: LeaderboardPrediction): string {
-  if (prediction.prediction_number != null) return String(prediction.prediction_number);
-  return prediction.user_id;
-}
-
-function entryMatchesPrediction(entry: LeaderboardEntry, prediction: LeaderboardPrediction): boolean {
-  const entryNum = normalizePredictionNumber(entry.prediction_number);
-  const predNum = normalizePredictionNumber(prediction.prediction_number);
-  if (entryNum != null && predNum != null) {
-    return entryNum === predNum;
-  }
-
-  if (entry.user_id && prediction.user_id && entry.user_id === prediction.user_id) {
-    return true;
-  }
-
-  if (entryNum != null && prediction.user_id === `prediction-${entryNum}`) {
-    return true;
-  }
-
-  if (entry.prediction_id && prediction.user_id === `prediction-${entry.prediction_id}`) {
-    return true;
-  }
-
-  return false;
 }
 
 function samePredictionIdentity(a?: LeaderboardPrediction | null, b?: LeaderboardPrediction | null): boolean {
@@ -133,167 +22,22 @@ function samePredictionIdentity(a?: LeaderboardPrediction | null, b?: Leaderboar
   return a.user_id === b.user_id && a.name === b.name;
 }
 
-function buildFastRefreshQuery(liveMatches?: Record<string, LiveMatch>): string {
-  return buildHotMatchRefreshQuery(liveMatches) ?? 'mode=today';
-}
-
 interface RankingViewProps {
   liveMatches?: Record<string, LiveMatch>;
   teamFlagsByCode?: Record<string, string>;
-  onRefreshLiveData?: (query?: string) => Promise<LiveDataRefreshResult>;
 }
 
-export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiveData }: RankingViewProps) {
-  const { user } = useAuth();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalUsers, setTotalUsers] = useState(0);
+export default function RankingView({ liveMatches, teamFlagsByCode }: RankingViewProps) {
+  const predictions = archive.predictions;
+  const loading = false;
+  const totalUsers = archive.leaderboard.length;
   const [selectedPrediction, setSelectedPrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedRank, setSelectedRank] = useState<number | undefined>(undefined);
   const [comparisonBasePrediction, setComparisonBasePrediction] = useState<LeaderboardPrediction | null>(null);
   const [comparisonBaseRank, setComparisonBaseRank] = useState<number | undefined>(undefined);
   const [selectedComparePrediction, setSelectedComparePrediction] = useState<LeaderboardPrediction | null>(null);
   const [selectedCompareRank, setSelectedCompareRank] = useState<number | undefined>(undefined);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const resultDelayNoticeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastManualRefreshAtRef = useRef(0);
-
-  const loadLeaderboard = useCallback(async () => {
-    const fetchLeaderboard = fetch('/api/leaderboard', { cache: 'no-store' })
-      .then(res => res.json())
-      .then(data => data.leaderboard ?? [])
-      .catch(() => []);
-
-    const fetchPredictions = fetch('/api/leaderboard/predictions?preview=1', { cache: 'no-store' })
-      .then(res => res.json())
-      .then(data => ({ predictions: data.predictions ?? [], totalUsers: data.total_users ?? 0 }))
-      .catch(() => ({ predictions: [], totalUsers: 0 }));
-
-    const fetchMyPredictions = user
-      ? fetch('/api/predictions', { cache: 'no-store' })
-          .then(res => res.json())
-          .then(data => (data.predictions ?? []) as SavedPrediction[])
-          .catch(() => [] as SavedPrediction[])
-      : Promise.resolve([] as SavedPrediction[]);
-
-    const [entries, { predictions: preds, totalUsers: total }, myPreds] = await Promise.all([fetchLeaderboard, fetchPredictions, fetchMyPredictions]);
-
-    setLeaderboard(entries);
-
-    // Build all of the user's completed predictions as LeaderboardPredictions
-    const displayName = user?.display_name ?? 'You';
-    const myLeaderboardPreds: LeaderboardPrediction[] = user
-      ? myPreds
-          .filter((p: SavedPrediction) => p.is_complete)
-          .map((p: SavedPrediction) => savedPredictionToLeaderboardPrediction(p, user.id, displayName))
-      : [];
-
-    let nextPredictions: LeaderboardPrediction[];
-    if (preds.length === 0) {
-      const fallbackPredictions = getFallbackPredictions(entries);
-      nextPredictions = mergeOwnPredictions(fallbackPredictions, myLeaderboardPreds);
-      setTotalUsers(total || fallbackPredictions.length || myLeaderboardPreds.length);
-    } else {
-      nextPredictions = mergeOwnPredictions(preds, myLeaderboardPreds);
-      setTotalUsers(total || preds.length);
-    }
-    setPredictions(nextPredictions);
-    // Keep an already-open profile attached to the newly fetched prediction object.
-    setSelectedPrediction(current => (
-      current ? nextPredictions.find(prediction => samePredictionIdentity(prediction, current)) ?? current : null
-    ));
-    setLastUpdated(new Date());
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    loadLeaderboard();
-  }, [loadLeaderboard]);
-
-  useEffect(() => {
-    return () => {
-      if (resultDelayNoticeTimeoutRef.current) {
-        clearTimeout(resultDelayNoticeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleRefresh = useCallback(async () => {
-    if (refreshing) return;
-    const now = Date.now();
-    if (now - lastManualRefreshAtRef.current < 5_000) {
-      setRefreshNotice('Please wait a few seconds before checking again.');
-      if (resultDelayNoticeTimeoutRef.current) clearTimeout(resultDelayNoticeTimeoutRef.current);
-      resultDelayNoticeTimeoutRef.current = setTimeout(() => {
-        setRefreshNotice(null);
-        resultDelayNoticeTimeoutRef.current = null;
-      }, 3000);
-      return;
-    }
-    lastManualRefreshAtRef.current = now;
-    setRefreshing(true);
-    try {
-      const refreshQuery = buildFastRefreshQuery(liveMatches);
-      let refreshResult: LiveDataRefreshResult;
-      if (onRefreshLiveData) {
-        refreshResult = await onRefreshLiveData(refreshQuery);
-      } else {
-        try {
-          const response = await fetch(`/api/football/matches?${refreshQuery}&force=true`, { cache: 'no-store' });
-          const data = await response.json();
-          refreshResult = {
-            ok: response.ok && data.scoringStatus !== 'error' && data.rateLimited !== true,
-            status: data.rateLimited
-              ? 'rate_limited'
-              : !response.ok || data.scoringStatus === 'error'
-                ? 'error'
-                : (data.winnerPendingIds?.length ?? 0) > 0
-                  ? 'winner_pending'
-                  : 'updated',
-            winnerPendingIds: data.winnerPendingIds ?? [],
-            resultsBridged: data.resultsBridged ?? 0,
-            scoresUpdated: data.scoresUpdated ?? 0,
-            message: data.syncError ?? undefined,
-          };
-        } catch {
-          refreshResult = {
-            ok: false,
-            status: 'error',
-            winnerPendingIds: [],
-            resultsBridged: 0,
-            scoresUpdated: 0,
-            message: 'Live scores unavailable',
-          };
-        }
-      }
-      if (refreshResult.ok) await loadLeaderboard();
-
-      if (refreshResult.status === 'winner_pending') {
-        setRefreshNotice('Match finished — waiting for the official winner. Checking again automatically.');
-      } else if (refreshResult.status === 'rate_limited') {
-        setRefreshNotice('Free-tier request limit reached. Automatic checking will retry shortly.');
-      } else if (refreshResult.status === 'error') {
-        setRefreshNotice(refreshResult.message ?? 'Results loaded, but points could not be updated.');
-      } else if (refreshResult.resultsBridged > 0) {
-        setRefreshNotice('Official winner received. Points updated.');
-      } else {
-        setRefreshNotice('Results and points are up to date.');
-      }
-      if (resultDelayNoticeTimeoutRef.current) {
-        clearTimeout(resultDelayNoticeTimeoutRef.current);
-      }
-      resultDelayNoticeTimeoutRef.current = setTimeout(() => {
-        setRefreshNotice(null);
-        resultDelayNoticeTimeoutRef.current = null;
-      }, 6000);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [refreshing, liveMatches, loadLeaderboard, onRefreshLiveData]);
 
   const getMedalIcon = (rank: number) => {
     if (rank === 1) return <span className="material-symbols-outlined text-medal-gold text-3xl font-variation-fill">emoji_events</span>;
@@ -307,28 +51,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
   const visiblePredictions = predictions.filter(prediction => prediction.is_approved);
   const previewPredictions = predictions.filter(prediction => !prediction.is_approved);
 
-  const livePointsByPrediction = useMemo(() => {
-    if (!liveMatches) return new Map<string, number>();
-    const points = new Map<string, number>();
-    for (const prediction of predictions) {
-      if (!prediction.details_available) continue;
-      points.set(
-        getPredictionKey(prediction),
-        computePredictionResults(prediction, liveMatches).summary.totalPoints,
-      );
-    }
-    return points;
-  }, [predictions, liveMatches]);
-
-  const getPredictionPoints = (prediction: LeaderboardPrediction): number | null => {
-    if (prediction.details_available && liveMatches) {
-      const livePoints = livePointsByPrediction.get(getPredictionKey(prediction));
-      if (livePoints != null) return livePoints;
-    }
-    if (typeof prediction.total_points === 'number') return prediction.total_points;
-    const entry = leaderboard.find(e => entryMatchesPrediction(e, prediction));
-    return entry?.total_points ?? null;
-  };
+  const getPredictionPoints = (prediction: LeaderboardPrediction): number | null => prediction.total_points ?? null;
 
   const openPredictionDetails = (prediction: LeaderboardPrediction, rank?: number) => {
     if (!prediction.details_available) return;
@@ -398,19 +121,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
                   <div className="mb-2.5 md:mb-3">
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="min-w-0 font-bold text-2xl leading-none md:text-xl md:leading-normal">Leaderboard</h2>
-                      <button
-                        type="button"
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center gap-1.5 rounded-full border border-white/10 px-0 text-xs font-bold text-neutral-300 transition-all hover:border-white/20 hover:text-primary disabled:opacity-50 active:scale-95 min-[390px]:w-auto min-[390px]:px-2.5 md:h-9 md:px-3"
-                        aria-label="Reload leaderboard"
-                        title="Reload leaderboard"
-                      >
-                        <span className={`material-symbols-outlined text-[13px] md:text-[18px] ${refreshing ? 'animate-spin' : ''}`}>
-                          refresh
-                        </span>
-                        <span className="hidden min-[390px]:inline">Reload</span>
-                      </button>
+                      <span className="font-body text-xs text-primary">Final standings</span>
                     </div>
                     <div className="mt-1 flex min-w-0 items-start justify-between gap-2 text-xs text-neutral-400 font-body md:text-sm">
                       <span className="shrink-0">
@@ -419,9 +130,7 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
                           <span className="text-neutral-500"> · {previewPredictions.length} preview</span>
                         )}
                       </span>
-                      {lastUpdated && (
-                        <span className="min-w-0 truncate text-right text-neutral-500">Updated at {formatUpdatedAt(lastUpdated)}</span>
-                      )}
+                      <span className="text-right text-neutral-500">Archived {archiveDate}</span>
                     </div>
                     {showPreview && previewPredictions.length > 0 && (
                       <div className="mt-2 flex items-start gap-1.5 rounded-lg border border-dashed border-white/15 bg-white/[0.02] px-2.5 py-2 text-[11px] text-neutral-400 font-body md:text-xs">
@@ -615,12 +324,6 @@ export default function RankingView({ liveMatches, teamFlagsByCode, onRefreshLiv
           liveMatches={liveMatches}
           teamFlagsByCode={teamFlagsByCode}
         />
-      )}
-      {refreshNotice && (
-        <div className="fixed bottom-24 left-1/2 z-50 flex w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 items-start gap-2 rounded-xl bg-neutral-900 px-4 py-3 text-xs font-normal text-white shadow-lg animate-fade-in md:text-sm">
-          <span className="material-symbols-outlined mt-0.5 text-[16px] text-primary">info</span>
-          <span>{refreshNotice}</span>
-        </div>
       )}
     </div>
   );

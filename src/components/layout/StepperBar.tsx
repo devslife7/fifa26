@@ -20,7 +20,7 @@ interface Step {
 const baseSteps: Step[] = [
   { label: 'Groups', icon: 'grid_view', action: 'groups' },
   { label: 'Bracket', icon: 'account_tree', action: 'bracket' },
-  { label: 'Submit', icon: 'send', action: 'submit' },
+  { label: 'Champion', icon: 'emoji_events', action: 'submit' },
 ];
 
 export default function StepperBar({ flowState, isSubmitted, activeTab, onNavigate }: StepperBarProps) {

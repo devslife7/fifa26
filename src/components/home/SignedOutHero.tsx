@@ -1,10 +1,10 @@
 'use client';
 
 interface Props {
-  onSignIn: () => void;
+  onExplore: () => void;
 }
 
-export default function SignedOutHero({ onSignIn }: Props) {
+export default function SignedOutHero({ onExplore }: Props) {
   return (
     <section className="home-signin-hero relative -mx-3 pb-3 sm:-mx-4 md:mx-0">
       <div className="home-hero-frame relative mx-auto w-full overflow-hidden shadow-[0_24px_60px_-24px_rgba(0,0,0,0.85)] sm:max-w-[440px] sm:rounded-b-[32px] md:max-w-full">
@@ -26,16 +26,16 @@ export default function SignedOutHero({ onSignIn }: Props) {
             Track your bracket
           </h1>
           <p className="mt-1.5 max-w-[34ch] font-body text-sm font-semibold leading-relaxed text-neutral-300">
-            Sign in to follow your picks, score every result, and see where you rank against everyone.
+            Browse the final results and everyone’s picks, or explore how the original prediction workflow worked.
           </p>
 
           <button
             type="button"
-            onClick={onSignIn}
+            onClick={onExplore}
             className="mt-4 inline-flex items-center justify-center gap-2 rounded-[16px] bg-primary px-5 py-3 font-body text-sm font-black text-black transition-colors hover:bg-primary/90"
           >
-            <span className="material-symbols-outlined text-[18px]">login</span>
-            Sign in
+            <span className="material-symbols-outlined text-[18px]">account_tree</span>
+            Explore prediction workflow
           </button>
         </div>
       </div>

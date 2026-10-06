@@ -1,7 +1,6 @@
 'use client';
 
 import { TabId } from '@/types';
-import { PREDICTIONS_ACCEPTING_SUBMISSIONS } from '@/data/tournament';
 
 interface Props {
   activeTab: TabId;
@@ -14,8 +13,8 @@ const PREDICTION_TABS: TabId[] = ['groups', 'bracket', 'thirdplace', 'submit'];
 const navItems = [
   { label: 'Home', icon: 'home', navigateTo: 'home' as TabId, activeTabs: ['home', 'profile'] as TabId[], isPredictionEntry: false },
   {
-    label: PREDICTIONS_ACCEPTING_SUBMISSIONS ? 'Predictor' : 'Closed',
-    icon: PREDICTIONS_ACCEPTING_SUBMISSIONS ? 'emoji_events' : 'lock',
+    label: 'Demo',
+    icon: 'emoji_events',
     navigateTo: 'groups' as TabId,
     activeTabs: PREDICTION_TABS,
     isPredictionEntry: true,
@@ -34,7 +33,7 @@ export default function BottomNav({ activeTab, nextPredictionTab, onTabChange }:
           return (
             <button
               key={item.label}
-              onClick={() => onTabChange(item.isPredictionEntry && PREDICTIONS_ACCEPTING_SUBMISSIONS ? nextPredictionTab : item.navigateTo)}
+              onClick={() => onTabChange(item.isPredictionEntry ? nextPredictionTab : item.navigateTo)}
               className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-[48px] transition-colors relative ${isActive
                   ? 'text-primary'
                   : 'text-neutral-400 hover:text-primary'

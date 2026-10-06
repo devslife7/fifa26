@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 5588",
-    "build": "next build",
-    "start": "next start"
+    "dev": "next dev -p 7000",
+    "build": "next build --webpack",
+    "start": "node scripts/serve-archive.mjs",
+    "archive:export": "node --env-file=.env.local --import tsx scripts/archive/export.ts",
+    "test": "node --import tsx --test src/lib/logic/*.test.ts src/lib/services/*.test.ts src/lib/utils/*.test.ts"
   },
   "dependencies": {
     "@react-email/components": "^1.0.12",

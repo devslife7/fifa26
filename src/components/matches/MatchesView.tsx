@@ -1,21 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { LeaderboardPrediction, LiveMatch } from '@/types';
+import { archive } from '@/lib/client/archive';
 import { teamsByCode } from '@/data/teams';
-import { buildR32DisplayRows, buildKnockoutDisplayRows } from '@/lib/logic/actual-bracket';
 import { getSlotLabels } from '@/lib/logic/bracket';
-import { formatMatchTime, formatRelativeDate, getDateBucket } from '@/lib/utils/match-dates';
+import { formatMatchTime } from '@/lib/utils/match-dates';
 import MatchPredictionsModal from './MatchPredictionsModal';
 
 type StageKey = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
 
-type TimeFilter = 'today' | 'past' | 'upcoming';
-
+type TimeFilter = 'all' | 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | 'FIN';
 const TIME_FILTERS: { key: TimeFilter; label: string }[] = [
-  { key: 'today', label: 'Today & Tomorrow' },
-  { key: 'upcoming', label: 'Upcoming' },
-  { key: 'past', label: 'Finished' },
+  { key: 'all', label: 'All results' }, { key: 'GROUP', label: 'Groups' },
+  { key: 'R32', label: 'Round of 32' }, { key: 'R16', label: 'Round of 16' },
+  { key: 'QF', label: 'Quarter-finals' }, { key: 'SF', label: 'Semi-finals' },
+  { key: 'FIN', label: 'Final & third place' },
 ];
 
 export function getStageKey(match: LiveMatch): StageKey {
@@ -125,80 +125,30 @@ interface MatchesViewProps {
 }
 
 export default function MatchesView({ matches, loading, teamFlagsByCode }: MatchesViewProps) {
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('today');
-  const [predictions, setPredictions] = useState<LeaderboardPrediction[]>([]);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const predictions = archive.predictions;
   const [selectedMatch, setSelectedMatch] = useState<LiveMatch | null>(null);
-
-  useEffect(() => {
-    fetch('/api/leaderboard/predictions')
-      .then(res => res.json())
-      .then(data => setPredictions(data.predictions ?? []))
-      .catch(() => setPredictions([]));
-  }, []);
 
   const approvedPredictions = useMemo(
     () => predictions.filter(prediction => prediction.is_approved),
     [predictions],
   );
 
-  // Replace all knockout fixtures with bracket-driven rows (correct matchups from
-  // our model, live data overlaid by team identity, teams propagated round by round).
-  const displayMatches = useMemo(() => {
-    const groupOnly = matches.filter(m => m.stage === 'GROUP');
-    return [...groupOnly, ...buildR32DisplayRows(matches), ...buildKnockoutDisplayRows(matches)];
-  }, [matches]);
-
   const daySections = useMemo<DaySection[]>(() => {
-    const dated: LiveMatch[] = [];
-    const undated: LiveMatch[] = [];
-    for (const match of displayMatches) {
-      const bucket = getDateBucket(match.utcDate);
-      if (bucket === 'unknown') {
-        undated.push(match);
-        continue;
-      }
-      // today tab → today + tomorrow; past tab → yesterday + earlier; upcoming → day after tomorrow + later
-      if (timeFilter === 'today' && (bucket === 'today' || bucket === 'tomorrow')) dated.push(match);
-      else if (timeFilter === 'past' && (bucket === 'yesterday' || bucket === 'past')) dated.push(match);
-      else if (timeFilter === 'upcoming' && bucket === 'future') dated.push(match);
-    }
-
-    const byKey = new Map<string, LiveMatch[]>();
-    for (const match of dated) {
+    const byDay = new Map<string, LiveMatch[]>();
+    for (const match of matches) {
+      if (timeFilter !== 'all' && getStageKey(match) !== timeFilter) continue;
       const key = localDayKey(match.utcDate);
-      const bucket = byKey.get(key);
-      if (bucket) bucket.push(match);
-      else byKey.set(key, [match]);
+      const items = byDay.get(key) ?? [];
+      items.push(match);
+      byDay.set(key, items);
     }
-
-    const sections: DaySection[] = Array.from(byKey.entries())
-      .map(([key, items]) => {
-        items.sort((a, b) => a.utcDate.localeCompare(b.utcDate));
-        const first = items[0];
-        const bucket = getDateBucket(first.utcDate);
-        const relative = formatRelativeDate(first.utcDate);
-        const fullDate = new Date(first.utcDate).toLocaleDateString(undefined, {
-          weekday: 'long', month: 'long', day: 'numeric',
-        });
-        const isRelative = bucket === 'today' || bucket === 'yesterday' || bucket === 'tomorrow';
-        return {
-          key,
-          label: relative,
-          dateLabel: isRelative ? fullDate : null,
-          isToday: bucket === 'today',
-          items,
-        };
-      })
-      // Past: most recent day first. Today/Upcoming: soonest day first.
-      .sort((a, b) => (timeFilter === 'past' ? b.key.localeCompare(a.key) : a.key.localeCompare(b.key)));
-
-    // Fixtures without a scheduled date are upcoming-but-TBD.
-    if (timeFilter === 'upcoming' && undated.length > 0) {
-      sections.push({ key: 'tbd', label: 'Date TBD', dateLabel: null, isToday: false, items: undated });
-    }
-
-    return sections;
-  }, [displayMatches, timeFilter]);
+    return [...byDay].sort(([a], [b]) => b.localeCompare(a)).map(([key, items]) => ({
+      key, items: [...items].sort((a,b) => a.utcDate.localeCompare(b.utcDate)),
+      label: new Date(items[0].utcDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      dateLabel: null, isToday: false,
+    }));
+  }, [matches, timeFilter]);
 
   const totalShown = daySections.reduce((sum, section) => sum + section.items.length, 0);
 
@@ -243,24 +193,13 @@ export default function MatchesView({ matches, loading, teamFlagsByCode }: Match
           <span className="material-symbols-outlined text-3xl text-neutral-500">sports_soccer</span>
           <p className="mt-2 text-sm font-semibold text-neutral-300">Match schedule unavailable</p>
           <p className="mt-1 text-xs text-neutral-500 font-body">
-            Live fixture data couldn&rsquo;t be loaded. Pull to refresh or try again shortly.
+            The archived match data could not be loaded.
           </p>
         </div>
       ) : totalShown === 0 ? (
         <div className="rounded-xl border border-white/10 bg-neutral-900 px-4 py-10 text-center">
           <p className="text-sm font-semibold text-neutral-300">
-            {timeFilter === 'today'
-              ? 'No matches today or tomorrow'
-              : timeFilter === 'past'
-                ? 'No matches played yet'
-                : 'No upcoming matches'}
-          </p>
-          <p className="mt-1 text-xs text-neutral-500 font-body">
-            {timeFilter === 'today'
-              ? 'Check the Upcoming tab for the next fixtures.'
-              : timeFilter === 'past'
-                ? 'Results will show here once matches kick off.'
-                : 'Fixtures appear once the bracket is set.'}
+            No archived matches in this round.
           </p>
         </div>
       ) : (

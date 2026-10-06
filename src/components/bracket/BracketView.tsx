@@ -30,8 +30,6 @@ const roundLabels: Record<KnockoutRound, string> = {
   FIN: 'Finals',
 };
 
-const SCORING_INFO_VIEW_COUNT_KEY = 'fifa26.bracket.scoringInfoViewCount';
-const SCORING_INFO_MAX_AUTO_SHOWS = 2;
 
 export default function BracketView({ groupPredictions, knockoutPredictions, thirdPlaceTiebreaker, onPredict, onRandomize, liveMatches, teamFlagsByCode, readOnly = false }: Props) {
   const [activeRound, setActiveRound] = useState<KnockoutRound>('R32');
@@ -95,16 +93,7 @@ export default function BracketView({ groupPredictions, knockoutPredictions, thi
     if (hasHandledScoringInfoRef.current) return;
     hasHandledScoringInfoRef.current = true;
 
-    try {
-      const storedCount = Number(window.localStorage.getItem(SCORING_INFO_VIEW_COUNT_KEY) ?? '0');
-      const currentCount = Number.isFinite(storedCount) ? storedCount : 0;
-      if (currentCount >= SCORING_INFO_MAX_AUTO_SHOWS) return;
-
-      window.localStorage.setItem(SCORING_INFO_VIEW_COUNT_KEY, String(currentCount + 1));
-      setShowScoringInfo(true);
-    } catch {
-      setShowScoringInfo(true);
-    }
+    setShowScoringInfo(true);
   }, [readOnly]);
 
   const holdScrollSync = useCallback((duration = 450) => {

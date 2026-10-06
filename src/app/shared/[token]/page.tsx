@@ -1,37 +1,29 @@
-import { createServiceClient } from '@/lib/services/supabase/server';
-import { MatchResult, KnockoutResult } from '@/types';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import shared from '@/data/archive/shared.json';
+import type { MatchResult, KnockoutResult } from '@/types';
 import SharedPredictionView from '@/components/shared/SharedPredictionView';
 
-interface Props {
-  params: Promise<{ token: string }>;
+export const dynamicParams = false;
+export function generateStaticParams() {
+  return shared.map(({ token }) => ({ token }));
 }
-
+interface Props { params: Promise<{ token: string }> }
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { token } = await params;
+  const entry = shared.find(p => p.token === token);
+  return { title: entry ? `${entry.prediction.display_name}’s prediction · World Cup 2026 archive` : 'Prediction not found' };
+}
 export default async function SharedBracketPage({ params }: Props) {
   const { token } = await params;
-  const supabase = createServiceClient();
-
-  const { data, error } = await supabase
-    .from('predictions')
-    .select('id, prediction_number, name, submitter_name, champion_code, group_matches, knockout_matches, third_place_tiebreaker, share_token, is_complete, profiles(display_name)')
-    .eq('share_token', token)
-    .eq('is_complete', true)
-    .single();
-
-  if (error || !data) {
-    notFound();
-  }
-
-  const profile = data.profiles as unknown as { display_name: string } | null;
-  const displayName = profile?.display_name ?? data.submitter_name ?? 'Someone';
-
-  return (
-    <SharedPredictionView
-      displayName={displayName}
-      championCode={data.champion_code}
-      groupMatches={data.group_matches as Record<string, MatchResult>}
-      knockoutMatches={data.knockout_matches as Record<string, KnockoutResult>}
-      thirdPlaceTiebreaker={(data.third_place_tiebreaker as string[] | null) ?? undefined}
-    />
-  );
+  const entry = shared.find(p => p.token === token);
+  if (!entry) notFound();
+  const prediction = entry.prediction;
+  return <SharedPredictionView
+    displayName={prediction.display_name}
+    championCode={prediction.champion_code}
+    groupMatches={prediction.group_matches as Record<string, MatchResult>}
+    knockoutMatches={prediction.knockout_matches as Record<string, KnockoutResult>}
+    thirdPlaceTiebreaker={prediction.third_place_tiebreaker ?? undefined}
+  />;
 }

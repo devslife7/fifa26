@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { Noto_Sans } from 'next/font/google';
-import { Analytics } from '@vercel/analytics/next';
-import { AuthProvider } from '@/components/providers/AuthProvider';
 import './globals.css';
 
 const fwc2026 = localFont({
@@ -14,11 +11,8 @@ const fwc2026 = localFont({
   display: 'swap',
 });
 
-const notoSans = Noto_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-noto-sans',
-  display: 'swap',
+const notoSans = localFont({
+  src: '../fonts/NotoSans.ttf', variable: '--font-noto-sans', display: 'swap',
 });
 
 export const viewport: Viewport = {
@@ -28,8 +22,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'FIFA World Cup 2026 Predictor',
-  description: 'Predict every match of the FIFA World Cup 2026',
+  title: 'FIFA World Cup 2026 Archive',
+  description: 'Final results, archived predictions, and an interactive prediction workflow demo.',
 };
 
 export default function RootLayout({
@@ -40,14 +34,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${fwc2026.variable} ${notoSans.variable}`}>
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="/fonts/material-symbols.css" />
         <meta name="theme-color" content="#05070d" />
       </head>
       <body className="bg-background-dark font-display text-neutral-200 min-h-screen antialiased">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <Analytics />
+        {children}
       </body>
     </html>
   );

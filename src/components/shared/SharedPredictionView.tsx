@@ -29,7 +29,7 @@ export default function SharedPredictionView({
         <div className="text-center mb-6">
           <img src="/images/fifa_logo.svg" alt="FIFA World Cup 2026" className="w-14 h-14 mb-4 mx-auto" />
           <h1 className="text-2xl font-black mb-1">{displayName}&apos;s Predictions</h1>
-          <p className="text-neutral-400 text-sm">FIFA World Cup 2026</p>
+          <p className="text-neutral-400 text-sm">FIFA World Cup 2026 · Archived prediction · View only</p>
         </div>
 
         {/* Champion */}
@@ -92,7 +92,7 @@ export default function SharedPredictionView({
             href="/"
             className="inline-block bg-primary text-black font-bold px-8 py-3 rounded-xl hover:bg-primary/90 transition-colors"
           >
-            Make Your Own Predictions
+            Browse the archive
           </a>
         </div>
       </div>
